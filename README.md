@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="design/banner-dark.svg" alt="Zero Operators — Autonomous AI Systems" width="680"/>
+<img src="design/banner-dark.svg" alt="Zero Operators — Autonomous AI Systems" width="800"/>
 
 <br/>
 <br/>
