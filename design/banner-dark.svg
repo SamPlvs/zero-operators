@@ -1,0 +1,34 @@
+<svg width="680" height="200" viewBox="0 0 680 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="680" height="200" fill="#080808"/>
+
+  <!-- Subtle top border glow -->
+  <line x1="0" y1="0" x2="680" y2="0" stroke="#F0C040" stroke-width="1" opacity="0.2"/>
+
+  <!-- Orbital mark -->
+  <g transform="translate(240, 30)">
+    <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+    <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+    <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+    <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+    <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+    <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+  </g>
+
+  <!-- Divider line -->
+  <line x1="320" y1="40" x2="320" y2="92" stroke="#F0C040" stroke-width="1" opacity="0.4"/>
+
+  <!-- Title text -->
+  <text x="340" y="62" fill="#F0C040" font-family="'Rajdhani', 'Segoe UI', sans-serif" font-weight="600" font-size="30" letter-spacing="5">ZERO OPERATORS</text>
+
+  <!-- Subtitle -->
+  <text x="340" y="88" fill="#8a6020" font-family="'Share Tech Mono', 'Courier New', monospace" font-size="11" letter-spacing="3.5">AUTONOMOUS AI SYSTEMS</text>
+
+  <!-- Bottom tagline -->
+  <text x="340" y="142" fill="#F0C040" font-family="'Share Tech Mono', 'Courier New', monospace" font-size="13" opacity="0.7">Autonomous research and engineering team system.</text>
+  <text x="340" y="162" fill="#8a6020" font-family="'Share Tech Mono', 'Courier New', monospace" font-size="11">You input a plan. Agents execute. The oracle verifies.</text>
+
+  <!-- Bottom border glow -->
+  <line x1="0" y1="199" x2="680" y2="199" stroke="#F0C040" stroke-width="1" opacity="0.15"/>
+</svg>
