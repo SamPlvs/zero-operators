@@ -28,6 +28,7 @@ from zo._orchestrator_models import (
     AgentContract,
     GateDecision,
     GateEvaluation,
+    GateMode,
     GateType,
     PhaseDefinition,
     PhaseStatus,
@@ -47,6 +48,7 @@ __all__ = [
     "AgentContract",
     "GateDecision",
     "GateEvaluation",
+    "GateMode",
     "GateType",
     "Orchestrator",
     "PhaseDefinition",
@@ -116,6 +118,8 @@ class Orchestrator:
         comms: CommsLogger,
         semantic: SemanticIndex,
         zo_root: Path,
+        *,
+        gate_mode: GateMode = GateMode.SUPERVISED,
     ) -> None:
         self._plan = plan
         self._target = target
@@ -123,6 +127,7 @@ class Orchestrator:
         self._comms = comms
         self._semantic = semantic
         self._zo_root = Path(zo_root)
+        self._gate_mode = gate_mode
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
         self._plan_hash: str = self._compute_plan_hash()
@@ -131,6 +136,16 @@ class Orchestrator:
     def workflow(self) -> WorkflowDecomposition | None:
         """Current workflow decomposition, or None if not yet decomposed."""
         return self._workflow
+
+    @property
+    def gate_mode(self) -> GateMode:
+        """Current gate mode (supervised / auto / full_auto)."""
+        return self._gate_mode
+
+    @gate_mode.setter
+    def gate_mode(self, value: GateMode) -> None:
+        """Change gate mode at runtime."""
+        self._gate_mode = value
 
     @property
     def session_state(self) -> SessionState:
@@ -262,11 +277,29 @@ class Orchestrator:
         return None
 
     def advance_phase(self, phase_id: str) -> GateEvaluation:
-        """Evaluate the gate for a phase and advance if criteria are met."""
+        """Evaluate the gate for a phase and advance if criteria are met.
+
+        Behaviour depends on ``gate_mode``:
+
+        * **supervised** — every phase transition requires human approval,
+          regardless of the gate_type defined in the plan.
+        * **auto** (default) — only gates marked BLOCKING in the plan
+          require human approval; automated gates proceed if subtasks done.
+        * **full_auto** — no human gates at all; all gates are treated as
+          automated and ZO runs to completion autonomously.
+        """
         phase = self._find_phase(phase_id)
         all_done = set(phase.subtasks) == set(phase.completed_subtasks)
 
-        if phase.gate_type == GateType.BLOCKING:
+        # Determine effective gate type based on gate_mode
+        if self._gate_mode == GateMode.SUPERVISED:
+            effective_gate = GateType.BLOCKING
+        elif self._gate_mode == GateMode.FULL_AUTO:
+            effective_gate = GateType.AUTOMATED
+        else:  # GateMode.AUTO — use plan-defined gate type
+            effective_gate = phase.gate_type
+
+        if effective_gate == GateType.BLOCKING:
             ev = GateEvaluation(
                 phase_id=phase_id, gate_type=GateType.BLOCKING,
                 decision=GateDecision.HOLD,
