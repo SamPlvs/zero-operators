@@ -209,7 +209,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 **Architecture note:** Python layer does NOT spawn agents directly. It builds context and launches one session. Agent coordination is native Claude Code with peer-to-peer comms.
 **Status:** COMPLETE
 
-### Module 7: Evolution Engine
+### Module 7: Evolution Engine ✅
 **Spec source:** specs/evolution.md
 **Responsibility:** Post-mortem protocol, root cause categorization, PRIORS/spec updates, evolution metrics.
 **Outputs:** EvolutionEngine class.
@@ -224,7 +224,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 **Outputs:** `setup.sh`, `zo init` subcommand.
 **Priority:** P0
 
-### Module 9: CLI Entry Point
+### Module 9: CLI Entry Point ✅
 **Spec source:** PRD.md
 **Responsibility:** CLI with subcommands: `zo build`, `zo continue`, `zo maintain`, `zo draft`, `zo init`, `zo status`.
 - `zo draft <source-dir>` indexes source docs (project-scoped, persisted), generates compliant plan.md via agent with plan spec loaded.

@@ -158,3 +158,12 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** PROCEED to Phase 4
 **Rationale:** 224 tests passing, 93% coverage, ruff clean. Orchestrator decomposes plans into phases for all 3 workflow modes, generates agent contracts, builds lead prompts with full context. Wrapper launches sessions, monitors teams, handles rate limits. Architecture validated: Python CLI → one Claude session → native agent team with peer-to-peer comms.
 **Outcome:** Phase 4 (Hardening — Evolution Engine, CLI, integration tests) unblocked.
+
+---
+
+## Decision: 2026-04-09T20:00:00Z
+**Type:** GATE
+**Title:** Phase 4 complete — Evolution engine, CLI, integration tests
+**Decision:** PROCEED to Phase 5
+**Rationale:** 296 tests passing, 90% coverage, ruff clean. Evolution engine implements full post-mortem protocol (5 steps), retrospective, and metrics. CLI provides zo build/continue/maintain/init/status/draft with gate mode toggle (default: supervised). Integration tests verify full pipeline flows. All modules wired together.
+**Outcome:** Phase 5 (End-to-end validation) unblocked.
