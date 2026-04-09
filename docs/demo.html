@@ -763,6 +763,167 @@
 
   .tree-line.new { color: #4aaa4a; }
 
+  /* ── THEME TRANSITION ── */
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease !important;
+  }
+
+  /* ── LIGHT MODE ── */
+  [data-theme="light"] {
+    --amber: #1a1400;
+    --amber-dim: #8a7040;
+    --amber-ghost: #1a140015;
+    --amber-border: #1a140030;
+    --void: #f5f0e8;
+    --surface: #e8e4dc;
+    --surface2: #ddd8d0;
+    --paper: #f5f0e8;
+    --ink: #1a1400;
+    --rule: #c8c0a8;
+  }
+
+  [data-theme="light"] body {
+    background: #f5f0e8;
+    color: #1a1400;
+  }
+
+  [data-theme="light"] .tabs {
+    background: #ece8de;
+    border-bottom-color: #c8c0a8;
+  }
+
+  [data-theme="light"] .tab { color: #8a7040; }
+  [data-theme="light"] .tab:hover { color: #1a1400; }
+  [data-theme="light"] .tab.active { color: #1a1400; border-bottom-color: #1a1400; }
+
+  [data-theme="light"] .section-label { color: #8a7040; }
+
+  [data-theme="light"] p { color: #5a4820; }
+
+  [data-theme="light"] .terminal { background: #1a1400; border-color: #c8c0a8; }
+  [data-theme="light"] .terminal-bar { background: #2a2010; border-bottom-color: #3a2e0c; }
+  [data-theme="light"] .terminal-dot { background: #F0C040; }
+  [data-theme="light"] .terminal-title { color: #8a6020; }
+  [data-theme="light"] .terminal-body { color: #8a7a40; }
+  [data-theme="light"] .terminal-body .prompt { color: #F0C040; }
+  [data-theme="light"] .terminal-body .cmd { color: #F0C040; }
+  [data-theme="light"] .terminal-body .output { color: #5a4a20; }
+  [data-theme="light"] .terminal-body .success { color: #4aaa4a; }
+  [data-theme="light"] .terminal-body .highlight { color: #F0C040; }
+
+  [data-theme="light"] .step-header:hover { background: #ddd8d0; }
+
+  [data-theme="light"] .agent-model.opus { color: #1a1400; }
+  [data-theme="light"] .agent-model.sonnet { color: #8a7040; }
+  [data-theme="light"] .agent-model.haiku { color: #b0a880; }
+
+  [data-theme="light"] .agent-role { color: #5a4820; }
+  [data-theme="light"] .agent-badge.launch { background: #1a140015; color: #1a1400; border-color: #1a140030; }
+  [data-theme="light"] .agent-badge.phase-in { background: #e8e4dc; color: #8a7040; border-color: #c8c0a8; }
+
+  [data-theme="light"] .pipeline-gate.auto { background: #1a140010; color: #8a7040; border-color: #c8c0a8; }
+  [data-theme="light"] .pipeline-gate.blocking { background: #1a140015; color: #1a1400; border-color: #1a140030; }
+
+  [data-theme="light"] .pipeline-subtask { color: #5a4820; }
+  [data-theme="light"] .pipeline-detail-inner { border-left-color: #c8c0a8; }
+
+  [data-theme="light"] .mode-btn { color: #8a7040; border-right-color: #c8c0a8; }
+  [data-theme="light"] .mode-btn:hover { color: #1a1400; }
+  [data-theme="light"] .mode-btn.active { background: #1a1400; color: #f5f0e8; }
+
+  [data-theme="light"] .cmd-search { background: #e8e4dc; border-color: #c8c0a8; border-bottom-color: #8a7040; color: #1a1400; }
+  [data-theme="light"] .cmd-search::placeholder { color: #b0a880; }
+  [data-theme="light"] .cmd-category-header { color: #8a7040; border-bottom-color: #c8c0a8; }
+  [data-theme="light"] .cmd-category-header:hover { color: #1a1400; }
+  [data-theme="light"] .cmd-item:hover { border-color: #c8c0a8; background: #e8e4dc; }
+  [data-theme="light"] .cmd-item-name { color: #1a1400; }
+  [data-theme="light"] .cmd-item-desc { color: #5a4820; }
+
+  [data-theme="light"] .timeline::before { background: #c8c0a8; }
+  [data-theme="light"] .timeline-item::before { background: #8a7040; border-color: #c8c0a8; }
+  [data-theme="light"] .timeline-item.highlight::before { background: #1a1400; box-shadow: 0 0 8px #1a140015; }
+  [data-theme="light"] .timeline-desc { color: #5a4820; }
+  [data-theme="light"] .timeline-commit { color: #b0a880; }
+
+  [data-theme="light"] .ba-label.before { color: #8a7040; }
+  [data-theme="light"] .ba-label.after { color: #1a1400; }
+  [data-theme="light"] .tree-line { color: #5a4820; }
+  [data-theme="light"] .tree-line.new { color: #2a7a2a; }
+
+  [data-theme="light"] .stat-label { color: #8a7040; }
+
+  [data-theme="light"] .scanlines::after {
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.02) 3px, rgba(0,0,0,0.02) 4px);
+  }
+
+  [data-theme="light"] .flow-node { color: #8a7040; }
+  [data-theme="light"] .flow-node.active { color: #1a1400; border-color: #1a1400; box-shadow: 0 0 20px #1a140015; }
+  [data-theme="light"] .flow-arrow.active { opacity: 1; }
+
+  [data-theme="light"] .arch-layer-content { color: #5a4820; }
+
+  /* ── THEME TOGGLE BUTTON ── */
+  .theme-toggle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--amber-dim);
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-left: auto;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+    line-height: 1;
+  }
+  .theme-toggle:hover { color: var(--amber); border-color: var(--amber-border); }
+
+  /* ── SVG BACKGROUND CONTAINERS ── */
+  .svg-bg-wrap {
+    position: relative;
+  }
+  .svg-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .svg-bg svg {
+    width: 100%;
+    height: 100%;
+  }
+  .svg-bg-wrap > *:not(.svg-bg) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* SVG stroke colors adapt to theme */
+  .svg-bg-stroke {
+    stroke: var(--amber);
+  }
+
+  /* ── FOOTER ── */
+  .site-footer {
+    position: relative;
+    border-top: 1px solid var(--rule);
+    padding: 32px 24px;
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    overflow: hidden;
+  }
+  [data-theme="light"] .site-footer { color: #b0a880; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 640px) {
     .stat-block { grid-template-columns: 1fr; }
@@ -787,6 +948,7 @@
   <div class="tab" onclick="switchTab('pipeline')">ML Pipeline</div>
   <div class="tab" onclick="switchTab('commands')">Commands</div>
   <div class="tab" onclick="switchTab('mnist')">MNIST Demo</div>
+  <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"></button>
 </div>
 
 <!-- ═════════════════════════════════════════
@@ -794,38 +956,72 @@
 ═════════════════════════════════════════ -->
 <div class="panel active" id="panel-overview">
 
-  <h1>ZERO OPERATORS</h1>
-  <div class="subtitle">Autonomous AI Research & Engineering Team</div>
-
-  <p>You input a plan. Agents coordinate to build, train, validate, and deliver. The oracle verifies everything with hard metrics. You stay in the loop at human checkpoints.</p>
-
-  <div class="stat-block">
-    <div class="stat-item scanlines">
-      <div class="stat-num">16<span class="stat-unit">agents</span></div>
-      <div class="stat-label">Defined</div>
+  <div class="svg-bg-wrap">
+    <!-- Orbital Field SVG Background -->
+    <div class="svg-bg" style="opacity: 0.18;">
+      <svg viewBox="0 0 960 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMid slice">
+        <g transform="translate(720, 280)" class="svg-bg-orbital">
+          <circle r="30"  fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.5"/>
+          <circle r="70"  fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.4"/>
+          <circle r="120" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.35"/>
+          <circle r="180" fill="none" stroke="currentColor" stroke-width="0.35" opacity="0.28"/>
+          <circle r="250" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.2"/>
+          <circle r="330" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.14"/>
+          <circle r="420" fill="none" stroke="currentColor" stroke-width="0.25" opacity="0.1"/>
+          <circle r="50"  fill="none" stroke="currentColor" stroke-width="0.4" stroke-dasharray="2 6" opacity="0.3"/>
+          <circle r="100" fill="none" stroke="currentColor" stroke-width="0.35" stroke-dasharray="2 8" opacity="0.25"/>
+          <circle r="155" fill="none" stroke="currentColor" stroke-width="0.3" stroke-dasharray="3 10" opacity="0.2"/>
+          <circle r="215" fill="none" stroke="currentColor" stroke-width="0.25" stroke-dasharray="3 12" opacity="0.15"/>
+          <line x1="0" y1="-330" x2="0" y2="-318" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          <line x1="0" y1="330" x2="0" y2="318" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          <line x1="-330" y1="0" x2="-318" y2="0" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          <line x1="330" y1="0" x2="318" y2="0" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          <line x1="0" y1="-14" x2="0" y2="-420" stroke="currentColor" stroke-width="0.3" opacity="0.08"/>
+          <line x1="0" y1="14" x2="0" y2="420" stroke="currentColor" stroke-width="0.3" opacity="0.08"/>
+          <line x1="-14" y1="0" x2="-420" y2="0" stroke="currentColor" stroke-width="0.3" opacity="0.08"/>
+          <line x1="14" y1="0" x2="420" y2="0" stroke="currentColor" stroke-width="0.3" opacity="0.08"/>
+          <circle r="4" fill="currentColor" opacity="0.9"/>
+          <circle r="8" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.5"/>
+          <circle cx="180" cy="0" r="3" fill="currentColor" opacity="0.7"/>
+          <circle cx="-120" cy="-86" r="2" fill="currentColor" opacity="0.5"/>
+          <circle cx="42" cy="-70" r="1.5" fill="currentColor" opacity="0.4"/>
+        </g>
+      </svg>
     </div>
-    <div class="stat-item scanlines">
-      <div class="stat-num">296<span class="stat-unit">tests</span></div>
-      <div class="stat-label">Passing</div>
-    </div>
-    <div class="stat-item scanlines">
-      <div class="stat-num">92<span class="stat-unit">%</span></div>
-      <div class="stat-label">Coverage</div>
-    </div>
-  </div>
 
-  <div class="section-label">Animated Flow</div>
+    <h1>ZERO OPERATORS</h1>
+    <div class="subtitle">Autonomous AI Research & Engineering Team</div>
 
-  <div class="flow-container" id="flow">
-    <div class="flow-node" id="flow-0">plan.md</div>
-    <div class="flow-arrow" id="arrow-0">&rarr;</div>
-    <div class="flow-node" id="flow-1">Orchestrator</div>
-    <div class="flow-arrow" id="arrow-1">&rarr;</div>
-    <div class="flow-node" id="flow-2">Agent Team</div>
-    <div class="flow-arrow" id="arrow-2">&rarr;</div>
-    <div class="flow-node" id="flow-3">Oracle</div>
-    <div class="flow-arrow" id="arrow-3">&rarr;</div>
-    <div class="flow-node" id="flow-4">Delivery Repo</div>
+    <p>You input a plan. Agents coordinate to build, train, validate, and deliver. The oracle verifies everything with hard metrics. You stay in the loop at human checkpoints.</p>
+
+    <div class="stat-block">
+      <div class="stat-item scanlines">
+        <div class="stat-num">16<span class="stat-unit">agents</span></div>
+        <div class="stat-label">Defined</div>
+      </div>
+      <div class="stat-item scanlines">
+        <div class="stat-num">296<span class="stat-unit">tests</span></div>
+        <div class="stat-label">Passing</div>
+      </div>
+      <div class="stat-item scanlines">
+        <div class="stat-num">92<span class="stat-unit">%</span></div>
+        <div class="stat-label">Coverage</div>
+      </div>
+    </div>
+
+    <div class="section-label">Animated Flow</div>
+
+    <div class="flow-container" id="flow">
+      <div class="flow-node" id="flow-0">plan.md</div>
+      <div class="flow-arrow" id="arrow-0">&rarr;</div>
+      <div class="flow-node" id="flow-1">Orchestrator</div>
+      <div class="flow-arrow" id="arrow-1">&rarr;</div>
+      <div class="flow-node" id="flow-2">Agent Team</div>
+      <div class="flow-arrow" id="arrow-2">&rarr;</div>
+      <div class="flow-node" id="flow-3">Oracle</div>
+      <div class="flow-arrow" id="arrow-3">&rarr;</div>
+      <div class="flow-node" id="flow-4">Delivery Repo</div>
+    </div>
   </div>
 
   <div class="section-label">Architecture</div>
@@ -1028,12 +1224,41 @@
 ═════════════════════════════════════════ -->
 <div class="panel" id="panel-agents">
 
-  <h1>AGENT TEAMS</h1>
-  <div class="subtitle">16 agents across project delivery and platform build</div>
+  <div class="svg-bg-wrap">
+    <!-- Signal Grid SVG Background -->
+    <div class="svg-bg" style="opacity: 0.15;">
+      <svg viewBox="0 0 960 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="sg-bg-fine" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M20 0L0 0 0 20" fill="none" stroke="currentColor" stroke-width="0.25" opacity="0.12"/>
+          </pattern>
+          <pattern id="sg-bg-coarse" width="100" height="100" patternUnits="userSpaceOnUse">
+            <path d="M100 0L0 0 0 100" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.2"/>
+          </pattern>
+        </defs>
+        <rect width="960" height="800" fill="url(#sg-bg-fine)"/>
+        <rect width="960" height="800" fill="url(#sg-bg-coarse)"/>
+        <rect x="200" y="100" width="100" height="100" fill="currentColor" opacity="0.03"/>
+        <rect x="500" y="200" width="100" height="100" fill="currentColor" opacity="0.04"/>
+        <rect x="700" y="100" width="100" height="100" fill="currentColor" opacity="0.03"/>
+        <rect x="300" y="400" width="100" height="100" fill="currentColor" opacity="0.03"/>
+        <circle cx="200" cy="100" r="2.5" fill="currentColor" opacity="0.5"/>
+        <circle cx="500" cy="200" r="2.5" fill="currentColor" opacity="0.6"/>
+        <circle cx="700" cy="100" r="2"   fill="currentColor" opacity="0.45"/>
+        <circle cx="300" cy="400" r="2"   fill="currentColor" opacity="0.4"/>
+        <line x1="200" y1="100" x2="500" y2="200" stroke="currentColor" stroke-width="0.5" opacity="0.15"/>
+        <line x1="500" y1="200" x2="700" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.15"/>
+        <line x1="300" y1="400" x2="500" y2="200" stroke="currentColor" stroke-width="0.4" opacity="0.12"/>
+        <line x1="0" y1="300" x2="960" y2="300" stroke="currentColor" stroke-width="0.8" opacity="0.08"/>
+      </svg>
+    </div>
 
-  <div class="section-label">Project Delivery Team -- Launch Agents</div>
+    <h1>AGENT TEAMS</h1>
+    <div class="subtitle">16 agents across project delivery and platform build</div>
 
-  <div class="agent-grid" id="agent-grid-launch">
+    <div class="section-label">Project Delivery Team -- Launch Agents</div>
+
+    <div class="agent-grid" id="agent-grid-launch">
     <div class="agent-card" onclick="selectAgent(this, 'lead-orchestrator')" data-agent="lead-orchestrator">
       <div class="agent-badge launch">launch</div>
       <div class="agent-name">Lead Orchestrator</div>
@@ -1101,6 +1326,8 @@
     </div>
   </div>
 
+  </div><!-- end svg-bg-wrap for agents -->
+
   <div id="agent-detail-panel" class="agent-detail">
     <h3 id="agent-detail-name"></h3>
     <div style="margin-top:12px;">
@@ -1134,10 +1361,47 @@
 ═════════════════════════════════════════ -->
 <div class="panel" id="panel-pipeline">
 
-  <h1>ML PIPELINE</h1>
-  <div class="subtitle">Structured phases with oracle-verified gates</div>
+  <div class="svg-bg-wrap">
+    <!-- Transmission Lines / Node Grid SVG Background -->
+    <div class="svg-bg" style="opacity: 0.15;">
+      <svg viewBox="0 0 960 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <!-- Horizontal data lines -->
+        <g stroke="currentColor" stroke-linecap="round">
+          <line x1="0" y1="80"  x2="960" y2="80"  stroke-width="0.4" opacity="0.08"/>
+          <line x1="0" y1="180" x2="960" y2="180" stroke-width="0.6" opacity="0.12"/>
+          <line x1="0" y1="320" x2="960" y2="320" stroke-width="0.8" opacity="0.15"/>
+          <line x1="0" y1="480" x2="960" y2="480" stroke-width="0.6" opacity="0.12"/>
+          <line x1="0" y1="620" x2="960" y2="620" stroke-width="0.4" opacity="0.08"/>
+          <line x1="0" y1="760" x2="960" y2="760" stroke-width="0.6" opacity="0.10"/>
+          <!-- Pulse segments -->
+          <line x1="120" y1="180" x2="320" y2="180" stroke-width="1.2" opacity="0.3"/>
+          <line x1="500" y1="180" x2="680" y2="180" stroke-width="1.0" opacity="0.25"/>
+          <line x1="80"  y1="320" x2="360" y2="320" stroke-width="1.6" opacity="0.35"/>
+          <line x1="560" y1="320" x2="800" y2="320" stroke-width="1.4" opacity="0.3"/>
+          <line x1="200" y1="480" x2="440" y2="480" stroke-width="1.2" opacity="0.28"/>
+          <line x1="600" y1="480" x2="780" y2="480" stroke-width="1.0" opacity="0.22"/>
+          <line x1="100" y1="620" x2="300" y2="620" stroke-width="1.0" opacity="0.22"/>
+          <line x1="440" y1="620" x2="620" y2="620" stroke-width="0.8" opacity="0.18"/>
+        </g>
+        <!-- Nodes -->
+        <circle cx="120" cy="180" r="2.5" fill="currentColor" opacity="0.5"/>
+        <circle cx="320" cy="180" r="2"   fill="currentColor" opacity="0.4"/>
+        <circle cx="80"  cy="320" r="3"   fill="currentColor" opacity="0.6"/>
+        <circle cx="360" cy="320" r="2.5" fill="currentColor" opacity="0.5"/>
+        <circle cx="560" cy="320" r="2.5" fill="currentColor" opacity="0.5"/>
+        <circle cx="200" cy="480" r="2.5" fill="currentColor" opacity="0.45"/>
+        <circle cx="600" cy="480" r="2"   fill="currentColor" opacity="0.4"/>
+        <!-- Vertical connectors -->
+        <line x1="320" y1="180" x2="320" y2="320" stroke="currentColor" stroke-width="0.4" opacity="0.15"/>
+        <line x1="560" y1="320" x2="560" y2="480" stroke="currentColor" stroke-width="0.4" opacity="0.12"/>
+        <line x1="200" y1="480" x2="200" y2="620" stroke="currentColor" stroke-width="0.3" opacity="0.10"/>
+      </svg>
+    </div>
 
-  <div class="mode-toggle">
+    <h1>ML PIPELINE</h1>
+    <div class="subtitle">Structured phases with oracle-verified gates</div>
+
+    <div class="mode-toggle">
     <button class="mode-btn active" onclick="setMode(this, 'classical')">Classical ML</button>
     <button class="mode-btn" onclick="setMode(this, 'deep')">Deep Learning</button>
     <button class="mode-btn" onclick="setMode(this, 'research')">Research</button>
@@ -1261,6 +1525,8 @@
     </div>
 
   </div>
+
+  </div><!-- end svg-bg-wrap for pipeline -->
 
 </div>
 
@@ -1533,6 +1799,31 @@
 <!-- ═════════════════════════════════════════
      JAVASCRIPT
 ═════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════
+     FOOTER
+═════════════════════════════════════════ -->
+<div class="site-footer">
+  <div class="svg-bg" style="opacity: 0.12;">
+    <svg viewBox="0 0 960 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <g transform="translate(480, 80)">
+        <circle r="30"  fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.4"/>
+        <circle r="60"  fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.3"/>
+        <circle r="100" fill="none" stroke="currentColor" stroke-width="0.35" opacity="0.22"/>
+        <circle r="150" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.15"/>
+        <circle r="210" fill="none" stroke="currentColor" stroke-width="0.25" opacity="0.1"/>
+        <circle r="280" fill="none" stroke="currentColor" stroke-width="0.22" opacity="0.07"/>
+        <circle r="360" fill="none" stroke="currentColor" stroke-width="0.2" opacity="0.05"/>
+        <circle r="45"  fill="none" stroke="currentColor" stroke-width="0.35" stroke-dasharray="2 6" opacity="0.2"/>
+        <circle r="80"  fill="none" stroke="currentColor" stroke-width="0.3" stroke-dasharray="2 8" opacity="0.15"/>
+        <circle r="130" fill="none" stroke="currentColor" stroke-width="0.25" stroke-dasharray="3 10" opacity="0.1"/>
+        <circle r="4" fill="currentColor" opacity="0.6"/>
+        <circle r="10" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.3"/>
+      </g>
+    </svg>
+  </div>
+  <span style="position:relative;z-index:1;">Zero Operators &mdash; Autonomous AI Systems &mdash; 2026</span>
+</div>
+
 <script>
 // ── Tab switching ──
 function switchTab(name) {
@@ -1678,6 +1969,48 @@ function toggleCategory(header) {
   const cat = header.parentElement;
   cat.classList.toggle('collapsed');
 }
+
+// ── Theme toggle ──
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  html.classList.add('theme-transitioning');
+  if (isLight) {
+    html.removeAttribute('data-theme');
+    localStorage.setItem('zo-theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'light');
+    localStorage.setItem('zo-theme', 'light');
+  }
+  updateThemeToggleLabel();
+  updateSvgColors();
+  setTimeout(() => html.classList.remove('theme-transitioning'), 350);
+}
+
+function updateThemeToggleLabel() {
+  const btn = document.getElementById('theme-toggle');
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  btn.textContent = isLight ? '\u263E' : '\u2600';
+  btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+}
+
+function updateSvgColors() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const color = isLight ? '#1a1400' : '#F0C040';
+  document.querySelectorAll('.svg-bg svg').forEach(svg => {
+    svg.style.color = color;
+  });
+}
+
+// Initialize theme from localStorage
+(function initTheme() {
+  const saved = localStorage.getItem('zo-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+  updateThemeToggleLabel();
+  updateSvgColors();
+})();
 </script>
 
 </body>
