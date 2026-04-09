@@ -1,0 +1,381 @@
+"""Lifecycle wrapper for Claude Code agent team sessions.
+
+Launches ONE Claude Code session (the Lead Orchestrator), then observes
+team activity by monitoring file-system artefacts and tmux panes.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import random
+import re
+import signal
+import subprocess
+import time
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from zo._wrapper_models import (
+    AgentStatus,
+    LeadProcess,
+    TeamMember,
+    TeamStatus,
+)
+
+if TYPE_CHECKING:
+    from zo.comms import CommsLogger
+
+__all__ = [
+    "LifecycleWrapper",
+    "AgentStatus",
+    "LeadProcess",
+    "TeamMember",
+    "TeamStatus",
+]
+
+_RATE_LIMIT_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"429", re.IGNORECASE),
+    re.compile(r"rate.?limit", re.IGNORECASE),
+    re.compile(r"overloaded", re.IGNORECASE),
+    re.compile(r"too many requests", re.IGNORECASE),
+]
+
+
+class LifecycleWrapper:
+    """Manages the lifecycle of a Claude Code lead orchestrator session.
+
+    Args:
+        comms: CommsLogger instance for audit trail events.
+        claude_bin: Path or name of the ``claude`` CLI binary.
+        log_dir: Directory for stdout/stderr logs (default ``logs/wrapper``).
+        max_retries: Max retries on rate-limit errors.
+        base_backoff: Base backoff in seconds for rate-limit waits.
+    """
+
+    def __init__(
+        self,
+        comms: CommsLogger,
+        *,
+        claude_bin: str = "claude",
+        log_dir: Path | None = None,
+        max_retries: int = 3,
+        base_backoff: float = 30.0,
+    ) -> None:
+        self._comms = comms
+        self._claude_bin = claude_bin
+        self._log_dir = Path(log_dir) if log_dir else Path("logs/wrapper")
+        self._log_dir.mkdir(parents=True, exist_ok=True)
+        self._max_retries = max_retries
+        self._base_backoff = base_backoff
+
+    # --- Launch ---
+
+    def launch_lead_session(
+        self,
+        prompt: str,
+        *,
+        cwd: str,
+        team_name: str,
+        model: str = "opus",
+        max_turns: int = 200,
+        use_tmux: bool = True,
+    ) -> LeadProcess:
+        """Launch one Claude Code session as the Lead Orchestrator.
+
+        Starts a non-blocking subprocess with stdout/stderr tee'd to log files.
+        Returns a LeadProcess with pid and SPAWNING status.
+        """
+        cmd: list[str] = [
+            self._claude_bin, "--print",
+            "--output-format", "json",
+            "--model", model,
+            "--max-turns", str(max_turns),
+            "--cwd", cwd,
+        ]
+        if use_tmux:
+            cmd.extend(["--teammate-mode", "tmux"])
+        cmd.extend(["-p", prompt])
+
+        stdout_log = self._log_dir / f"{team_name}-stdout.log"
+        stderr_log = self._log_dir / f"{team_name}-stderr.log"
+        stdout_fh = open(stdout_log, "w", encoding="utf-8")  # noqa: SIM115
+        stderr_fh = open(stderr_log, "w", encoding="utf-8")  # noqa: SIM115
+
+        proc = subprocess.Popen(cmd, stdout=stdout_fh, stderr=stderr_fh, text=True)
+        lead = LeadProcess(
+            pid=proc.pid, status=AgentStatus.SPAWNING,
+            started_at=datetime.now(UTC), team_name=team_name,
+            stdout_log=stdout_log, stderr_log=stderr_log,
+        )
+        self._comms.log_checkpoint(
+            agent="wrapper", phase="launch", subtask="lead-session",
+            progress=f"Launched lead session pid={proc.pid} team={team_name}",
+        )
+        self._proc = proc
+        self._stdout_fh = stdout_fh
+        self._stderr_fh = stderr_fh
+        return lead
+
+    # --- Observe ---
+
+    def monitor_team(self, team_name: str) -> TeamStatus:
+        """Poll file-system artefacts for team member and task status.
+
+        Reads ``~/.claude/teams/{team_name}/config.json`` and task files.
+        Returns empty TeamStatus if the team directory doesn't exist yet.
+        """
+        members = self._read_team_config(team_name)
+        tasks = self.read_task_list(team_name)
+        completed = sum(1 for t in tasks if t.get("status") == "completed")
+        in_progress = sum(1 for t in tasks if t.get("status") == "in_progress")
+        pending = sum(1 for t in tasks if t.get("status") == "pending")
+        return TeamStatus(
+            team_name=team_name, members=members, tasks_total=len(tasks),
+            tasks_completed=completed, tasks_in_progress=in_progress,
+            tasks_pending=pending,
+            is_active=len(tasks) == 0 or in_progress > 0 or pending > 0,
+        )
+
+    def read_task_list(self, team_name: str) -> list[dict[str, Any]]:
+        """Read all task JSON files from ``~/.claude/tasks/{team_name}/``."""
+        tasks_dir = Path.home() / ".claude" / "tasks" / team_name
+        if not tasks_dir.is_dir():
+            return []
+        tasks: list[dict[str, Any]] = []
+        for path in sorted(tasks_dir.iterdir()):
+            if path.suffix != ".json":
+                continue
+            try:
+                tasks.append(json.loads(path.read_text(encoding="utf-8")))
+            except (json.JSONDecodeError, OSError):
+                continue
+        return tasks
+
+    def monitor_session_logs(self, session_dir: Path) -> list[dict[str, Any]]:
+        """Read JSONL session logs from a directory. Handles missing/empty gracefully."""
+        if not session_dir.is_dir():
+            return []
+        entries: list[dict[str, Any]] = []
+        for path in sorted(session_dir.glob("*.jsonl")):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        return entries
+
+    def observe_tmux_panes(self) -> dict[str, str]:
+        """Capture output from all tmux panes. Returns empty dict if not in tmux."""
+        if not self._is_in_tmux():
+            return {}
+        result: dict[str, str] = {}
+        for pane in self._list_tmux_panes():
+            pane_id = pane.get("id", "")
+            if pane_id:
+                result[pane_id] = self._capture_tmux_pane(pane_id)
+        return result
+
+    # --- Lifecycle ---
+
+    def wait_for_completion(
+        self,
+        process: LeadProcess,
+        *,
+        poll_interval: float = 10.0,
+        timeout: float | None = None,
+    ) -> LeadProcess:
+        """Poll until the lead session subprocess completes.
+
+        Checks subprocess status, scans stdout for rate-limit patterns,
+        and retries with exponential backoff when rate-limited.
+        """
+        start_time = time.monotonic()
+        retries = 0
+        process = process.model_copy(update={"status": AgentStatus.RUNNING})
+
+        while True:
+            rc = self._proc.poll()
+            if rc is not None:
+                self._close_log_handles()
+                process = process.model_copy(update={
+                    "exit_code": rc, "completed_at": datetime.now(UTC),
+                    "status": AgentStatus.COMPLETED if rc == 0 else AgentStatus.ERRORED,
+                })
+                self._comms.log_checkpoint(
+                    agent="wrapper", phase="lifecycle", subtask="completion",
+                    progress=f"Lead session exited code={rc}",
+                )
+                return process
+
+            output = self._read_tail(process.stdout_log)
+            if self._detect_rate_limit(output):
+                if retries >= self._max_retries:
+                    process = process.model_copy(update={"status": AgentStatus.RATE_LIMITED})
+                    self._comms.log_error(
+                        agent="wrapper", error_type="rate_limit", severity="blocking",
+                        description=f"Rate limited after {retries} retries",
+                    )
+                    return process
+                wait_secs = self._backoff_wait(retries)
+                self._comms.log_checkpoint(
+                    agent="wrapper", phase="lifecycle", subtask="rate-limit-backoff",
+                    progress=f"Rate limited, retry {retries + 1}/{self._max_retries}, "
+                             f"waiting {wait_secs:.0f}s",
+                )
+                time.sleep(wait_secs)
+                retries += 1
+                continue
+
+            if timeout and (time.monotonic() - start_time) > timeout:
+                process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
+                self._comms.log_error(
+                    agent="wrapper", error_type="timeout", severity="blocking",
+                    description=f"Lead session timed out after {timeout}s",
+                )
+                return process
+            time.sleep(poll_interval)
+
+    def kill_session(self, process: LeadProcess) -> LeadProcess:
+        """Terminate the lead session. SIGTERM, wait 5s, SIGKILL if needed."""
+        if process.pid is None:
+            return process
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(process.pid, signal.SIGTERM)
+        try:
+            self._proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(process.pid, signal.SIGKILL)
+        self._close_log_handles()
+        self._comms.log_error(
+            agent="wrapper", error_type="session_killed", severity="warning",
+            description=f"Killed lead session pid={process.pid}",
+        )
+        return process.model_copy(update={
+            "status": AgentStatus.ERRORED,
+            "completed_at": datetime.now(UTC),
+            "exit_code": -9,
+        })
+
+    # --- Output parsing ---
+
+    def get_session_output(self, process: LeadProcess) -> str:
+        """Read the full stdout log file for a completed session."""
+        if process.stdout_log and process.stdout_log.exists():
+            return process.stdout_log.read_text(encoding="utf-8")
+        return ""
+
+    def parse_session_result(self, process: LeadProcess) -> dict[str, str]:
+        """Parse JSON output from --output-format json.
+
+        Returns dict with result, cost_usd, model, num_turns.
+        Falls back to {"result": raw_text} if JSON parsing fails.
+        """
+        raw = self.get_session_output(process)
+        if not raw:
+            return {"result": ""}
+        try:
+            data = json.loads(raw)
+            return {
+                "result": str(data.get("result", "")),
+                "cost_usd": str(data.get("cost_usd", "")),
+                "model": str(data.get("model", "")),
+                "num_turns": str(data.get("num_turns", "")),
+            }
+        except (json.JSONDecodeError, ValueError):
+            return {"result": raw}
+
+    # --- Private: rate limit handling ---
+
+    @staticmethod
+    def _detect_rate_limit(output: str) -> bool:
+        """Return True if output contains rate-limit / overload patterns."""
+        return any(pat.search(output) for pat in _RATE_LIMIT_PATTERNS)
+
+    def _backoff_wait(self, attempt: int) -> float:
+        """Exponential backoff: base * 2^attempt + random(0, 5)."""
+        return self._base_backoff * (2 ** attempt) + random.uniform(0, 5)
+
+    # --- Private: tmux helpers ---
+
+    @staticmethod
+    def _is_in_tmux() -> bool:
+        """Check if the current process is inside a tmux session."""
+        return "TMUX" in os.environ
+
+    @staticmethod
+    def _list_tmux_panes() -> list[dict[str, str]]:
+        """List all tmux panes with their IDs and titles."""
+        try:
+            result = subprocess.run(
+                ["tmux", "list-panes", "-a", "-F", "#{pane_id}|#{pane_title}"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return []
+        if result.returncode != 0:
+            return []
+        panes: list[dict[str, str]] = []
+        for line in result.stdout.strip().splitlines():
+            parts = line.split("|", 1)
+            if len(parts) == 2:
+                panes.append({"id": parts[0], "title": parts[1]})
+        return panes
+
+    @staticmethod
+    def _capture_tmux_pane(pane_id: str, lines: int = 50) -> str:
+        """Capture last N lines from a tmux pane."""
+        try:
+            result = subprocess.run(
+                ["tmux", "capture-pane", "-p", "-t", pane_id, "-S", f"-{lines}"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return ""
+        return result.stdout if result.returncode == 0 else ""
+
+    # --- Private: helpers ---
+
+    def _read_team_config(self, team_name: str) -> list[TeamMember]:
+        """Read team config.json and return a list of TeamMember."""
+        config_path = Path.home() / ".claude" / "teams" / team_name / "config.json"
+        if not config_path.exists():
+            return []
+        try:
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return []
+        return [
+            TeamMember(
+                name=m.get("name", "unknown"), agent_type=m.get("agent_type", ""),
+                status=m.get("status", "unknown"), current_task=m.get("current_task", ""),
+            )
+            for m in data.get("members", [])
+        ]
+
+    @staticmethod
+    def _read_tail(path: Path | None, lines: int = 100) -> str:
+        """Read the last N lines of a file."""
+        if not path or not path.exists():
+            return ""
+        try:
+            text = path.read_text(encoding="utf-8")
+            return "\n".join(text.splitlines()[-lines:])
+        except OSError:
+            return ""
+
+    def _close_log_handles(self) -> None:
+        """Close stdout/stderr file handles if open."""
+        for fh in (getattr(self, "_stdout_fh", None), getattr(self, "_stderr_fh", None)):
+            if fh and not fh.closed:
+                fh.close()
