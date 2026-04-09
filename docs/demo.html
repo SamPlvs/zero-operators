@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Operators — Interactive Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --amber: #F0C040;
+    --amber-dim: #8a6020;
+    --amber-ghost: #F0C04015;
+    --amber-border: #F0C04030;
+    --void: #080808;
+    --surface: #0d0d0d;
+    --surface2: #111111;
+    --paper: #f5f0e8;
+    --ink: #1a1400;
+    --rule: #1e1800;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--void);
+    color: var(--amber);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── NAV TABS ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    background: #050505;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    overflow-x: auto;
+  }
+
+  .tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    padding: 14px 20px 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .tab:hover { color: var(--amber); }
+  .tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+  /* ── PANELS ── */
+  .panel { display: none; padding: 40px 24px 80px; max-width: 960px; margin: 0 auto; }
+  .panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SCANLINES ── */
+  .scanlines {
+    position: relative;
+  }
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    margin-top: 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* ── HEADINGS ── */
+  h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 42px;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: 0.06em;
+    color: var(--amber);
+    margin-bottom: 8px;
+  }
+
+  h3 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    color: var(--amber);
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--amber-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 32px;
+  }
+
+  p {
+    font-size: 12px;
+    color: #8a7a40;
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    margin-bottom: 16px;
+  }
+
+  /* ── STAT BLOCK ── */
+  .stat-block {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-bottom: 32px;
+  }
+
+  .stat-item {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 20px;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--amber);
+    line-height: 1;
+  }
+
+  .stat-unit {
+    font-size: 11px;
+    color: var(--amber-dim);
+    margin-left: 4px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-layer {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .arch-layer-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .arch-layer-content {
+    font-size: 11px;
+    color: #8a7a40;
+    line-height: 1.6;
+  }
+
+  .arch-arrow {
+    text-align: center;
+    color: var(--amber);
+    font-size: 16px;
+    margin: 4px 0;
+    opacity: 0.4;
+  }
+
+  /* ── FLOW ANIMATION ── */
+  .flow-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .flow-node {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 12px 18px;
+    font-size: 11px;
+    color: var(--amber-dim);
+    letter-spacing: 0.1em;
+    transition: all 0.4s ease;
+    text-align: center;
+  }
+
+  .flow-node.active {
+    border-color: var(--amber);
+    color: var(--amber);
+    box-shadow: 0 0 20px var(--amber-ghost);
+  }
+
+  .flow-arrow {
+    color: var(--amber);
+    font-size: 14px;
+    opacity: 0.3;
+    transition: opacity 0.4s ease;
+  }
+
+  .flow-arrow.active {
+    opacity: 1;
+  }
+
+  /* ── TERMINAL ── */
+  .terminal {
+    background: #050505;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .terminal-bar {
+    background: var(--surface);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .terminal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--amber-dim);
+    opacity: 0.5;
+  }
+
+  .terminal-title {
+    font-size: 9px;
+    color: #3a2e0c;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-left: 8px;
+  }
+
+  .terminal-body {
+    padding: 16px 20px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #8a7a40;
+    overflow-x: auto;
+  }
+
+  .terminal-body .prompt { color: var(--amber); }
+  .terminal-body .cmd { color: var(--amber); font-weight: bold; }
+  .terminal-body .output { color: #5a4a20; }
+  .terminal-body .success { color: #4aaa4a; }
+  .terminal-body .highlight { color: var(--amber); }
+
+  /* ── STEP WALKTHROUGH ── */
+  .steps-container { margin-bottom: 32px; }
+
+  .step {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+  }
+
+  .step.active { border-color: var(--amber-border); }
+
+  .step-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    user-select: none;
+  }
+
+  .step-header:hover { background: #0a0a0a; }
+
+  .step-number {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: var(--amber-dim);
+    min-width: 32px;
+    transition: color 0.3s ease;
+  }
+
+  .step.active .step-number { color: var(--amber); }
+
+  .step-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--amber-dim);
+    letter-spacing: 0.06em;
+    transition: color 0.3s ease;
+  }
+
+  .step.active .step-title { color: var(--amber); }
+
+  .step-chevron {
+    margin-left: auto;
+    color: var(--amber-dim);
+    font-size: 12px;
+    transition: transform 0.3s ease;
+  }
+
+  .step.active .step-chevron { transform: rotate(90deg); }
+
+  .step-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .step.active .step-content {
+    max-height: 600px;
+  }
+
+  .step-inner {
+    padding: 0 20px 20px;
+  }
+
+  /* ── AGENT CARDS ── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .agent-card:hover {
+    border-color: var(--amber-border);
+    transform: translateY(-2px);
+  }
+
+  .agent-card.selected {
+    border-color: var(--amber);
+    box-shadow: 0 0 20px var(--amber-ghost);
+  }
+
+  .agent-card.dimmed { opacity: 0.5; }
+
+  .agent-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--amber);
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  .agent-model {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .agent-model.opus { color: var(--amber); }
+  .agent-model.sonnet { color: var(--amber-dim); }
+  .agent-model.haiku { color: #3a2e0c; }
+
+  .agent-role {
+    font-size: 10px;
+    color: #5a4a20;
+    line-height: 1.5;
+  }
+
+  .agent-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  .agent-badge.launch { background: var(--amber-ghost); color: var(--amber); border: 1px solid var(--amber-border); }
+  .agent-badge.phase-in { background: #111; color: #4a3a10; border: 1px solid var(--rule); }
+
+  .agent-detail {
+    background: var(--surface);
+    border: 1px solid var(--amber-border);
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 24px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .agent-detail.visible { display: block; }
+
+  .agent-detail-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+
+  .agent-detail-label {
+    color: var(--amber-dim);
+    min-width: 100px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 9px;
+  }
+
+  .agent-detail-value {
+    color: #8a7a40;
+  }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 24px;
+  }
+
+  .pipeline-node {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+  }
+
+  .pipeline-node:hover { border-color: var(--amber-border); }
+  .pipeline-node.expanded { border-color: var(--amber); }
+
+  .pipeline-number {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--amber-dim);
+    min-width: 40px;
+  }
+
+  .pipeline-node.expanded .pipeline-number { color: var(--amber); }
+
+  .pipeline-info { flex: 1; }
+
+  .pipeline-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--amber-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .pipeline-node.expanded .pipeline-title { color: var(--amber); }
+
+  .pipeline-gate {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  .pipeline-gate.auto { background: var(--amber-ghost); color: var(--amber-dim); border: 1px solid var(--rule); }
+  .pipeline-gate.blocking { background: var(--amber-ghost); color: var(--amber); border: 1px solid var(--amber-border); }
+
+  .pipeline-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .pipeline-node.expanded + .pipeline-detail {
+    max-height: 400px;
+  }
+
+  .pipeline-detail-inner {
+    padding: 16px 20px 16px 76px;
+    border-left: 1px solid var(--rule);
+    margin-left: 20px;
+  }
+
+  .pipeline-subtask {
+    font-size: 11px;
+    color: #5a4a20;
+    padding: 4px 0;
+    display: flex;
+    gap: 8px;
+  }
+
+  .pipeline-subtask::before {
+    content: '\25B8';
+    color: var(--amber-dim);
+  }
+
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    width: fit-content;
+  }
+
+  .mode-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--amber-dim);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-right: 1px solid var(--rule);
+  }
+
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn:hover { color: var(--amber); }
+  .mode-btn.active { background: var(--amber); color: var(--void); }
+
+  /* ── COMMAND PALETTE ── */
+  .cmd-search {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    background: #050505;
+    border: 1px solid var(--rule);
+    border-bottom-color: var(--amber-dim);
+    color: var(--amber);
+    padding: 12px 16px;
+    width: 100%;
+    outline: none;
+    border-radius: 4px;
+    margin-bottom: 24px;
+  }
+
+  .cmd-search::placeholder { color: #3a2e0c; }
+
+  .cmd-category {
+    margin-bottom: 16px;
+  }
+
+  .cmd-category-header {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--amber-dim);
+    letter-spacing: 0.1em;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+
+  .cmd-category-header:hover { color: var(--amber); }
+
+  .cmd-category-chevron {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+  }
+
+  .cmd-category.collapsed .cmd-category-chevron { transform: rotate(-90deg); }
+  .cmd-category.collapsed .cmd-list { display: none; }
+
+  .cmd-item {
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .cmd-item:hover { border-color: var(--rule); background: var(--surface); }
+
+  .cmd-item-name {
+    font-size: 12px;
+    color: var(--amber);
+    margin-bottom: 2px;
+  }
+
+  .cmd-item-desc {
+    font-size: 10px;
+    color: #5a4a20;
+  }
+
+  .cmd-item.hidden { display: none; }
+
+  /* ── MNIST DEMO ── */
+  .timeline {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 24px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding: 12px 0 12px 24px;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 18px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--amber-dim);
+    border: 1px solid var(--rule);
+  }
+
+  .timeline-item.highlight::before {
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber-ghost);
+  }
+
+  .timeline-phase {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--amber);
+    letter-spacing: 0.06em;
+  }
+
+  .timeline-desc {
+    font-size: 10px;
+    color: #5a4a20;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+
+  .timeline-commit {
+    font-size: 10px;
+    color: #3a2e0c;
+    margin-top: 4px;
+  }
+
+  /* ── BEFORE / AFTER ── */
+  .ba-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .ba-panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 20px;
+  }
+
+  .ba-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .ba-label.before { color: #5a4a20; }
+  .ba-label.after { color: var(--amber); }
+
+  .tree-line {
+    font-size: 11px;
+    color: #5a4a20;
+    line-height: 1.6;
+    padding-left: 8px;
+  }
+
+  .tree-line.new { color: #4aaa4a; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .stat-block { grid-template-columns: 1fr; }
+    .agent-grid { grid-template-columns: 1fr 1fr; }
+    .ba-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 28px; }
+    .tabs { padding: 0 8px; }
+    .tab { padding: 12px 12px 10px; font-size: 9px; }
+    .panel { padding: 24px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═════════════════════════════════════════
+     TABS
+═════════════════════════════════════════ -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('workflow')">User Workflow</div>
+  <div class="tab" onclick="switchTab('agents')">Agent Teams</div>
+  <div class="tab" onclick="switchTab('pipeline')">ML Pipeline</div>
+  <div class="tab" onclick="switchTab('commands')">Commands</div>
+  <div class="tab" onclick="switchTab('mnist')">MNIST Demo</div>
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 1: OVERVIEW
+═════════════════════════════════════════ -->
+<div class="panel active" id="panel-overview">
+
+  <h1>ZERO OPERATORS</h1>
+  <div class="subtitle">Autonomous AI Research & Engineering Team</div>
+
+  <p>You input a plan. Agents coordinate to build, train, validate, and deliver. The oracle verifies everything with hard metrics. You stay in the loop at human checkpoints.</p>
+
+  <div class="stat-block">
+    <div class="stat-item scanlines">
+      <div class="stat-num">16<span class="stat-unit">agents</span></div>
+      <div class="stat-label">Defined</div>
+    </div>
+    <div class="stat-item scanlines">
+      <div class="stat-num">296<span class="stat-unit">tests</span></div>
+      <div class="stat-label">Passing</div>
+    </div>
+    <div class="stat-item scanlines">
+      <div class="stat-num">92<span class="stat-unit">%</span></div>
+      <div class="stat-label">Coverage</div>
+    </div>
+  </div>
+
+  <div class="section-label">Animated Flow</div>
+
+  <div class="flow-container" id="flow">
+    <div class="flow-node" id="flow-0">plan.md</div>
+    <div class="flow-arrow" id="arrow-0">&rarr;</div>
+    <div class="flow-node" id="flow-1">Orchestrator</div>
+    <div class="flow-arrow" id="arrow-1">&rarr;</div>
+    <div class="flow-node" id="flow-2">Agent Team</div>
+    <div class="flow-arrow" id="arrow-2">&rarr;</div>
+    <div class="flow-node" id="flow-3">Oracle</div>
+    <div class="flow-arrow" id="arrow-3">&rarr;</div>
+    <div class="flow-node" id="flow-4">Delivery Repo</div>
+  </div>
+
+  <div class="section-label">Architecture</div>
+
+  <div class="arch-diagram scanlines">
+    <div class="arch-layer">
+      <div class="arch-layer-label">Layer 1 -- Python CLI</div>
+      <div class="arch-layer-content">zo build &rarr; plan.py &rarr; orchestrator.py &rarr; wrapper.py</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer">
+      <div class="arch-layer-label">Layer 2 -- Claude Code Session</div>
+      <div class="arch-layer-content">Lead Orchestrator creates team, spawns agents, manages gates. Agents communicate peer-to-peer via SendMessage.</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer">
+      <div class="arch-layer-label">Layer 3 -- Persistence</div>
+      <div class="arch-layer-content">STATE.md + DECISION_LOG + PRIORS.md + semantic index + JSONL comms + evolution engine</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer">
+      <div class="arch-layer-label">Layer 4 -- Delivery Repo (Clean)</div>
+      <div class="arch-layer-content">src/ models/ reports/ tests/ -- zero ZO artifacts. Isolation enforced via target.py blocklist.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 2: USER WORKFLOW
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-workflow">
+
+  <h1>USER WORKFLOW</h1>
+  <div class="subtitle">Five steps from repo to delivery</div>
+
+  <div class="steps-container">
+
+    <div class="step active" onclick="toggleStep(this)">
+      <div class="step-header">
+        <div class="step-number">01</div>
+        <div class="step-title">/project/import</div>
+        <div class="step-chevron">&rsaquo;</div>
+      </div>
+      <div class="step-content">
+        <div class="step-inner">
+          <p>Point ZO at any GitHub repo. It clones, analyzes the codebase (structure, dependencies, tests, README), detects the workflow mode, and drafts a complete plan.</p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-title">Terminal</div>
+            </div>
+            <div class="terminal-body">
+              <span class="prompt">$</span> <span class="cmd">/project/import https://github.com/user/sensor-detector</span><br>
+              <span class="output">Cloning into '../sensor-detector'...</span><br>
+              <span class="output">Target file created: targets/sensor-detector.target.md</span><br>
+              <span class="output">Memory initialized: memory/sensor-detector/</span><br>
+              <span class="output">Analyzing codebase...</span><br>
+              <span class="highlight">Detected: deep_learning mode (torch found)</span><br>
+              <span class="highlight">Draft plan ready: plans/sensor-detector.md</span><br>
+              <span class="success">8/8 plan sections complete. Review and approve.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggleStep(this)">
+      <div class="step-header">
+        <div class="step-number">02</div>
+        <div class="step-title">Review plan.md</div>
+        <div class="step-chevron">&rsaquo;</div>
+      </div>
+      <div class="step-content">
+        <div class="step-inner">
+          <p>The plan has 8 required sections. Edit to sharpen objectives, set oracle thresholds, and add domain knowledge the agents missed.</p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-title">plans/sensor-detector.md</div>
+            </div>
+            <div class="terminal-body">
+              <span class="highlight">1. Project Identity</span> (name, version, status, owner)<br>
+              <span class="highlight">2. Objective</span> (specific deliverable)<br>
+              <span class="highlight">3. Oracle Definition</span> (primary metric, threshold, eval method)<br>
+              <span class="highlight">4. Workflow Configuration</span> (mode, gates)<br>
+              <span class="highlight">5. Data Sources</span> (files, APIs, loading code)<br>
+              <span class="highlight">6. Domain Context</span> (priors, constraints)<br>
+              <span class="highlight">7. Agent Configuration</span> (team composition)<br>
+              <span class="highlight">8. Constraints</span> (Python version, frameworks, limits)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggleStep(this)">
+      <div class="step-header">
+        <div class="step-number">03</div>
+        <div class="step-title">/project/launch</div>
+        <div class="step-chevron">&rsaquo;</div>
+      </div>
+      <div class="step-content">
+        <div class="step-inner">
+          <p>Launch spawns the agent team. The Lead Orchestrator decomposes phases and assigns agents. Watch them work in tmux split panes.</p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-title">tmux -- agent team</div>
+            </div>
+            <div class="terminal-body">
+              <span class="highlight">[lead-orchestrator]</span> Phase 1: Data Review & Pipeline<br>
+              <span class="output">[data-engineer]&nbsp;&nbsp;&nbsp; Building DataLoaders... 3 splits ready</span><br>
+              <span class="output">[test-engineer]&nbsp;&nbsp;&nbsp; 32 data tests passing</span><br>
+              <span class="output">[oracle-qa]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Gate 1: data quality 0.98 >= 0.95 PASS</span><br>
+              <br>
+              <span class="highlight">[lead-orchestrator]</span> Phase 2: Feature Engineering<br>
+              <span class="output">[data-engineer]&nbsp;&nbsp;&nbsp; Feature pipeline constructed</span><br>
+              <span class="success">[oracle-qa]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Gate 2: PASS -- awaiting human approval</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggleStep(this)">
+      <div class="step-header">
+        <div class="step-number">04</div>
+        <div class="step-title">Gate Review</div>
+        <div class="step-chevron">&rsaquo;</div>
+      </div>
+      <div class="step-content">
+        <div class="step-inner">
+          <p>In supervised mode, blocking gates pause for your review. You see metrics, decisions, and artifacts, then approve or reject with feedback.</p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-title">Gate Approval</div>
+            </div>
+            <div class="terminal-body">
+              <span class="highlight">GATE PENDING: Phase 2 -- Feature Engineering</span><br>
+              <span class="output">Type: BLOCKING (human approval required)</span><br>
+              <span class="output">Metric: feature_coverage = 0.94</span><br>
+              <span class="output">Tests: 47/47 passing</span><br>
+              <br>
+              <span class="prompt">$</span> <span class="cmd">/gates/approve</span><br>
+              <span class="success">Gate approved. Phase 2 COMPLETED. Phase 3 now ACTIVE.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggleStep(this)">
+      <div class="step-header">
+        <div class="step-number">05</div>
+        <div class="step-title">Delivery</div>
+        <div class="step-chevron">&rsaquo;</div>
+      </div>
+      <div class="step-content">
+        <div class="step-inner">
+          <p>The delivery repo is clean -- only code, models, reports, and tests. Zero ZO artifacts leak. Session state is preserved for future continuation.</p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-dot"></div>
+              <div class="terminal-title">Delivery Repo</div>
+            </div>
+            <div class="terminal-body">
+              <span class="highlight">sensor-detector/</span><br>
+              <span class="output">&nbsp;&nbsp;src/model.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Architecture</span><br>
+              <span class="output">&nbsp;&nbsp;src/train.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Training loop</span><br>
+              <span class="output">&nbsp;&nbsp;src/inference.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Prediction pipeline</span><br>
+              <span class="output">&nbsp;&nbsp;src/data_loader.py&nbsp;&nbsp;&nbsp;&nbsp; DataLoader</span><br>
+              <span class="output">&nbsp;&nbsp;models/best_model.pt&nbsp;&nbsp; Trained checkpoint</span><br>
+              <span class="output">&nbsp;&nbsp;reports/model_card.md&nbsp; Model card</span><br>
+              <span class="output">&nbsp;&nbsp;tests/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 98 tests passing</span><br>
+              <br>
+              <span class="success">Zero ZO artifacts. Clean delivery.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 3: AGENT TEAMS
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-agents">
+
+  <h1>AGENT TEAMS</h1>
+  <div class="subtitle">16 agents across project delivery and platform build</div>
+
+  <div class="section-label">Project Delivery Team -- Launch Agents</div>
+
+  <div class="agent-grid" id="agent-grid-launch">
+    <div class="agent-card" onclick="selectAgent(this, 'lead-orchestrator')" data-agent="lead-orchestrator">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Lead Orchestrator</div>
+      <div class="agent-model opus">Opus</div>
+      <div class="agent-role">Creates team, decomposes phases, manages gates, coordinates all agents</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'data-engineer')" data-agent="data-engineer">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Data Engineer</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Data pipeline, cleaning, EDA, DataLoaders, data profiling</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'model-builder')" data-agent="model-builder">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Model Builder</div>
+      <div class="agent-model opus">Opus</div>
+      <div class="agent-role">Architecture selection, training loops, iteration protocol</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'oracle-qa')" data-agent="oracle-qa">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Oracle / QA</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Hard metric evaluation, pass/fail gating, tiered validation</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'code-reviewer')" data-agent="code-reviewer">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Code Reviewer</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Code quality, PEP8, security checks, convention enforcement</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'test-engineer')" data-agent="test-engineer">
+      <div class="agent-badge launch">launch</div>
+      <div class="agent-name">Test Engineer</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Unit, integration, and regression test suites</div>
+    </div>
+  </div>
+
+  <div class="section-label">Project Delivery Team -- Phase-in Agents</div>
+
+  <div class="agent-grid" id="agent-grid-phasein">
+    <div class="agent-card dimmed" onclick="selectAgent(this, 'xai-agent')" data-agent="xai-agent">
+      <div class="agent-badge phase-in">phase-in</div>
+      <div class="agent-name">XAI Agent</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">SHAP, feature importance, GradCAM, explainability reports</div>
+    </div>
+    <div class="agent-card dimmed" onclick="selectAgent(this, 'domain-evaluator')" data-agent="domain-evaluator">
+      <div class="agent-badge phase-in">phase-in</div>
+      <div class="agent-name">Domain Evaluator</div>
+      <div class="agent-model opus">Opus</div>
+      <div class="agent-role">Domain-specific validation, plausibility checks, prior extraction</div>
+    </div>
+    <div class="agent-card dimmed" onclick="selectAgent(this, 'ml-engineer')" data-agent="ml-engineer">
+      <div class="agent-badge phase-in">phase-in</div>
+      <div class="agent-name">ML Engineer</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Inference optimization, experiment tracking, model serving</div>
+    </div>
+    <div class="agent-card dimmed" onclick="selectAgent(this, 'infra-engineer')" data-agent="infra-engineer">
+      <div class="agent-badge phase-in">phase-in</div>
+      <div class="agent-name">Infra Engineer</div>
+      <div class="agent-model haiku">Haiku</div>
+      <div class="agent-role">Environment setup, packaging, deployment, CI/CD</div>
+    </div>
+  </div>
+
+  <div id="agent-detail-panel" class="agent-detail">
+    <h3 id="agent-detail-name"></h3>
+    <div style="margin-top:12px;">
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Model</span>
+        <span class="agent-detail-value" id="agent-detail-model"></span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Team</span>
+        <span class="agent-detail-value" id="agent-detail-team"></span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Role</span>
+        <span class="agent-detail-value" id="agent-detail-role"></span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Owns</span>
+        <span class="agent-detail-value" id="agent-detail-owns"></span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">When Active</span>
+        <span class="agent-detail-value" id="agent-detail-when"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 4: ML PIPELINE
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-pipeline">
+
+  <h1>ML PIPELINE</h1>
+  <div class="subtitle">Structured phases with oracle-verified gates</div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode(this, 'classical')">Classical ML</button>
+    <button class="mode-btn" onclick="setMode(this, 'deep')">Deep Learning</button>
+    <button class="mode-btn" onclick="setMode(this, 'research')">Research</button>
+  </div>
+
+  <div id="pipeline-container">
+
+    <div class="pipeline-node research-only" style="display:none;" onclick="togglePipeline(this)">
+      <div class="pipeline-number">0</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Literature Review</div>
+      </div>
+      <div class="pipeline-gate auto">Auto</div>
+    </div>
+    <div class="pipeline-detail research-only" style="display:none;">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">Prior art survey and baseline definition</div>
+        <div class="pipeline-subtask">Paper analysis and method comparison</div>
+        <div class="pipeline-subtask">Agents: Lead Orchestrator, Domain Evaluator</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">1</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Data Review & Pipeline</div>
+      </div>
+      <div class="pipeline-gate auto">Auto</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">Data audit and quality profiling</div>
+        <div class="pipeline-subtask">EDA, hygiene checks, missing data analysis</div>
+        <div class="pipeline-subtask">DataLoader construction, versioning, splits</div>
+        <div class="pipeline-subtask">Agents: Data Engineer, Test Engineer</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">2</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title" id="phase2-title">Feature Engineering</div>
+      </div>
+      <div class="pipeline-gate blocking">Blocking</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask" id="phase2-sub1">Feature creation and statistical filtering</div>
+        <div class="pipeline-subtask" id="phase2-sub2">Multicollinearity pruning</div>
+        <div class="pipeline-subtask">Human approves feature set before model design</div>
+        <div class="pipeline-subtask">Agents: Data Engineer, Code Reviewer</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">3</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Model Design</div>
+      </div>
+      <div class="pipeline-gate auto">Auto</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">Architecture selection and loss design</div>
+        <div class="pipeline-subtask">Training strategy and oracle setup</div>
+        <div class="pipeline-subtask" id="phase3-extra" style="display:none;">Architecture search and gradient diagnostics</div>
+        <div class="pipeline-subtask">Agents: Model Builder, Oracle / QA</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">4</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Training & Iteration</div>
+      </div>
+      <div class="pipeline-gate auto">Auto</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">Baseline training and iteration protocol</div>
+        <div class="pipeline-subtask">Cross-validation, hyperparameter tuning</div>
+        <div class="pipeline-subtask">Ensemble evaluation</div>
+        <div class="pipeline-subtask" id="phase4-extra" style="display:none;">Training diagnostics and gradient monitoring</div>
+        <div class="pipeline-subtask">Agents: Model Builder, Oracle / QA, ML Engineer</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">5</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Analysis & Validation</div>
+      </div>
+      <div class="pipeline-gate blocking">Blocking</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">SHAP / explainability analysis</div>
+        <div class="pipeline-subtask">Domain consistency and error analysis</div>
+        <div class="pipeline-subtask">Significance testing</div>
+        <div class="pipeline-subtask" id="phase5-extra" style="display:none;">Ablation studies and reproducibility verification</div>
+        <div class="pipeline-subtask">Human approves final model</div>
+        <div class="pipeline-subtask">Agents: XAI Agent, Domain Evaluator, Oracle / QA</div>
+      </div>
+    </div>
+
+    <div class="pipeline-node" onclick="togglePipeline(this)">
+      <div class="pipeline-number">6</div>
+      <div class="pipeline-info">
+        <div class="pipeline-title">Packaging</div>
+      </div>
+      <div class="pipeline-gate auto">Auto</div>
+    </div>
+    <div class="pipeline-detail">
+      <div class="pipeline-detail-inner">
+        <div class="pipeline-subtask">Inference pipeline and model card</div>
+        <div class="pipeline-subtask">Validation report and drift detection</div>
+        <div class="pipeline-subtask">Final test suite</div>
+        <div class="pipeline-subtask" id="phase6-extra" style="display:none;">Paper-ready figures and reproducibility package</div>
+        <div class="pipeline-subtask">Agents: ML Engineer, Infra Engineer, Test Engineer</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 5: COMMANDS
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-commands">
+
+  <h1>COMMANDS</h1>
+  <div class="subtitle">23 slash commands for Claude Code</div>
+
+  <input type="text" class="cmd-search" id="cmd-search" placeholder="Type to filter commands..." oninput="filterCommands()">
+
+  <div class="cmd-category" id="cat-project">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Project Lifecycle
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="project import clone repo analyze plan">
+        <div class="cmd-item-name">/project/import &lt;github-url&gt;</div>
+        <div class="cmd-item-desc">Clone a repo, analyze the codebase, and draft a full plan.md</div>
+      </div>
+      <div class="cmd-item" data-search="project connect clone scaffold target">
+        <div class="cmd-item-name">/project/connect &lt;github-url&gt;</div>
+        <div class="cmd-item-desc">Clone a repo and scaffold a ZO project target for it</div>
+      </div>
+      <div class="cmd-item" data-search="project plan task structured">
+        <div class="cmd-item-name">/project/plan &lt;task-description&gt;</div>
+        <div class="cmd-item-desc">Create or update a structured task plan for the current project</div>
+      </div>
+      <div class="cmd-item" data-search="project launch agent team build">
+        <div class="cmd-item-name">/project/launch &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Launch an agent team to execute a project plan</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-memory">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Memory & Continuity
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="memory recall search decisions priors query">
+        <div class="cmd-item-name">/memory/recall &lt;query&gt;</div>
+        <div class="cmd-item-desc">Search project memory for decisions and priors matching a query</div>
+      </div>
+      <div class="cmd-item" data-search="memory prime context briefing catch up session">
+        <div class="cmd-item-name">/memory/prime &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Load full project context -- the "catch me up" command for new sessions</div>
+      </div>
+      <div class="cmd-item" data-search="memory priors domain knowledge accumulated">
+        <div class="cmd-item-name">/memory/priors &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Display all accumulated domain priors for a project</div>
+      </div>
+      <div class="cmd-item" data-search="memory session summary wrap up state update">
+        <div class="cmd-item-name">/memory/session-summary</div>
+        <div class="cmd-item-desc">Write a session summary and update all memory files</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-gates">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Gate Management
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="gates approve pass advance phase">
+        <div class="cmd-item-name">/gates/approve</div>
+        <div class="cmd-item-desc">Approve the current pending gate and advance to the next phase</div>
+      </div>
+      <div class="cmd-item" data-search="gates reject reason rework block">
+        <div class="cmd-item-name">/gates/reject &lt;reason&gt;</div>
+        <div class="cmd-item-desc">Reject the current pending gate with a reason, triggering rework</div>
+      </div>
+      <div class="cmd-item" data-search="gates status overview table">
+        <div class="cmd-item-name">/gates/gates &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Display all gates for a project with their current status</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-observe">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Observability
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="observe watch live session monitor agents status">
+        <div class="cmd-item-name">/observe/watch &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Watch a running ZO session or show last known state</div>
+      </div>
+      <div class="cmd-item" data-search="observe logs comms jsonl events filter">
+        <div class="cmd-item-name">/observe/logs &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Display recent comms log events with optional type/agent filters</div>
+      </div>
+      <div class="cmd-item" data-search="observe decisions log search audit trail">
+        <div class="cmd-item-name">/observe/decisions &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Display all decisions from the project decision log</div>
+      </div>
+      <div class="cmd-item" data-search="observe history timeline sessions commits decisions">
+        <div class="cmd-item-name">/observe/history &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Show a combined timeline of sessions, commits, and decisions</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-document">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Documentation
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="document code docs docstrings api reference">
+        <div class="cmd-item-name">/document/code-docs</div>
+        <div class="cmd-item-desc">Generate or update code documentation with Google-style docstrings</div>
+      </div>
+      <div class="cmd-item" data-search="document model card architecture training evaluation">
+        <div class="cmd-item-name">/document/model-card &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Generate a standard model card for the project</div>
+      </div>
+      <div class="cmd-item" data-search="document retrospective failures evolution lessons learned">
+        <div class="cmd-item-name">/document/retrospective &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Run a retrospective analyzing failures, evolutions, and lessons</div>
+      </div>
+      <div class="cmd-item" data-search="document validation report oracle metrics tiered results">
+        <div class="cmd-item-name">/document/validation-report &lt;project-name&gt;</div>
+        <div class="cmd-item-desc">Generate a comprehensive validation report from oracle results</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-agents">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Agent Management
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="agents roster list roles tiers teams">
+        <div class="cmd-item-name">/agents/agents</div>
+        <div class="cmd-item-desc">List all defined agents with their roles, tiers, and teams</div>
+      </div>
+      <div class="cmd-item" data-search="agents spawn activate context session">
+        <div class="cmd-item-name">/agents/spawn &lt;agent-name&gt;</div>
+        <div class="cmd-item-desc">Spawn an agent in the current session with full context</div>
+      </div>
+      <div class="cmd-item" data-search="agents create agent definition new custom">
+        <div class="cmd-item-name">/agents/create-agent &lt;agent-name&gt;</div>
+        <div class="cmd-item-desc">Create a new agent definition file interactively</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-category" id="cat-utility">
+    <div class="cmd-category-header" onclick="toggleCategory(this)">
+      <span class="cmd-category-chevron">&rsaquo;</span> Utility
+    </div>
+    <div class="cmd-list">
+      <div class="cmd-item" data-search="commit git conventional stage">
+        <div class="cmd-item-name">/commit</div>
+        <div class="cmd-item-desc">Stage and commit changes with a conventional commit message</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     TAB 6: MNIST DEMO
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-mnist">
+
+  <h1>MNIST DEMO</h1>
+  <div class="subtitle">End-to-end validation -- from empty repo to 99% accuracy</div>
+
+  <div class="stat-block">
+    <div class="stat-item scanlines">
+      <div class="stat-num">99<span class="stat-unit">%</span></div>
+      <div class="stat-label">Test Accuracy</div>
+    </div>
+    <div class="stat-item scanlines">
+      <div class="stat-num">98<span class="stat-unit">tests</span></div>
+      <div class="stat-label">Passing</div>
+    </div>
+    <div class="stat-item scanlines">
+      <div class="stat-num">$11<span class="stat-unit">usd</span></div>
+      <div class="stat-label">Total Cost</div>
+    </div>
+  </div>
+
+  <div class="section-label">Before / After</div>
+
+  <div class="ba-grid">
+    <div class="ba-panel">
+      <div class="ba-label before">Before -- Empty Repo</div>
+      <div class="tree-line">mnist-delivery/</div>
+      <div class="tree-line">&nbsp;&nbsp;(empty)</div>
+    </div>
+    <div class="ba-panel">
+      <div class="ba-label after">After -- Full Delivery</div>
+      <div class="tree-line new">mnist-delivery/</div>
+      <div class="tree-line new">&nbsp;&nbsp;src/model.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;src/train.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;src/inference.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;src/data_loader.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;models/best_model.pt</div>
+      <div class="tree-line new">&nbsp;&nbsp;oracle/eval.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;xai/gradcam.py</div>
+      <div class="tree-line new">&nbsp;&nbsp;experiments/</div>
+      <div class="tree-line new">&nbsp;&nbsp;tests/ (98 passing)</div>
+      <div class="tree-line new">&nbsp;&nbsp;pyproject.toml</div>
+    </div>
+  </div>
+
+  <div class="section-label">Project Timeline</div>
+
+  <div class="timeline">
+    <div class="timeline-item highlight">
+      <div class="timeline-phase">Phase 1 -- Data Review & Pipeline</div>
+      <div class="timeline-desc">Built MNIST DataLoaders with train/val/test splits. 32 data tests. Data quality gate passed automatically.</div>
+      <div class="timeline-commit">commit: feat: initial data pipeline</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 2 -- Feature Engineering</div>
+      <div class="timeline-desc">Input normalization and augmentation strategy. Human approved feature pipeline at blocking gate.</div>
+      <div class="timeline-commit">commit: feat: input preprocessing and augmentation</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 3 -- Model Design</div>
+      <div class="timeline-desc">Designed CNN: 2 convolutional layers + BatchNorm + 2 fully-connected layers. Oracle threshold set at 95%.</div>
+      <div class="timeline-commit">commit: feat: CNN architecture and training loop</div>
+    </div>
+    <div class="timeline-item highlight">
+      <div class="timeline-phase">Phase 4 -- Training & Validation</div>
+      <div class="timeline-desc">Trained to 99.00% test accuracy (threshold: 95%). GradCAM visualizations, ablation study, significance testing. Model card and validation report generated.</div>
+      <div class="timeline-commit">commit: feat: trained model, reports, and full test suite</div>
+    </div>
+  </div>
+
+  <div class="section-label">Key Outcomes</div>
+
+  <div class="arch-diagram">
+    <p>The agent team autonomously built a complete ML pipeline from an empty repository. The delivery repo contains only production artifacts -- zero ZO infrastructure leaked. Four clean git commits tell the full story.</p>
+    <div style="margin-top:16px;">
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Architecture</span>
+        <span class="agent-detail-value">CNN: 2 Conv + BN + 2 FC layers</span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Accuracy</span>
+        <span class="agent-detail-value">99.00% (oracle threshold: 95%)</span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Tests</span>
+        <span class="agent-detail-value">98 passing (data: 32, model: 28, integration: 38)</span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">XAI</span>
+        <span class="agent-detail-value">GradCAM visualizations for all 10 digit classes</span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Commits</span>
+        <span class="agent-detail-value">4 clean commits, zero ZO artifacts</span>
+      </div>
+      <div class="agent-detail-row">
+        <span class="agent-detail-label">Cost</span>
+        <span class="agent-detail-value">~$11 across all sessions</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     JAVASCRIPT
+═════════════════════════════════════════ -->
+<script>
+// ── Tab switching ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+  const tabs = document.querySelectorAll('.tab');
+  const tabNames = ['overview', 'workflow', 'agents', 'pipeline', 'commands', 'mnist'];
+  const idx = tabNames.indexOf(name);
+  if (idx >= 0) tabs[idx].classList.add('active');
+
+  const panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+}
+
+// ── Flow animation ──
+let flowStep = 0;
+function animateFlow() {
+  // Reset
+  for (let i = 0; i < 5; i++) {
+    const node = document.getElementById('flow-' + i);
+    const arrow = document.getElementById('arrow-' + i);
+    if (node) node.classList.remove('active');
+    if (arrow) arrow.classList.remove('active');
+  }
+
+  // Activate up to current step
+  for (let i = 0; i <= flowStep; i++) {
+    const node = document.getElementById('flow-' + i);
+    if (node) node.classList.add('active');
+    if (i > 0) {
+      const arrow = document.getElementById('arrow-' + (i - 1));
+      if (arrow) arrow.classList.add('active');
+    }
+  }
+
+  flowStep = (flowStep + 1) % 5;
+}
+
+setInterval(animateFlow, 1200);
+
+// ── Step walkthrough ──
+function toggleStep(el) {
+  const wasActive = el.classList.contains('active');
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  if (!wasActive) el.classList.add('active');
+}
+
+// ── Agent cards ──
+const agentData = {
+  'lead-orchestrator': { model: 'Opus', team: 'Project Delivery', role: 'Creates the agent team, decomposes the plan into phases, manages gate transitions, coordinates all agent communication. The central hub.', owns: 'Orchestration, phase management, gate coordination', when: 'Always active -- present in every phase' },
+  'data-engineer': { model: 'Sonnet', team: 'Project Delivery', role: 'Builds and validates the data pipeline. Handles data cleaning, EDA, profiling, DataLoader construction, train/val/test splits, and data versioning.', owns: 'data/, DataLoaders, data tests', when: 'Phases 1-2 (Data Review, Feature Engineering)' },
+  'model-builder': { model: 'Opus', team: 'Project Delivery', role: 'Designs model architecture, writes training loops, runs the iteration protocol (train, evaluate, adjust). Handles architecture selection, loss function design, and hyperparameter strategy.', owns: 'src/model.py, src/train.py, models/', when: 'Phases 3-5 (Model Design through Validation)' },
+  'oracle-qa': { model: 'Sonnet', team: 'Project Delivery', role: 'The hard evaluator. Runs tiered metric evaluation (Tier 1 core, Tier 2 operational, Tier 3 robustness). Enforces pass/fail gating with no negotiation on thresholds.', owns: 'oracle/, reports/validation_report.md', when: 'Phases 3-5 (every evaluation cycle)' },
+  'code-reviewer': { model: 'Sonnet', team: 'Project Delivery', role: 'Reviews all code changes for PEP8 compliance, security issues, convention enforcement, and overall quality. Acts as the code quality gate.', owns: 'Code review reports', when: 'All phases -- reviews every code change' },
+  'test-engineer': { model: 'Sonnet', team: 'Project Delivery', role: 'Writes and maintains unit, integration, and regression test suites. Ensures test coverage meets targets and all tests pass before gate transitions.', owns: 'tests/', when: 'All phases -- tests accompany every deliverable' },
+  'xai-agent': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Produces explainability analysis: SHAP values, feature importance rankings, GradCAM visualizations, and interpretability reports.', owns: 'xai/, experiments/explainability/', when: 'Phase 5 (Analysis & Validation)' },
+  'domain-evaluator': { model: 'Opus', team: 'Project Delivery (Phase-in)', role: 'Validates model outputs against domain knowledge. Checks plausibility, extracts domain priors, and flags results that are statistically valid but domain-implausible.', owns: 'PRIORS.md updates, domain validation reports', when: 'Phase 5 (domain-specific validation)' },
+  'ml-engineer': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Optimizes the inference pipeline, manages experiment tracking, handles model serving configuration, and ensures production readiness.', owns: 'src/inference.py, experiments/', when: 'Phases 4-6 (Training through Packaging)' },
+  'infra-engineer': { model: 'Haiku', team: 'Project Delivery (Phase-in)', role: 'Handles environment setup, dependency management, packaging (pyproject.toml), deployment configs, and CI/CD pipeline setup.', owns: 'pyproject.toml, setup.sh, CI configs', when: 'Phases 1, 6 (initial setup, final packaging)' }
+};
+
+function selectAgent(el, name) {
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+
+  const data = agentData[name];
+  if (!data) return;
+
+  const panel = document.getElementById('agent-detail-panel');
+  panel.classList.add('visible');
+  document.getElementById('agent-detail-name').textContent = el.querySelector('.agent-name').textContent;
+  document.getElementById('agent-detail-model').textContent = data.model;
+  document.getElementById('agent-detail-team').textContent = data.team;
+  document.getElementById('agent-detail-role').textContent = data.role;
+  document.getElementById('agent-detail-owns').textContent = data.owns;
+  document.getElementById('agent-detail-when').textContent = data.when;
+}
+
+// ── Pipeline ──
+function togglePipeline(el) {
+  const wasExpanded = el.classList.contains('expanded');
+  document.querySelectorAll('.pipeline-node').forEach(n => n.classList.remove('expanded'));
+  if (!wasExpanded) el.classList.add('expanded');
+}
+
+function setMode(btn, mode) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const researchItems = document.querySelectorAll('.research-only');
+  const phase2Title = document.getElementById('phase2-title');
+  const phase2Sub1 = document.getElementById('phase2-sub1');
+  const phase2Sub2 = document.getElementById('phase2-sub2');
+  const phase3Extra = document.getElementById('phase3-extra');
+  const phase4Extra = document.getElementById('phase4-extra');
+  const phase5Extra = document.getElementById('phase5-extra');
+  const phase6Extra = document.getElementById('phase6-extra');
+
+  // Reset
+  researchItems.forEach(el => el.style.display = 'none');
+  phase3Extra.style.display = 'none';
+  phase4Extra.style.display = 'none';
+  phase5Extra.style.display = 'none';
+  phase6Extra.style.display = 'none';
+
+  if (mode === 'classical') {
+    phase2Title.textContent = 'Feature Engineering';
+    phase2Sub1.textContent = 'Feature creation and statistical filtering';
+    phase2Sub2.textContent = 'Multicollinearity pruning';
+  } else if (mode === 'deep') {
+    phase2Title.textContent = 'Input Representation';
+    phase2Sub1.textContent = 'Input representation and transfer learning';
+    phase2Sub2.textContent = 'Data augmentation strategy';
+    phase3Extra.style.display = 'block';
+    phase4Extra.style.display = 'block';
+  } else if (mode === 'research') {
+    researchItems.forEach(el => el.style.display = '');
+    phase2Title.textContent = 'Feature Engineering';
+    phase2Sub1.textContent = 'Feature creation and statistical filtering';
+    phase2Sub2.textContent = 'Multicollinearity pruning';
+    phase5Extra.style.display = 'block';
+    phase6Extra.style.display = 'block';
+  }
+}
+
+// ── Command palette ──
+function filterCommands() {
+  const query = document.getElementById('cmd-search').value.toLowerCase();
+  document.querySelectorAll('.cmd-item').forEach(item => {
+    const search = (item.getAttribute('data-search') || '') + ' ' +
+                   (item.querySelector('.cmd-item-name')?.textContent || '') + ' ' +
+                   (item.querySelector('.cmd-item-desc')?.textContent || '');
+    if (query === '' || search.toLowerCase().includes(query)) {
+      item.classList.remove('hidden');
+    } else {
+      item.classList.add('hidden');
+    }
+  });
+}
+
+function toggleCategory(header) {
+  const cat = header.parentElement;
+  cat.classList.toggle('collapsed');
+}
+</script>
+
+</body>
+</html>
