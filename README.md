@@ -14,9 +14,10 @@
 
 <br/>
 
-[![Status](https://img.shields.io/badge/phase-specs_complete-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Agents](https://img.shields.io/badge/agents-16_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
+[![Status](https://img.shields.io/badge/phase-0_complete-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Agents](https://img.shields.io/badge/agents-16_written-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![Specs](https://img.shields.io/badge/specs-8_documents-F0C040?style=flat-square&labelColor=080808)](#repository-structure)
+[![Build Plan](https://img.shields.io/badge/build_plan-v2.0-F0C040?style=flat-square&labelColor=080808)](#status)
 
 ---
 
@@ -59,10 +60,10 @@ zero-operators/
 ├── CLAUDE.md                          # Agent context index
 ├── PRD.md                             # Product requirements
 ├── plans/
-│   └── zero-operators-build.md        # Platform build plan
+│   └── zero-operators-build.md        # Platform build plan (v2.0)
 ├── specs/
 │   ├── architecture.md                # Repo separation, file structure
-│   ├── agents.md                      # 16 agent definitions, contracts
+│   ├── agents.md                      # Agent spec, contracts, templates
 │   ├── memory.md                      # STATE.md, DECISION_LOG, semantic search
 │   ├── oracle.md                      # Verification framework
 │   ├── workflow.md                    # ML/DL/research pipeline phases
@@ -72,12 +73,29 @@ zero-operators/
 ├── design/                            # Brand system reference
 ├── plan/                              # Planning context documents
 ├── .claude/
-│   ├── agents/                        # Agent prompt definitions (TBD)
-│   └── skills/                        # Workflow skills (TBD)
-├── src/zo/                            # Platform code (TBD)
-├── memory/                            # Project-scoped state (TBD)
-├── logs/                              # Audit trails (TBD)
-└── targets/                           # Delivery repo pointers (TBD)
+│   ├── agents/                        # 16 agent definitions ✅
+│   │   ├── lead-orchestrator.md       # Opus — pipeline coordination
+│   │   ├── data-engineer.md           # Sonnet — data pipeline
+│   │   ├── model-builder.md           # Opus — architecture, training
+│   │   ├── oracle-qa.md               # Sonnet — metric evaluation
+│   │   ├── code-reviewer.md           # Sonnet — code quality
+│   │   ├── test-engineer.md           # Sonnet — testing
+│   │   ├── xai-agent.md              # Sonnet — explainability (phase-in)
+│   │   ├── domain-evaluator.md        # Opus — domain validation (phase-in)
+│   │   ├── ml-engineer.md             # Sonnet — ML ops (phase-in)
+│   │   ├── infra-engineer.md          # Haiku — infrastructure (phase-in)
+│   │   ├── software-architect.md      # Opus — platform architecture
+│   │   ├── backend-engineer.md        # Opus — platform implementation
+│   │   ├── frontend-engineer.md       # Sonnet — dashboard (phase-in)
+│   │   ├── platform-test-engineer.md  # Sonnet — platform tests
+│   │   ├── platform-code-reviewer.md  # Sonnet — platform review
+│   │   └── documentation-agent.md     # Haiku — docs maintenance
+│   └── settings.json                  # Project-level config ✅
+├── src/zo/                            # Platform code (Phase 1+)
+├── memory/                            # Project-scoped state
+├── logs/                              # Audit trails
+├── targets/                           # Delivery repo pointers
+└── tests/                             # Test suite
 ```
 
 ## Agent teams
@@ -121,9 +139,48 @@ All ZO outputs follow the brand system in [`design/`](design/).
 
 ## Status
 
-**Specs complete. Build not started.**
+**Phase 0 complete. Phase 1 ready to begin.**
 
-All 8 specification documents written and QA'd. Platform build plan defined with 9 modules, 5 gates, and 14 oracle verification checks. Next: bootstrap `src/zo/` and write agent definition files.
+All 8 specification documents written and QA'd. Build plan v2.0 finalized with 10 modules, 6 gates, 18 oracle verification checks, and all design decisions resolved. All 16 agent definition files written to `.claude/agents/`. Project-level settings configured.
+
+| Milestone | Status |
+|-----------|--------|
+| Specifications (8 docs) | Done |
+| Build plan v2.0 | Done |
+| Agent definitions (16 files) | Done |
+| Claude Code setup | Done |
+| Phase 1: Plan parser, target parser, comms logger, setup | Next |
+| Phase 2: Memory layer, semantic index | Pending |
+| Phase 3: Orchestration engine (hybrid) | Pending |
+| Phase 4: Evolution engine, CLI, integration tests | Pending |
+| Phase 5: End-to-end validation | Pending |
+
+## Getting started
+
+```bash
+# Clone and enter
+git clone <repo-url> && cd zero-operators
+
+# Bootstrap environment
+./setup.sh          # validates prerequisites (coming in Phase 1)
+
+# Initialize a project
+zo init my-project   # scaffolds memory/, logs/, targets/ (coming in Phase 4)
+
+# Run a project
+zo build plans/my-project.md    # (coming in Phase 4)
+zo continue my-project          # resume from STATE.md
+zo maintain my-project          # apply updated instructions
+zo draft sources/               # generate plan.md from docs
+```
+
+## Key decisions (v2.0)
+
+- **Orchestration**: Hybrid — native Claude Code agent teams for peer-to-peer comms + Python lifecycle wrapper for observability
+- **Semantic index**: Full decision entries with summary prefix embedding for context-window density
+- **Setup**: `setup.sh` for environment bootstrap + `zo init` for project scaffolding
+- **Docker**: Deferred to v2 — uv lockfile + setup.sh for now
+- **Agent contracts**: Inline examples + shared reference to `specs/agents.md`
 
 ---
 
@@ -135,7 +192,7 @@ All 8 specification documents written and QA'd. Platform build plan defined with
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v0.1` · `specs complete`
+`ZERO OPERATORS` · `v0.2` · `phase 0 complete`
 
 <br/>
 </div>
