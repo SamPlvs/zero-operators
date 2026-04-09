@@ -14,8 +14,8 @@
 
 <br/>
 
-[![Status](https://img.shields.io/badge/phase-3_complete-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-224_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Status](https://img.shields.io/badge/phase-4_complete-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-296_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-16_written-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![Specs](https://img.shields.io/badge/specs-8_documents-F0C040?style=flat-square&labelColor=080808)](#repository-structure)
 [![Build Plan](https://img.shields.io/badge/build_plan-v2.0-F0C040?style=flat-square&labelColor=080808)](#status)
@@ -119,7 +119,9 @@ zero-operators/
 │   ├── semantic.py                    # fastembed + SQLite semantic search
 │   ├── orchestrator.py                # Phase decomposition, gate management
 │   ├── wrapper.py                     # Claude CLI launcher + team observer
-│   └── cli.py                         # CLI entry point (Phase 4)
+│   ├── evolution.py                   # Self-evolving post-mortem protocol
+│   ├── cli.py                         # CLI: zo build/continue/maintain/init/status/draft
+│   └── draft.py                       # Agentic plan generation from source docs
 ├── memory/                            # Project-scoped state
 ├── logs/                              # Audit trails
 ├── targets/                           # Delivery repo pointers
@@ -167,7 +169,7 @@ All ZO outputs follow the brand system in [`design/`](design/).
 
 ## Status
 
-**Phase 3 complete. 224 tests, 93% coverage.**
+**Phase 4 complete. 296 tests, 90% coverage.**
 
 | Milestone | Status |
 |-----------|--------|
@@ -176,9 +178,9 @@ All ZO outputs follow the brand system in [`design/`](design/).
 | Agent definitions (16 files) | Done |
 | Phase 1: Plan parser, target parser, comms logger, setup | Done |
 | Phase 2: Memory layer, semantic index | Done |
-| Phase 3: Orchestration engine + lifecycle wrapper | Done (224 tests) |
-| Phase 4: Evolution engine, CLI, integration tests | Next |
-| Phase 5: End-to-end validation | Pending |
+| Phase 3: Orchestration engine + lifecycle wrapper | Done |
+| Phase 4: Evolution engine, CLI, integration tests | Done (296 tests) |
+| Phase 5: End-to-end validation | Next |
 
 ## Getting started
 
@@ -224,7 +226,7 @@ zo draft sources/               # generate plan.md from docs
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v0.3` · `phase 3 complete — 224 tests`
+`ZERO OPERATORS` · `v0.4` · `phase 4 complete — 296 tests`
 
 <br/>
 </div>
