@@ -1,0 +1,273 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.w{padding:1rem 0;font-family:var(--font-sans)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.tab{font-size:11px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer}
+.tab.active{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC;font-weight:500}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:11px 13px;margin-bottom:7px}
+.ch{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:5px}
+.cb{font-size:11px;color:var(--color-text-secondary);line-height:1.65}
+.pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;display:inline-block}
+.p-ruflo{background:#E6F1FB;color:#0C447C}
+.p-omc{background:#EAF3DE;color:#27500A}
+.p-ar{background:#EEEDFE;color:#3C3489}
+.p-cole{background:#FAEEDA;color:#633806}
+.p-new{background:#FCEBEB;color:#791F1F}
+.p-steal{background:#EAF3DE;color:#27500A}
+.p-skip{background:#F1EFE8;color:#5F5E5A}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.feature-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.feature-row:last-child{border:none}
+.f-name{font-size:11px;font-weight:500;color:var(--color-text-primary);flex:1;min-width:0}
+.f-src{font-size:10px;color:var(--color-text-secondary);flex:1;min-width:0}
+.f-why{font-size:11px;color:var(--color-text-secondary);flex:2;min-width:0;line-height:1.5}
+.mono{font-family:var(--font-mono);font-size:10px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:8px 10px;border-radius:var(--border-radius-md);margin:6px 0;white-space:pre;overflow-x:auto;line-height:1.6}
+.hl{background:#EEEDFE;border:0.5px solid #AFA9EC;border-radius:var(--border-radius-md);padding:10px 13px;margin:7px 0}
+.hl-label{font-size:10px;font-weight:500;color:#534AB7;margin-bottom:3px;letter-spacing:.3px}
+.hl-body{font-size:11px;color:#3C3489;line-height:1.65}
+.sep-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:7px}
+.sep-label{font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px;letter-spacing:.3px}
+.flow-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px;color:var(--color-text-secondary)}
+.flow-arr{color:var(--color-text-tertiary);flex-shrink:0}
+.tag{font-size:10px;padding:1px 6px;border-radius:6px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);white-space:nowrap}
+.tag-zo{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC}
+.tag-ivl{background:#EAF3DE;color:#27500A;border-color:#97C459}
+</style>
+<div class="w">
+<div class="tabs">
+  <button class="tab active" onclick="show('agents')">Ruflo + OMC agents to steal</button>
+  <button class="tab" onclick="show('features')">Zero Operators feature list</button>
+  <button class="tab" onclick="show('separation')">Repo separation architecture</button>
+  <button class="tab" onclick="show('blind')">The blind test setup</button>
+</div>
+
+<div id="agents" class="panel active">
+<div class="card">
+<div class="ch">Ruflo — 60+ agents. What to steal vs skip.</div>
+<div class="cb" style="margin-bottom:8px">Ruflo has the most comprehensive agent inventory. Most are software engineering specific. Here's the honest filter for Zero Operators ML/research use.</div>
+<div class="g2">
+<div>
+<div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px">STEAL — directly applicable</div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">researcher</div><div class="cb">Literature search, background analysis. Use for physics priors research.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">ml-developer</div><div class="cb">Ruflo has a dedicated ML agent. Steal the role definition structure.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">perf-analyzer / performance-engineer</div><div class="cb">GPU/inference optimisation patterns. Steal for ML engineer agent.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">tdd-london-swarm / production-validator</div><div class="cb">Test-first discipline. Steal the validation gate pattern.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">3-tier model routing</div><div class="cb">Haiku/Sonnet/Opus cost routing. Exact same logic applies to ZO.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">WASM Agent Booster</div><div class="cb">Skip LLM for simple transforms (file ops, formatting). 352x faster.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">17 hooks system</div><div class="cb">pre-task / post-task / session-start / session-end hooks. Exact pattern for ZO memory write-back.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">12 background workers</div><div class="cb">ultralearn, consolidate, benchmark, testgaps workers. Adapt: ultralearn → pattern extraction from experiment logs.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">RuVector / HNSW memory</div><div class="cb">Core memory system. 150x-12,500x faster pattern search. Use for DECISION_LOG retrieval.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">code-analyzer</div><div class="cb">Codebase structural analysis. Use for the data quality + tag audit step.</div></div></div>
+</div>
+<div>
+<div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px">SKIP — software eng specific, not ML</div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">pr-manager, github-modes, release-manager, issue-tracker — Git workflow agents. ZO doesn't need them for ML research.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">mobile-dev, backend-dev, cicd-engineer — Domain agents for app development, not relevant.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">byzantine-coordinator, raft-manager, gossip-coordinator — Distributed consensus for large swarms. Overkill for 7-agent team.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">sparc-* agents — SPARC methodology specific. We have our own ML workflow methodology.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">Dual-mode Claude+Codex — Multi-provider orchestration. ZO uses Claude only for now.</div></div></div>
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:4px">
+<div class="ch">OMC — 19 specialized agents + 5 execution modes. What to steal.</div>
+<div class="g2">
+<div>
+<div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px">STEAL</div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">scientist agent</div><div class="cb">OMC's Scientist agent: structured output markers [OBJECTIVE][DATA][FINDING][STAT]. Stage execution markers for multi-phase research. Persistent Python REPL. This is the TS researcher pattern, refined.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">persistent Python REPL</div><div class="cb">Unix socket bridge — variable persistence across agent calls. Critical for data analysis where you load 81,906 rows once and keep using df.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Ultrapilot / parallel execution modes</div><div class="cb">3-5x parallel with git worktree isolation. The pattern for running XGBoost + TFT arms simultaneously without file conflicts.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">/wiki skill — persistent knowledge base</div><div class="cb">Self-maintained markdown KB that compounds across sessions. This is PHYSICS_PRIORS.md + DECISION_LOG.md with a skill layer.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Ralph / persistence mode</div><div class="cb">Self-healing loop — auto-verify and fix until 100% validated. This is the oracle iteration loop. Don't stop until RMSE passes.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">auto-learner / skill extraction</div><div class="cb">Identifies debugging patterns and saves as portable skills for future sessions. Our PHYSICS_PRIORS.md update pattern.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">HUD status line</div><div class="cb">Real-time tmux status showing agent, model, context %. Feed this into the dashboard live view.</div></div></div>
+<div class="feature-row"><span class="pill p-steal" style="min-width:60px;text-align:center">steal</span><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">rate limit wait daemon</div><div class="cb">Auto-resume when API quota resets. Essential for overnight iteration loop — agents shouldn't die on rate limits.</div></div></div>
+</div>
+<div>
+<div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px">SKIP</div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">designer agent — UI/UX specific. Not needed for ML research delivery.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">Ecomode / token-efficient mode — ZO runs on Max plan. Cost optimisation is handled by model routing, not mode restriction.</div></div></div>
+<div class="feature-row"><span class="pill p-skip" style="min-width:60px;text-align:center">skip</span><div><div class="cb">CCG tri-model synthesis (Claude+Codex+Gemini) — Multi-provider complexity not needed for v1.</div></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="features" class="panel">
+<div class="card">
+<div class="ch">Zero Operators — complete required features list</div>
+</div>
+
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;margin-top:4px">Core execution</div>
+<div class="feature-row"><span class="pill p-ar">autoresearch</span><div class="f-name">program.md → agent readable plan</div><div class="f-why">The human's only lever. Encodes scope, oracle, checkpoints. Without it agents drift constantly.</div></div>
+<div class="feature-row"><span class="pill p-ar">autoresearch</span><div class="f-name">Fixed oracle + overnight iteration loop</div><div class="f-why">Hard metric (RMSE vs lab) that agents optimise against autonomously. The difference between vibe-coding and research.</div></div>
+<div class="feature-row"><span class="pill p-ruflo">Ruflo</span><div class="f-name">3-tier model routing (Haiku/Sonnet/Opus)</div><div class="f-why">Simple tasks (file ops, formatting) → Haiku. Feature selection reasoning → Sonnet. Architecture decisions → Opus. 30-50% cost reduction.</div></div>
+<div class="feature-row"><span class="pill p-ruflo">Ruflo</span><div class="f-name">WASM Agent Booster for simple transforms</div><div class="f-why">Skip LLM entirely for deterministic transforms. Preprocessing scripts, file renaming, config edits. 352x faster, $0 cost.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">Rate limit wait daemon</div><div class="f-why">Overnight iteration loops will hit rate limits. Auto-resume instead of crashing. Non-negotiable for autonomous operation.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">Persistent Python REPL (unix socket bridge)</div><div class="f-why">Load 81,906 SAP QM rows once. Reuse across agent calls. Without this, every agent call reloads the dataset.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">Parallel execution with git worktree isolation</div><div class="f-why">XGBoost arm and TFT arm run simultaneously in separate worktrees. No file conflicts. True parallel model experimentation.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">Ralph / persistence mode (self-healing loop)</div><div class="f-why">Don't stop until oracle passes. Agents iterate on failures automatically. The zero-operator promise: you wake up to results.</div></div>
+
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;margin-top:12px">Memory + learning</div>
+<div class="feature-row"><span class="pill p-ruflo">Ruflo</span><div class="f-name">RuVector / HNSW semantic memory</div><div class="f-why">Cross-session memory retrieval. "What did we decide about post-TA regime segmentation?" returns the relevant DECISION_LOG entry in milliseconds.</div></div>
+<div class="feature-row"><span class="pill p-ruflo">Ruflo</span><div class="f-name">17 hooks (session-start, session-end, post-task)</div><div class="f-why">Deterministic memory write-back. STATE.md written on session-end hook. DECISION_LOG appended on post-task hook. Never forget to update state.</div></div>
+<div class="feature-row"><span class="pill p-ruflo">Ruflo</span><div class="f-name">12 background workers (ultralearn, consolidate)</div><div class="f-why">ultralearn → extract patterns from experiment logs overnight. consolidate → compress old session summaries. Agents get smarter between runs.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">/wiki skill — self-maintained knowledge base</div><div class="f-why">PHYSICS_PRIORS.md as a living document. Domain evaluator resolutions automatically appended. Compounds across iterations.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">Auto-learner / skill extraction</div><div class="f-why">When domain evaluator resolves a QUESTIONABLE SHAP case, the resolution becomes a new physics prior automatically.</div></div>
+
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;margin-top:12px">Observability — what nobody else has</div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Command dashboard</div><div class="f-why">Oracle score trending, agent status, peer comms wall, decision log, SHAP trending. The master controller view no other tool provides.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Peer message feed (agent-to-agent comms wall)</div><div class="f-why">You see what XAI agent said to domain evaluator. Not just outputs — the reasoning chain. Invisible in every other tool.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Decision log audit trail</div><div class="f-why">Every orchestrator decision with rationale and timestamp. The IVL client-facing validation report is generated from this log.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">SHAP trending dashboard</div><div class="f-why">Which variables drove predictions over the last 24h/7d. The variable influence deliverable in the SoW, auto-generated.</div></div>
+<div class="feature-row"><span class="pill p-omc">OMC</span><div class="f-name">HUD status line → dashboard feed</div><div class="f-why">Real-time per-agent status (model, context %, current task) piped into dashboard. Know exactly what each agent is doing.</div></div>
+
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;margin-top:12px">ML-specific — Zero Operators originals</div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Explainability agent + SHAP engine</div><div class="f-why">Three-layer validation (physics/sign/magnitude). No other orchestration framework has domain-aware explainability checking.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Domain evaluator persona</div><div class="f-why">Petrochemical process expert encoded as an agent. Validates physical plausibility of model outputs. Industry-specific and irreplaceable.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Parallel model architecture search</div><div class="f-why">XGBoost vs TFT run simultaneously. Oracle + XAI agent select the winner. Results-driven, not human-prejudged model choice.</div></div>
+<div class="feature-row"><span class="pill p-new">ZO only</span><div class="f-name">Contract-first agent spawning</div><div class="f-why">Every agent spawn includes: inputs, expected outputs, acceptance criteria, time budget. Agents can't drift if they have a contract.</div></div>
+<div class="feature-row"><span class="pill p-cole">coleam00</span><div class="f-name">Rich spawn prompts with full task context</div><div class="f-why">Agents receive complete context at spawn — no re-exploration. Reduces session startup cost by ~40%.</div></div>
+</div>
+
+<div id="separation" class="panel">
+<div class="hl">
+<div class="hl-label">WHAT YOU'RE TRYING TO ACHIEVE</div>
+<div class="hl-body">Zero Operators is a separate repository that operates on the IVL F5 repo like a surgeon. It has no code in the patient. The IVL F5 repo contains only clean ML output. Your team reviews IVL F5 and sees professional ML engineering — no agent scaffolding, no orchestration artefacts, no evidence of Zero Operators.</div>
+</div>
+
+<div class="g2">
+<div class="sep-box">
+<div class="sep-label">ZERO OPERATORS REPO — the surgeon</div>
+<div class="mono">zero-operators/
+├── CLAUDE.md              ← ZO's own rules
+├── plans/
+│   └── ivl-f5.md         ← the plan.md
+├── .claude/
+│   ├── agents/            ← all agent personas
+│   └── skills/            ← ml-workflow, shap, etc
+├── memory/
+│   ├── STATE.md
+│   ├── DECISION_LOG.md
+│   └── PHYSICS_PRIORS.md
+├── logs/                  ← comms wall, session logs
+├── dashboard/             ← command centre
+└── targets/
+    └── ivl-f5.target.md  ← pointer to patient repo</div>
+<div style="margin-top:6px;font-size:11px;color:var(--color-text-secondary)">Never committed to IVL F5. Private to AC. This is Zero Operators itself.</div>
+</div>
+<div class="sep-box">
+<div class="sep-label">IVL F5 REPO — the patient</div>
+<div class="mono">ivl_f5/
+├── README.md
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── splits/
+├── src/
+│   ├── data/
+│   │   ├── loader.py
+│   │   ├── preprocessing.py
+│   │   └── splitting.py
+│   ├── models/
+│   │   └── soft_sensor.py
+│   └── evaluation/
+│       ├── oracle.py
+│       └── shap_engine.py
+├── experiments/
+│   └── [dated run logs]
+├── models/best/
+└── reports/
+    └── validation_report.md</div>
+<div style="margin-top:6px;font-size:11px;color:var(--color-text-secondary)">Clean ML repo. No ZO artefacts. This is what IVL and your team review.</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:4px">
+<div class="ch">How ZO operates on IVL F5 from outside</div>
+<div class="cb" style="margin-bottom:8px">The key is <code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">--cwd</code> — Claude Code's working directory flag. Zero Operators launches agents pointed at the IVL F5 repo. Agents read and write there. ZO's own state lives in the ZO repo. Two separate git repos, one operation.</div>
+<div class="flow-row"><span class="tag tag-zo">ZO orchestrator</span><span class="flow-arr">reads</span><span class="tag tag-zo">zero-operators/memory/STATE.md</span></div>
+<div class="flow-row"><span class="tag tag-zo">ZO orchestrator</span><span class="flow-arr">spawns agent with</span><span class="tag tag-zo">--cwd ../ivl_f5</span></div>
+<div class="flow-row"><span class="tag tag-ivl">data engineer agent</span><span class="flow-arr">writes to</span><span class="tag tag-ivl">ivl_f5/data/processed/</span></div>
+<div class="flow-row"><span class="tag tag-ivl">TS researcher agent</span><span class="flow-arr">writes to</span><span class="tag tag-ivl">ivl_f5/src/models/ + experiments/</span></div>
+<div class="flow-row"><span class="tag tag-zo">ZO orchestrator</span><span class="flow-arr">writes session summary to</span><span class="tag tag-zo">zero-operators/memory/sessions/</span></div>
+<div class="flow-row"><span class="tag tag-zo">ZO logs</span><span class="flow-arr">written to</span><span class="tag tag-zo">zero-operators/logs/comms/</span><span style="font-size:10px;color:var(--color-text-tertiary)">— never touches ivl_f5</span></div>
+</div>
+
+<div class="card">
+<div class="ch">target file — how ZO knows where to operate</div>
+<div class="mono">## Target: IVL F5 Soft Sensor
+
+target_repo: ../ivl_f5
+target_branch: main
+worktree_base: ../ivl_f5_worktrees/
+
+## Agent working directories
+data_engineer_cwd: ../ivl_f5
+ts_researcher_cwd: ../ivl_f5_worktrees/xgboost-arm
+tft_researcher_cwd: ../ivl_f5_worktrees/tft-arm
+ml_engineer_cwd: ../ivl_f5
+oracle_cwd: ../ivl_f5
+
+## Output boundaries (ZO never writes these to ivl_f5)
+zo_only_paths:
+  - zero-operators/memory/
+  - zero-operators/logs/
+  - zero-operators/dashboard/</div>
+<div class="cb" style="margin-top:6px">The target file is the contract between ZO and the patient repo. ZO reads it to know where to point agents. The <code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">zo_only_paths</code> list is enforced — agents that try to write ZO internals into ivl_f5 are blocked by the orchestrator.</div>
+</div>
+</div>
+
+<div id="blind" class="panel">
+<div class="hl">
+<div class="hl-label">THE BLIND TEST</div>
+<div class="hl-body">Your team is given access to the ivl_f5 repo. They review the code, the model, the validation report. They don't know Zero Operators ran it. The test: does the output look like a senior ML engineering team delivered it? If yes — Zero Operators works. If they can tell an AI ran it — you iterate on the agent quality until they can't.</div>
+</div>
+
+<div class="card">
+<div class="ch">What your team sees in ivl_f5</div>
+<div class="cb">Clean Python. Typed functions with docstrings. Logical module structure (data/, models/, evaluation/). Pytest test suite. Git history with meaningful commit messages (<code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">[data-engineer] feat: add TA exclusion filter for Sep-Nov 2025 period</code>). A validation_report.md that reads like a professional technical document. SHAP outputs for every prediction. A model that passes Tier 1 at 80%+. No mention of Claude, agents, or Zero Operators anywhere.</div>
+</div>
+
+<div class="card">
+<div class="ch">What they DON'T see</div>
+<div class="cb">No CLAUDE.md in ivl_f5. No .claude/ directory in ivl_f5. No STATE.md or DECISION_LOG.md. No agent spawn prompts. No ZO logs. No references to orchestration. The git author on commits can be set to "AC Engineering" or individual team member names if you want full deniability. The commits from <code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">--cwd ../ivl_f5</code> agents appear as normal commits in ivl_f5's git history.</div>
+</div>
+
+<div class="card">
+<div class="ch">The git author trick</div>
+<div class="mono"># In zero-operators/plans/ivl-f5.md, specify commit identity:
+git_author_name: "AC ML Engineering"
+git_author_email: "ml@appliedcomputing.ai"
+
+# Agents use this when committing to ivl_f5:
+GIT_AUTHOR_NAME="AC ML Engineering" \
+GIT_AUTHOR_EMAIL="ml@appliedcomputing.ai" \
+git commit -m "feat: add XGBoost soft sensor with SHAP explanations"</div>
+<div class="cb" style="margin-top:6px">Or you set this per-agent in their spawn prompt: "When committing, use author 'AC ML Engineering'. Never mention Claude, agents, or Zero Operators in commit messages or code comments."</div>
+</div>
+
+<div class="g2">
+<div class="card">
+<div class="ch">Metrics for the blind test</div>
+<div class="cb">Ask your team: "Review this repo and rate it on: code quality (1-10), documentation (1-10), model validity (1-10), would you trust this in production (yes/no)." Then reveal Zero Operators delivered it. Track the gap between how they'd rate human work vs ZO work. That gap is your iteration target.</div>
+</div>
+<div class="card">
+<div class="ch">Why this is the right first test</div>
+<div class="cb">The blind test proves Zero Operators' core value proposition better than any benchmark: it's not faster AI assistance — it's a digital engineering team that produces output indistinguishable from a human team. If that's true, the commercial implication for Applied Computing is significant.</div>
+</div>
+</div>
+</div>
+
+</div>
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

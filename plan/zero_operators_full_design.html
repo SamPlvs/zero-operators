@@ -1,0 +1,279 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.tab{font-size:12px;padding:5px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.active{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC;font-weight:500}
+.panel{display:none}.panel.active{display:block}
+.section{margin-bottom:18px}
+.sh{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:11px 13px;margin-bottom:7px}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.card-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.card-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;flex-shrink:0}
+.p-lead{background:#EEEDFE;color:#3C3489}
+.p-data{background:#E6F1FB;color:#0C447C}
+.p-ml{background:#EAF3DE;color:#27500A}
+.p-eval{background:#FAEEDA;color:#633806}
+.p-qa{background:#FAECE7;color:#712B13}
+.p-domain{background:#F1EFE8;color:#444441}
+.p-infra{background:#FBEAF0;color:#72243E}
+.p-gate{background:#FCEBEB;color:#791F1F}
+.mono{font-family:var(--font-mono);font-size:10px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:8px 10px;border-radius:var(--border-radius-md);margin-bottom:6px;white-space:pre;overflow-x:auto;line-height:1.6}
+.step-row{display:flex;gap:8px;margin-bottom:8px;align-items:stretch}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--color-text-secondary);flex-shrink:0;margin-top:2px}
+.step-body{flex:1;min-width:0}
+.step-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.step-desc{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.gate{background:#FCEBEB;border:0.5px solid #F09595;border-radius:var(--border-radius-md);padding:7px 11px;margin:6px 0;font-size:11px;color:#791F1F;display:flex;gap:7px;align-items:flex-start}
+.gate-icon{font-size:10px;font-weight:500;background:#E24B4A;color:#fff;padding:1px 5px;border-radius:4px;flex-shrink:0;margin-top:1px}
+.parallel-block{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;margin:6px 0;border:0.5px dashed var(--color-border-secondary)}
+.parallel-label{font-size:10px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px;letter-spacing:.3px}
+.parallel-agents{display:flex;gap:6px;flex-wrap:wrap}
+.agent-chip{font-size:10px;padding:3px 8px;border-radius:8px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.msg-row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0}
+.av-lead{background:#EEEDFE;color:#3C3489}
+.av-data{background:#E6F1FB;color:#0C447C}
+.av-ml{background:#EAF3DE;color:#27500A}
+.av-eval{background:#FAEEDA;color:#633806}
+.av-qa{background:#FAECE7;color:#712B13}
+.av-dom{background:#F1EFE8;color:#444441}
+.msg-content{flex:1;min-width:0}
+.msg-header{display:flex;align-items:baseline;gap:6px;margin-bottom:2px}
+.msg-name{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.msg-to{font-size:10px;color:var(--color-text-tertiary)}
+.msg-time{font-size:10px;color:var(--color-text-tertiary);margin-left:auto}
+.msg-text{font-size:11px;color:var(--color-text-secondary);line-height:1.6;background:var(--color-background-secondary);padding:6px 9px;border-radius:0 8px 8px 8px}
+.msg-text.highlight{background:#EEEDFE}
+.msg-text.warn{background:#FAEEDA}
+.msg-text.ok{background:#EAF3DE}
+.cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+</style>
+
+<div class="wrap">
+<div class="tabs">
+  <button class="tab active" onclick="showTab('files')">1. File structure</button>
+  <button class="tab" onclick="showTab('agents')">2. Agent team</button>
+  <button class="tab" onclick="showTab('workflow')">3. ML workflow</button>
+  <button class="tab" onclick="showTab('comms')">4. Comms wall</button>
+</div>
+
+<div id="files" class="panel active">
+  <div class="section">
+    <div class="sh">Project file structure — what you create once, agents read every session</div>
+    <div class="mono">zero-operators/
+├── CLAUDE.md                    ← auto-loaded by every agent
+├── plans/
+│   └── ivl-f5-soft-sensor.md   ← plan.md (the SoW encoded)
+├── .claude/
+│   ├── agents/                  ← subagent persona definitions
+│   │   ├── lead-orchestrator.md
+│   │   ├── data-engineer.md
+│   │   ├── ts-researcher.md
+│   │   ├── ml-engineer.md
+│   │   ├── domain-evaluator.md
+│   │   ├── qa-tester.md
+│   │   └── infra-engineer.md
+│   ├── skills/
+│   │   ├── ml-workflow/SKILL.md ← teaches agents how ML jobs work
+│   │   ├── logging/SKILL.md     ← structured comms + logging rules
+│   │   └── pytorch-patterns/SKILL.md
+│   └── settings.json
+├── memory/
+│   ├── STATE.md                 ← current session state
+│   ├── DECISION_LOG.md          ← append-only audit trail
+│   └── sessions/                ← per-session summaries
+├── data/
+│   ├── raw/                     ← IP.21 + SAP QM exports
+│   ├── processed/               ← data agent output
+│   └── splits/                  ← train/val/test after splitting
+├── models/
+│   ├── experiments/             ← per-iteration artefacts
+│   └── best/                    ← oracle-validated best model
+├── src/
+│   ├── data/
+│   │   ├── loader.py            ← PyTorch DataLoader
+│   │   ├── preprocessing.py
+│   │   └── splitting.py
+│   ├── models/
+│   │   └── soft_sensor.py
+│   └── evaluation/
+│       ├── oracle.py            ← RMSE vs lab ground truth
+│       └── tier_questions.py   ← auto Tier 1/2/3 runner
+├── logs/
+│   ├── comms/                   ← agent message log (JSONL)
+│   └── experiments/             ← per-run metrics
+├── reports/
+│   └── validation_report.md
+└── dashboard/                   ← the command centre app</div>
+  </div>
+  <div class="cols2">
+    <div class="card">
+      <div class="card-head"><span class="pill p-lead">plan.md</span><span class="card-title">= your SoW encoded</span></div>
+      <div class="card-body">ivl-f5-soft-sensor.md is your plan.md. It contains: objectives, oracle definition (RMSE targets, tier thresholds), data sources with schema, exclusion rules (TA dates, _MA tags, AC2658), agent instructions, human checkpoint positions, and out-of-scope boundaries. Agents read this at session start. You edit it when scope changes.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-ml">SKILL.md</span><span class="card-title">= encoded expertise</span></div>
+      <div class="card-body">The ml-workflow skill teaches every agent how ML jobs are structured — the full pipeline from data review through inference packaging. The logging skill defines how agents write to the comms log. The pytorch-patterns skill gives the ML engineer your preferences (DataLoader patterns, GPU optimisation, experiment tracking with wandb/mlflow).</div>
+    </div>
+  </div>
+</div>
+
+<div id="agents" class="panel">
+  <div class="section">
+    <div class="sh">The research team — 7 agents, each a .md file in .claude/agents/</div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-lead">Lead orchestrator</span><span class="card-title">Research director</span></div>
+      <div class="card-body">Reads memory + plan.md at session start. Decides mode (build/continue/maintain). Decomposes plan into phases. Issues contracts to subagents — each contract specifies: inputs, expected outputs, acceptance criteria, time budget. Gates parallel spawning behind sequential groundwork. Writes STATE.md and DECISION_LOG.md. Never writes code itself.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-data">Data engineer</span><span class="card-title">Pipeline + data integrity</span></div>
+      <div class="card-body">Owns everything before the model sees data. Reads IP.21 + SAP QM exports. Applies all filters (TA exclusions, _MA=manual, AC2658 bypass periods). Nearest-timestamp join (±15min). Writes quality report: missing data %, tag coverage, anomaly flags. Defines the PyTorch DataLoader. Output: clean data/ directory + quality_report.md. Blocks model build until quality gates pass.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-ml">Time series researcher</span><span class="card-title">Model architecture + training</span></div>
+      <div class="card-body">Your ML scientist. Selects model architecture (gradient boosting, LSTM, transformer — justified against data characteristics). Trains soft sensor against F5LB ground truth. Handles pre/post-TA regime segmentation. Runs overnight iteration loop against oracle. Logs every experiment to logs/experiments/ with full hyperparams. Heavy PyTorch user — uses your DataLoader patterns. Reports to lead after each iteration batch.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-ml">ML engineer</span><span class="card-title">Speed, infra, packaging</span></div>
+      <div class="card-body">Makes it run fast and reliably. GPU/multi-GPU optimisation, mixed precision, torch.compile where appropriate. Experiment tracking (wandb or mlflow). Writes the inference script. Packages the final model artefact. Handles the 6-hour recalibration loop logic. Peer-communicates with TS researcher on architecture decisions that affect training speed.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-domain">Domain evaluator</span><span class="card-title">Petrochemical process validity</span></div>
+      <div class="card-body">The most important agent nobody else builds. Validates that model outputs make physical sense. Does the predicted PO purity trend correctly when EPOX reactor temp increases? Are TBHP breakthrough predictions physically consistent with known epoxidation kinetics? Flags when a statistically good model produces process-nonsensical outputs. Reads the domain glossary and SoW. Peer-challenges the TS researcher's feature selection decisions.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-eval">Oracle / QA agent</span><span class="card-title">Tier testing + RMSE gating</span></div>
+      <div class="card-body">Runs the hard oracle automatically. Computes RMSE per output tag against held-out lab samples. Runs Tier 1/2/3 question sets from tier_questions.py. Reports structured pass/fail with per-question breakdown. Blocks proceed signal if below threshold. Peer-messages lead orchestrator with results. Also runs drift detection oracle — does the drift alerting logic trigger correctly on known drift events from the Nov 2025 TA period?</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="pill p-infra">Infra / integration engineer</span><span class="card-title">Environment + deployment</span></div>
+      <div class="card-body">Owns the runtime environment. Sets up the Python environment (uv, pyproject.toml). Manages the dashboard web server. Writes the logging infrastructure that feeds the comms wall. Handles data pipeline scheduling (6hr recalibration). For later: manages the Orbital integration layer. Peer-communicates with ML engineer on GPU environment setup.</div>
+    </div>
+  </div>
+</div>
+
+<div id="workflow" class="panel">
+  <div class="section">
+    <div class="sh">The ML workflow — what the ml-workflow SKILL.md encodes</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Phase 1: Data review + validation <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">— sequential, data engineer solo</span></div>
+        <div class="step-desc">Plot and understand: distribution of each output tag, time series plots for all 4.5yr history, identify regime changes visually. General stats: mean/std/skew per tag, missing data heatmap, correlation matrix vs outputs. Data hygiene report: duplicate timestamps, sensor saturation events, physically impossible values. <br><br>Subtasks (sequential within this phase):<br>1a. Raw data audit → quality_report.md<br>1b. Exclusion filter application (TA, _MA, AC2658)<br>1c. Nearest-timestamp join + alignment validation<br>1d. Define PyTorch DataLoader + dataset class<br>1e. Define train/val/test split function (time-aware — no leakage)</div>
+      </div>
+    </div>
+    <div class="gate"><div class="gate-icon">GATE</div><div>Lead orchestrator reviews quality_report.md. Human checkpoint: you + IVL engineer review feature list. Approve → Phase 2 spawns. Reject → data engineer iterates.</div></div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Phase 2: Feature selection <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">— sequential, TS researcher + domain evaluator pair</span></div>
+        <div class="step-desc">15,601 → 200-400 tags. Correlation filter vs each output tag. VIF/multicollinearity pruning. Control loop completeness (PV + SP + OP + _MA). Domain evaluator validates physical plausibility of selected features. Ranked output: feature list with correlation, VIF, physical justification per tag.</div>
+      </div>
+    </div>
+    <div class="gate"><div class="gate-icon">GATE</div><div>Human checkpoint — you review with IVL process engineer. This is the one mandatory human gate. Approve → Phase 3 spawns all parallel agents.</div></div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Phase 3: Model training + evaluation <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">— parallel spawn</span></div>
+        <div class="step-desc">This is where parallelism begins. Multiple model architectures explored simultaneously.</div>
+      </div>
+    </div>
+    <div class="parallel-block">
+      <div class="parallel-label">PARALLEL — spawned simultaneously</div>
+      <div class="parallel-agents">
+        <div class="agent-chip">TS researcher: gradient boosting baseline</div>
+        <div class="agent-chip">TS researcher: LSTM experiment</div>
+        <div class="agent-chip">ML engineer: GPU setup + experiment tracking</div>
+        <div class="agent-chip">Oracle agent: drift detection test suite</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Phase 4: Benchmarking + iteration loop <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">— overnight autonomous, autoresearch pattern</span></div>
+        <div class="step-desc">Oracle agent scores each iteration. RMSE per output tag. Tier 1/2 question pass rates. TS researcher iterates on best-performing architecture. Domain evaluator challenges each iteration for physical validity. Loop continues autonomously until oracle threshold met or iteration budget exhausted. You wake up to: iteration log, best model, scores, domain evaluator notes.</div>
+      </div>
+    </div>
+    <div class="gate"><div class="gate-icon">GATE</div><div>Oracle gate: Tier 1 ≥ 80%, RMSE within target. Automatic proceed if passed. Human review if failed — you decide: iterate more, change architecture, revisit feature selection.</div></div>
+    <div class="step-row">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">Phase 5: Model packaging + Tier 3 <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">— parallel spawn</span></div>
+        <div class="step-desc">Inference script. Recalibration loop (6hr cadence logic). Drift detection integration. Model card (performance by regime, by output tag, confidence intervals). QA agent runs full Tier 1/2/3 question set. Domain evaluator writes process validity sign-off. All feeds into validation_report.md.</div>
+      </div>
+    </div>
+    <div class="parallel-block">
+      <div class="parallel-label">PARALLEL — spawned simultaneously</div>
+      <div class="parallel-agents">
+        <div class="agent-chip">ML engineer: inference script + packaging</div>
+        <div class="agent-chip">Oracle/QA agent: full tier question run</div>
+        <div class="agent-chip">Domain evaluator: process validity report</div>
+        <div class="agent-chip">Infra engineer: Orbital integration prep</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="comms" class="panel">
+  <div class="section">
+    <div class="sh">The comms wall — what the dashboard sub-app shows</div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:12px;line-height:1.6">Every agent message is written to <code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">logs/comms/session-{date}.jsonl</code> in a structured format. The dashboard renders it as a social-media-style wall — threaded by topic, filterable by agent pair, timestamped. This is the peer message feed that no other tool surfaces.</div>
+    <div class="msg-row">
+      <div class="msg-avatar av-data">DE</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">Data engineer</span><span class="msg-to">→ Lead orchestrator</span><span class="msg-time">09:14</span></div>
+        <div class="msg-text ok">Quality report complete. 247 tags selected after filters. 3 issues flagged: AC2658 has 2,847 bypass-period rows excluded; F5LB640760 has 12 missing values imputed via forward-fill; post-TA period (Nov 15 – Dec 1) shows elevated variance — recommend treating as separate regime. DataLoader defined. Ready for feature selection gate.</div>
+      </div>
+    </div>
+    <div class="msg-row">
+      <div class="msg-avatar av-dom">DV</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">Domain evaluator</span><span class="msg-to">→ TS researcher</span><span class="msg-time">11:32</span></div>
+        <div class="msg-text warn">Challenging feature selection: EPOX inlet temperature tags (TIC-4012A/B/C) show correlation 0.71 with PO formaldehyde but are downstream of the primary control loop. Including all three risks multicollinearity masking the true causal path. Recommend: keep TIC-4012A (primary), exclude B/C unless VIF test passes. Also: oxygen feed flow (FIC-2001) should be included — strong physical prior for TBHP breakthrough even if correlation is moderate.</div>
+      </div>
+    </div>
+    <div class="msg-row">
+      <div class="msg-avatar av-ml">TSR</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">TS researcher</span><span class="msg-to">→ Domain evaluator</span><span class="msg-time">11:45</span></div>
+        <div class="msg-text">Agreed on TIC-4012A/B/C — VIF confirms multicollinearity (VIF=8.3 for B, 9.1 for C). Excluded. Added FIC-2001 per your prior. Running updated correlation pass now. Will share revised feature list in 20min.</div>
+      </div>
+    </div>
+    <div class="msg-row">
+      <div class="msg-avatar av-eval">QA</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">Oracle agent</span><span class="msg-to">→ Lead orchestrator</span><span class="msg-time">14:08</span></div>
+        <div class="msg-text warn">Iteration 7 results: RMSE avg 0.84 (down from 0.91). Tier 1: 78% — 2 questions failing (formaldehyde point query, MTBE methanol trend). Tier 2: 71% — passed threshold. Drift detection: 4/5 known drift events correctly flagged. Below Tier 1 threshold (80%). Recommend: TS researcher investigate formaldehyde prediction — likely regime boundary issue near TA transition.</div>
+      </div>
+    </div>
+    <div class="msg-row">
+      <div class="msg-avatar av-lead">LO</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">Lead orchestrator</span><span class="msg-to">→ All + Human checkpoint</span><span class="msg-time">14:10</span></div>
+        <div class="msg-text highlight">Iteration 7 summary: Tier 1 at 78% — 2pts below gate. Pausing autonomous loop. Human review requested. Decision needed: (A) continue iteration targeting formaldehyde fix, (B) revisit TA regime segmentation for Nov 15–Dec 1 period, (C) adjust Tier 1 threshold definition for formaldehyde query type. STATE.md updated. Awaiting your decision.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-title">JSONL log schema — what each message writes</span></div>
+    <div class="mono">{"ts":"2026-04-08T14:08:22","from":"oracle-agent","to":"lead-orchestrator",
+ "type":"oracle_result","phase":4,"iteration":7,
+ "content":"Tier 1: 78%...",
+ "metrics":{"rmse_avg":0.84,"tier1":0.78,"tier2":0.71},
+ "action_required":true,"checkpoint":false}</div>
+    <div class="card-body">Dashboard reads the JSONL live, groups by thread (from+to pair), renders newest first, filterable by agent, phase, and action_required flag. The "action_required" flag highlights messages in amber. "checkpoint" flag triggers a push notification to you. Future: add voting/approve buttons directly in the wall so you can respond from the dashboard without touching the terminal.</div>
+  </div>
+</div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

@@ -1,0 +1,347 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@600;700&family=Orbitron:wght@700;900&family=Exo+2:wght@300;700&family=Syncopate:wght@400;700&family=Teko:wght@600;700&family=Chakra+Petch:wght@400;600;700&family=Oxanium:wght@700;800&family=Aldrich&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .root {
+    background: #080808;
+    color: #F0C040;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 36px 24px 48px;
+  }
+
+  .header {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #1a1400;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .font-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2px;
+    background: #0d0d0d;
+    border: 1px solid #1a1400;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .font-row::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #F0C04025, transparent);
+  }
+
+  .font-meta {
+    width: 180px;
+    min-width: 180px;
+    padding: 24px 20px;
+    border-right: 1px solid #1a1400;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .font-num {
+    font-size: 9px;
+    color: #3a2e0c;
+    letter-spacing: 0.2em;
+  }
+
+  .font-name {
+    font-size: 11px;
+    color: #8a6a20;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .font-vibe {
+    font-size: 10px;
+    color: #3a2e0c;
+    letter-spacing: 0.08em;
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  .font-preview {
+    flex: 1;
+    padding: 28px 36px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .preview-icon {
+    flex-shrink: 0;
+  }
+
+  .preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .preview-main {
+    color: #F0C040;
+    line-height: 1;
+    letter-spacing: 0.1em;
+  }
+
+  .preview-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: #6a5020;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .current-tag {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: #F0C040;
+    border: 1px solid #F0C04055;
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: inline-block;
+    margin-top: 4px;
+    width: fit-content;
+  }
+
+  .divider-line {
+    width: 1px;
+    height: 36px;
+    background: #F0C04055;
+    margin: 0 18px;
+    flex-shrink: 0;
+  }
+
+</style>
+
+<div class="root">
+
+  <div class="header">
+    <span>Zero Operators — Typeface Explorations</span>
+    <span>8 options</span>
+  </div>
+
+  <!-- 01 Rajdhani (current) -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">01</div>
+      <div class="font-name">Rajdhani</div>
+      <div class="font-vibe">Military / aerospace. Sharp, compact, authoritative.</div>
+      <div class="current-tag">→ Current</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:28px;letter-spacing:0.14em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 Orbitron -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">02</div>
+      <div class="font-name">Orbitron</div>
+      <div class="font-vibe">Hard sci-fi. Geometric, heavy, futuristic.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Orbitron',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.08em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 Syncopate -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">03</div>
+      <div class="font-name">Syncopate</div>
+      <div class="font-vibe">Ultra-spaced, minimal. Cold, institutional, stark.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Syncopate',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 Chakra Petch -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">04</div>
+      <div class="font-name">Chakra Petch</div>
+      <div class="font-vibe">Angled, kinetic. Like circuit board traces in motion.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:24px;letter-spacing:0.12em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 Teko -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">05</div>
+      <div class="font-name">Teko</div>
+      <div class="font-vibe">Tall, condensed, bold. Urgent. Like a system alert.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Teko',sans-serif;font-weight:700;font-size:36px;letter-spacing:0.16em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 Exo 2 -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">06</div>
+      <div class="font-name">Exo 2</div>
+      <div class="font-vibe">Clean tech. Less aggressive, more product-ready.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Exo 2',sans-serif;font-weight:700;font-size:26px;letter-spacing:0.1em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 Oxanium -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">07</div>
+      <div class="font-name">Oxanium</div>
+      <div class="font-vibe">Rounded but technical. Softer entry point, still sharp.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Oxanium',sans-serif;font-weight:800;font-size:26px;letter-spacing:0.1em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 Aldrich -->
+  <div class="font-row">
+    <div class="font-meta">
+      <div class="font-num">08</div>
+      <div class="font-name">Aldrich</div>
+      <div class="font-vibe">Industrial mono-sans. Raw, utilitarian, no-nonsense.</div>
+    </div>
+    <div class="font-preview">
+      <svg class="preview-icon" width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="divider-line"></div>
+      <div class="preview-text">
+        <div class="preview-main" style="font-family:'Aldrich',sans-serif;font-size:24px;letter-spacing:0.12em;">Zero Operators</div>
+        <div class="preview-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+
+</div>

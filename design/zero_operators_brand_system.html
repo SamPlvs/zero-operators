@@ -1,0 +1,895 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --amber: #F0C040;
+    --amber-dim: #8a6020;
+    --amber-ghost: #F0C04015;
+    --amber-border: #F0C04030;
+    --void: #080808;
+    --surface: #0d0d0d;
+    --surface2: #111111;
+    --paper: #f5f0e8;
+    --ink: #1a1400;
+    --rule: #1e1800;
+  }
+
+  body, .root {
+    background: var(--void);
+    color: var(--amber);
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .root { padding: 0; }
+
+  /* ── NAV TABS ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    background: #050505;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    padding: 14px 20px 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--amber); }
+  .tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+  /* ── PANELS ── */
+  .panel { display: none; padding: 40px 24px 56px; }
+  .panel.active { display: block; }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .gap { margin-bottom: 40px; }
+
+  /* ── SLIDE FRAME ── */
+  .slide {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--void);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+
+  .slide-light {
+    background: var(--paper);
+  }
+
+  .slide-label {
+    font-size: 9px;
+    color: #3a2e0c;
+    letter-spacing: 0.15em;
+    text-align: right;
+    margin-bottom: 24px;
+  }
+
+  /* Scanlines */
+  .slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ── DOC TEMPLATES ── */
+  .doc-frame {
+    background: var(--paper);
+    border: 1px solid #d0c8b0;
+    border-radius: 4px;
+    padding: 48px 52px;
+    position: relative;
+    margin-bottom: 2px;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--ink);
+  }
+
+  .doc-frame::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--ink);
+  }
+
+  /* ── COMPONENT CARDS ── */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+
+  .comp-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .comp-title {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: var(--amber);
+    color: var(--void);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-block;
+  }
+
+  .btn-secondary {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--amber);
+    border: 1px solid var(--amber-border);
+    padding: 10px 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-block;
+  }
+
+  .btn-ghost {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--amber-dim);
+    border: none;
+    padding: 8px 0;
+    cursor: pointer;
+    display: inline-block;
+    border-bottom: 1px solid var(--amber-dim);
+  }
+
+  /* Badge / Tags */
+  .badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .badge-amber { background: var(--amber-ghost); color: var(--amber); border: 1px solid var(--amber-border); }
+  .badge-dim   { background: #111; color: #4a3a10; border: 1px solid var(--rule); }
+  .badge-live  { background: #0a1f0a; color: #4aaa4a; border: 1px solid #1a401a; }
+
+  /* Input */
+  .inp {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    background: #050505;
+    border: 1px solid var(--rule);
+    border-bottom-color: var(--amber-dim);
+    color: var(--amber);
+    padding: 10px 14px;
+    width: 100%;
+    outline: none;
+    border-radius: 2px;
+  }
+
+  .inp::placeholder { color: #3a2e0c; }
+
+  .inp-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* Data table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .data-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .data-table td {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #8a7a40;
+    padding: 10px 12px;
+    border-bottom: 1px solid #0f0f0f;
+  }
+
+  .data-table tr:hover td { background: #0f0e0a; color: var(--amber); }
+
+  /* Stat block */
+  .stat-block {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .stat-item {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 20px;
+    border-radius: 4px;
+  }
+
+  .stat-num {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--amber);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .stat-unit {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--amber-dim);
+    margin-left: 4px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: #3a2e0c;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* Alert */
+  .alert {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-ghost);
+    padding: 12px 16px;
+    border-radius: 0 3px 3px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .alert-icon { color: var(--amber); font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+
+  .alert-text {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--amber-dim);
+    line-height: 1.6;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .prog-row { display: flex; flex-direction: column; gap: 4px; }
+
+  .prog-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+  }
+
+  .prog-track {
+    height: 2px;
+    background: var(--rule);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .prog-fill {
+    height: 100%;
+    background: var(--amber);
+    border-radius: 1px;
+  }
+
+  /* ── COLOR SWATCH ── */
+  .swatch-row {
+    display: flex;
+    gap: 2px;
+  }
+
+  .swatch {
+    flex: 1;
+    height: 64px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 8px;
+  }
+
+  .swatch-hex {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+  }
+
+  .swatch-name {
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-top: 2px;
+  }
+
+  /* ── TYPE SCALE ── */
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .type-meta {
+    width: 100px;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: #3a2e0c;
+    flex-shrink: 0;
+  }
+
+</style>
+
+<div class="root">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('slides')">Deck Slides</div>
+    <div class="tab" onclick="switchTab('docs')">Documents</div>
+    <div class="tab" onclick="switchTab('components')">UI Components</div>
+    <div class="tab" onclick="switchTab('brand')">Brand Guide</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 1: DECK SLIDES
+  ══════════════════════════════════════════ -->
+  <div class="panel active" id="panel-slides">
+
+    <div class="section-label">Cover Slide</div>
+    <div class="slide" style="margin-bottom:2px;">
+      <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <!-- BG grid -->
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#F0C040" stroke-width="0.3" opacity="0.08"/>
+          </pattern>
+        </defs>
+        <rect width="800" height="450" fill="#080808"/>
+        <rect width="800" height="450" fill="url(#grid)"/>
+        <!-- Accent line left -->
+        <line x1="60" y1="0" x2="60" y2="450" stroke="#F0C040" stroke-width="0.5" opacity="0.2"/>
+        <!-- Top bar -->
+        <rect x="0" y="0" width="800" height="3" fill="#F0C040" opacity="0.6"/>
+        <!-- Logo mark -->
+        <g transform="translate(60, 160)">
+          <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2" fill="none"/>
+          <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/>
+          <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+          <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+          <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+          <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+          <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+        </g>
+        <!-- Main title -->
+        <text x="156" y="186" font-family="Rajdhani,sans-serif" font-weight="700" font-size="52" fill="#F0C040" letter-spacing="4">ZERO</text>
+        <text x="156" y="240" font-family="Rajdhani,sans-serif" font-weight="700" font-size="52" fill="#F0C040" letter-spacing="4">OPERATORS</text>
+        <!-- Tagline -->
+        <text x="157" y="270" font-family="'Share Tech Mono',monospace" font-size="11" fill="#8a6020" letter-spacing="4">AUTONOMOUS AI SYSTEMS</text>
+        <!-- Divider -->
+        <line x1="156" y1="288" x2="560" y2="288" stroke="#F0C040" stroke-width="0.5" opacity="0.3"/>
+        <!-- Subtitle -->
+        <text x="157" y="310" font-family="Rajdhani,sans-serif" font-weight="300" font-size="18" fill="#6a5020" letter-spacing="2">Series A — Investor Presentation — 2026</text>
+        <!-- Corner coords -->
+        <text x="740" y="440" font-family="'Share Tech Mono',monospace" font-size="9" fill="#2a2010" text-anchor="end">00.01 / COVER</text>
+        <text x="68" y="440" font-family="'Share Tech Mono',monospace" font-size="9" fill="#2a2010">ZO-DECK-2026</text>
+      </svg>
+    </div>
+    <div class="slide-label">01 — Cover / Title</div>
+
+    <div class="section-label">Content Slide — Text + Stat</div>
+    <div class="slide" style="margin-bottom:2px;">
+      <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <rect width="800" height="450" fill="#080808"/>
+        <!-- Left accent bar -->
+        <rect x="0" y="0" width="3" height="450" fill="#F0C040" opacity="0.5"/>
+        <!-- Header bar -->
+        <rect x="0" y="0" width="800" height="56" fill="#0d0d0d"/>
+        <line x1="0" y1="56" x2="800" y2="56" stroke="#1e1800" stroke-width="1"/>
+        <!-- Logo small -->
+        <g transform="translate(20, 14) scale(0.38)">
+          <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.5" fill="none"/>
+          <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="4" fill="#F0C040"/>
+        </g>
+        <text x="52" y="32" font-family="Rajdhani,sans-serif" font-weight="700" font-size="14" fill="#F0C040" letter-spacing="3">ZERO OPERATORS</text>
+        <text x="720" y="26" font-family="'Share Tech Mono',monospace" font-size="9" fill="#3a2e0c" text-anchor="end">THE PROBLEM</text>
+        <text x="720" y="42" font-family="'Share Tech Mono',monospace" font-size="9" fill="#2a2010" text-anchor="end">02 / 14</text>
+        <!-- Slide title -->
+        <text x="40" y="100" font-family="Rajdhani,sans-serif" font-weight="700" font-size="32" fill="#F0C040" letter-spacing="2">THE OPERATOR BOTTLENECK</text>
+        <line x1="40" y1="112" x2="480" y2="112" stroke="#F0C040" stroke-width="0.5" opacity="0.3"/>
+        <!-- Body copy -->
+        <text x="40" y="140" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#8a7030" letter-spacing="1">Human operators introduce latency, error, and cost</text>
+        <text x="40" y="160" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#8a7030" letter-spacing="1">at every decision point. Modern systems demand</text>
+        <text x="40" y="180" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#8a7030" letter-spacing="1">sub-second responses at scale.</text>
+        <!-- Bullet points -->
+        <rect x="40" y="208" width="2" height="14" fill="#F0C040" opacity="0.6"/>
+        <text x="52" y="220" font-family="Rajdhani,sans-serif" font-size="14" fill="#8a7030" letter-spacing="1">Average decision latency: 4.2 seconds per operator</text>
+        <rect x="40" y="232" width="2" height="14" fill="#F0C040" opacity="0.6"/>
+        <text x="52" y="244" font-family="Rajdhani,sans-serif" font-size="14" fill="#8a7030" letter-spacing="1">Error rate increases 340% under high-load conditions</text>
+        <rect x="40" y="256" width="2" height="14" fill="#F0C040" opacity="0.6"/>
+        <text x="52" y="268" font-family="Rajdhani,sans-serif" font-size="14" fill="#8a7030" letter-spacing="1">$2.4M average annual cost per human oversight team</text>
+        <!-- Stat panel right -->
+        <rect x="540" y="72" width="230" height="340" rx="4" fill="#0d0d0d" stroke="#1e1800" stroke-width="1"/>
+        <line x1="540" y1="72" x2="540" y2="412" stroke="#F0C040" stroke-width="0.5" opacity="0.15"/>
+        <text x="555" y="108" font-family="'Share Tech Mono',monospace" font-size="9" fill="#3a2e0c" letter-spacing="3">KEY METRIC</text>
+        <text x="555" y="180" font-family="Rajdhani,sans-serif" font-weight="700" font-size="72" fill="#F0C040">99</text>
+        <text x="627" y="180" font-family="Rajdhani,sans-serif" font-weight="700" font-size="36" fill="#F0C040">.7%</text>
+        <text x="555" y="204" font-family="'Share Tech Mono',monospace" font-size="9" fill="#6a5020" letter-spacing="2">Ops handled</text>
+        <text x="555" y="218" font-family="'Share Tech Mono',monospace" font-size="9" fill="#6a5020" letter-spacing="2">without human</text>
+        <text x="555" y="232" font-family="'Share Tech Mono',monospace" font-size="9" fill="#6a5020" letter-spacing="2">intervention</text>
+        <line x1="555" y1="260" x2="750" y2="260" stroke="#1e1800" stroke-width="1"/>
+        <text x="555" y="286" font-family="Rajdhani,sans-serif" font-weight="700" font-size="40" fill="#F0C040">0.3<tspan font-size="18">ms</tspan></text>
+        <text x="555" y="306" font-family="'Share Tech Mono',monospace" font-size="9" fill="#6a5020" letter-spacing="2">Median response</text>
+        <text x="555" y="320" font-family="'Share Tech Mono',monospace" font-size="9" fill="#6a5020" letter-spacing="2">time</text>
+        <!-- Footer -->
+        <rect x="0" y="430" width="800" height="20" fill="#050505"/>
+        <text x="40" y="443" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a2010">CONFIDENTIAL — ZERO OPERATORS © 2026</text>
+        <text x="760" y="443" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a2010" text-anchor="end">ZO-DECK-2026</text>
+      </svg>
+    </div>
+    <div class="slide-label">02 — Content / Stats</div>
+
+    <div class="section-label">Section Divider Slide</div>
+    <div class="slide" style="margin-bottom:2px;">
+      <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid2" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#F0C040" stroke-width="0.3" opacity="0.06"/>
+          </pattern>
+        </defs>
+        <rect width="800" height="450" fill="#080808"/>
+        <rect width="800" height="450" fill="url(#grid2)"/>
+        <!-- Large section number -->
+        <text x="400" y="280" font-family="Rajdhani,sans-serif" font-weight="700" font-size="260" fill="#F0C040" text-anchor="middle" opacity="0.04">02</text>
+        <!-- Section label -->
+        <text x="400" y="188" font-family="'Share Tech Mono',monospace" font-size="10" fill="#3a2e0c" text-anchor="middle" letter-spacing="5">SECTION</text>
+        <text x="400" y="222" font-family="Rajdhani,sans-serif" font-weight="700" font-size="44" fill="#F0C040" text-anchor="middle" letter-spacing="4">THE SOLUTION</text>
+        <line x1="280" y1="234" x2="520" y2="234" stroke="#F0C040" stroke-width="0.5" opacity="0.3"/>
+        <text x="400" y="256" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#6a5020" text-anchor="middle" letter-spacing="2">Autonomous agents that never sleep, never err</text>
+        <!-- Corner mark -->
+        <g transform="translate(372, 290)">
+          <circle cx="28" cy="28" r="24" stroke="#F0C040" stroke-width="0.8" fill="none" opacity="0.3"/>
+          <line x1="9" y1="47" x2="47" y2="9" stroke="#F0C040" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+          <circle cx="28" cy="28" r="2.5" fill="#F0C040" opacity="0.3"/>
+        </g>
+        <text x="40" y="440" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a2010">ZERO OPERATORS</text>
+        <text x="760" y="440" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a2010" text-anchor="end">02.00 / SECTION</text>
+      </svg>
+    </div>
+    <div class="slide-label" style="margin-bottom:40px;">03 — Section Divider</div>
+
+    <div class="section-label">Light / Closing Slide</div>
+    <div class="slide slide-light" style="margin-bottom:2px;">
+      <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <rect width="800" height="450" fill="#f5f0e8"/>
+        <!-- Ink grid -->
+        <defs>
+          <pattern id="grid3" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a1400" stroke-width="0.3" opacity="0.06"/>
+          </pattern>
+        </defs>
+        <rect width="800" height="450" fill="url(#grid3)"/>
+        <rect x="0" y="0" width="800" height="4" fill="#1a1400"/>
+        <!-- Logo mark dark -->
+        <g transform="translate(330, 80)">
+          <circle cx="70" cy="70" r="62" stroke="#1a1400" stroke-width="1.5" fill="none"/>
+          <circle cx="70" cy="70" r="46" stroke="#1a1400" stroke-width="0.7" stroke-dasharray="3 4" fill="none"/>
+          <line x1="22" y1="118" x2="118" y2="22" stroke="#1a1400" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="70" y1="8" x2="70" y2="18" stroke="#1a1400" stroke-width="1.2"/>
+          <line x1="70" y1="122" x2="70" y2="132" stroke="#1a1400" stroke-width="1.2"/>
+          <line x1="8" y1="70" x2="18" y2="70" stroke="#1a1400" stroke-width="1.2"/>
+          <line x1="122" y1="70" x2="132" y2="70" stroke="#1a1400" stroke-width="1.2"/>
+          <circle cx="70" cy="70" r="5" fill="#1a1400"/>
+        </g>
+        <text x="400" y="290" font-family="Rajdhani,sans-serif" font-weight="700" font-size="34" fill="#1a1400" text-anchor="middle" letter-spacing="4">ZERO OPERATORS</text>
+        <text x="400" y="314" font-family="'Share Tech Mono',monospace" font-size="10" fill="#6a5020" text-anchor="middle" letter-spacing="4">hello@zerooperators.ai</text>
+        <line x1="280" y1="330" x2="520" y2="330" stroke="#1a1400" stroke-width="0.5" opacity="0.2"/>
+        <text x="400" y="352" font-family="Rajdhani,sans-serif" font-weight="300" font-size="14" fill="#8a7040" text-anchor="middle" letter-spacing="2">Thank you. Let's build what comes next.</text>
+        <text x="40" y="440" font-family="'Share Tech Mono',monospace" font-size="8" fill="#b0a880">CONFIDENTIAL — 2026</text>
+        <text x="760" y="440" font-family="'Share Tech Mono',monospace" font-size="8" fill="#b0a880" text-anchor="end">ZO-DECK-2026</text>
+      </svg>
+    </div>
+    <div class="slide-label" style="margin-bottom:0">04 — Closing / Light Variant</div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 2: DOCUMENTS
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-docs">
+
+    <div class="section-label">Letterhead / Report Header</div>
+    <div class="doc-frame" style="margin-bottom:2px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid #c8c0a8;">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <svg width="40" height="40" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#1a1400" stroke-width="1.5"/>
+            <circle cx="36" cy="36" r="24" stroke="#1a1400" stroke-width="0.7" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#1a1400" stroke-width="2" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#1a1400" stroke-width="1.2"/>
+            <circle cx="36" cy="36" r="3.5" fill="#1a1400"/>
+          </svg>
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;letter-spacing:0.14em;color:#1a1400;">ZERO OPERATORS</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.22em;color:#8a7040;text-transform:uppercase;">Autonomous AI Systems</div>
+          </div>
+        </div>
+        <div style="text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#8a7040;line-height:1.8;">
+          <div>hello@zerooperators.ai</div>
+          <div>zerooperators.ai</div>
+          <div style="color:#b0a880;">London, UK — 2026</div>
+        </div>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.2em;color:#8a7040;text-transform:uppercase;margin-bottom:8px;">Technical Report — Ref: ZO-TR-0042</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:28px;color:#1a1400;letter-spacing:0.06em;margin-bottom:6px;">Agent Performance Under Load: Q1 2026</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-weight:300;font-size:15px;color:#6a5828;letter-spacing:0.04em;margin-bottom:24px;">An analysis of autonomous decision throughput across production environments</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#8a7040;line-height:1.9;">
+        This report presents findings from Q1 2026 production monitoring across 14 enterprise deployments.
+        All metrics reflect live agent performance without human intervention. Data collection period:
+        January 1 – March 31, 2026. Total decisions processed: 847,293,041.
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:36px;">Document / Report Header</div>
+
+    <div class="section-label">Business Card</div>
+    <div style="display:flex;gap:2px;margin-bottom:2px;">
+      <!-- Dark card -->
+      <div style="flex:1;background:#080808;border:1px solid #1e1800;border-radius:6px;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:180px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:#F0C040;opacity:0.5;"></div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <svg width="28" height="28" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.5"/>
+            <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.7" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="2" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1.2"/>
+            <circle cx="36" cy="36" r="3.5" fill="#F0C040"/>
+          </svg>
+          <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.14em;color:#F0C040;">ZERO OPERATORS</div>
+        </div>
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;color:#F0C040;letter-spacing:0.06em;margin-bottom:2px;">Sam Chen</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#8a6020;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:12px;">Founder & CEO</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a3a10;letter-spacing:0.1em;line-height:1.9;">
+            <div>sam@zerooperators.ai</div>
+            <div>zerooperators.ai</div>
+          </div>
+        </div>
+      </div>
+      <!-- Light card -->
+      <div style="flex:1;background:#f5f0e8;border:1px solid #d0c8b0;border-radius:6px;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:180px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#1a1400;"></div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <svg width="28" height="28" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#1a1400" stroke-width="1.5"/>
+            <circle cx="36" cy="36" r="24" stroke="#1a1400" stroke-width="0.7" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#1a1400" stroke-width="2" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#1a1400" stroke-width="1.2"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#1a1400" stroke-width="1.2"/>
+            <circle cx="36" cy="36" r="3.5" fill="#1a1400"/>
+          </svg>
+          <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.14em;color:#1a1400;">ZERO OPERATORS</div>
+        </div>
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;color:#1a1400;letter-spacing:0.06em;margin-bottom:2px;">Sam Chen</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#8a7040;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:12px;">Founder & CEO</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#9a8858;letter-spacing:0.1em;line-height:1.9;">
+            <div>sam@zerooperators.ai</div>
+            <div>zerooperators.ai</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-label">Business Card — Dark &amp; Light</div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 3: UI COMPONENTS
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-components">
+
+    <div class="section-label">Buttons</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">Button Variants</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div class="btn-primary">Deploy Agent</div>
+        <div class="btn-secondary">View Logs</div>
+        <div class="btn-ghost">Learn more →</div>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">Primary / Secondary / Ghost</div>
+
+    <div class="section-label">Badges &amp; Tags</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">Status Tags</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span class="badge badge-amber">Active</span>
+        <span class="badge badge-live">● Online</span>
+        <span class="badge badge-dim">Standby</span>
+        <span class="badge badge-amber">v2.4.1</span>
+        <span class="badge badge-dim">Agent-09</span>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">Status indicators</div>
+
+    <div class="section-label">Form Input</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">Text Input</div>
+      <div>
+        <label class="inp-label">Agent Name</label>
+        <input class="inp" type="text" placeholder="e.g. sentinel-alpha"/>
+      </div>
+      <div>
+        <label class="inp-label">Target Endpoint</label>
+        <input class="inp" type="text" placeholder="https://api.target.io/v1"/>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">Input fields</div>
+
+    <div class="section-label">Alert / Notification</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">System Alert</div>
+      <div class="alert">
+        <div class="alert-icon">⚑</div>
+        <div class="alert-text">Agent sentinel-alpha has exceeded threshold. Autonomous failover initiated. No human intervention required.</div>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">Alert component</div>
+
+    <div class="section-label">Stat Blocks</div>
+    <div class="stat-block" style="margin-bottom:2px;">
+      <div class="stat-item">
+        <div class="stat-num">847<span class="stat-unit">M</span></div>
+        <div class="stat-label">Decisions processed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">0.3<span class="stat-unit">ms</span></div>
+        <div class="stat-label">Median latency</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">99.7<span class="stat-unit">%</span></div>
+        <div class="stat-label">Zero-human ops rate</div>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">KPI stat blocks</div>
+
+    <div class="section-label">Data Table</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">Agent Status Table</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Agent ID</th>
+            <th>Status</th>
+            <th>Uptime</th>
+            <th>Ops / sec</th>
+            <th>Last sync</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>sentinel-alpha</td><td><span class="badge badge-live" style="font-size:8px;">● Online</span></td><td>99.98%</td><td>14,302</td><td>0.3s ago</td></tr>
+          <tr><td>sentinel-beta</td><td><span class="badge badge-live" style="font-size:8px;">● Online</span></td><td>99.95%</td><td>11,847</td><td>0.7s ago</td></tr>
+          <tr><td>arbiter-01</td><td><span class="badge badge-amber" style="font-size:8px;">Syncing</span></td><td>98.2%</td><td>8,204</td><td>4.1s ago</td></tr>
+          <tr><td>arbiter-02</td><td><span class="badge badge-dim" style="font-size:8px;">Standby</span></td><td>—</td><td>0</td><td>12m ago</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="slide-label" style="margin-bottom:24px;">Data table</div>
+
+    <div class="section-label">Progress / Capacity</div>
+    <div class="comp-card" style="margin-bottom:2px;">
+      <div class="comp-title">System Capacity</div>
+      <div class="progress-wrap">
+        <div class="prog-row">
+          <div class="prog-meta"><span>Compute</span><span>74%</span></div>
+          <div class="prog-track"><div class="prog-fill" style="width:74%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-meta"><span>Memory</span><span>51%</span></div>
+          <div class="prog-track"><div class="prog-fill" style="width:51%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-meta"><span>Agent Queue</span><span>23%</span></div>
+          <div class="prog-track"><div class="prog-fill" style="width:23%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-label">Progress bars</div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 4: BRAND GUIDE
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-brand">
+
+    <div class="section-label">Color Palette</div>
+    <div class="swatch-row" style="margin-bottom:2px;">
+      <div class="swatch" style="background:#F0C040;color:#1a1000;">
+        <div class="swatch-hex">#F0C040</div>
+        <div class="swatch-name">Phosphor</div>
+      </div>
+      <div class="swatch" style="background:#8a6020;color:#2a1800;">
+        <div class="swatch-hex">#8A6020</div>
+        <div class="swatch-name">Dim Amber</div>
+      </div>
+      <div class="swatch" style="background:#3a2e0c;color:#1a1000;">
+        <div class="swatch-hex">#3A2E0C</div>
+        <div class="swatch-name">Ghost Amber</div>
+      </div>
+      <div class="swatch" style="background:#080808;border:1px solid #1e1800;color:#3a2e0c;">
+        <div class="swatch-hex">#080808</div>
+        <div class="swatch-name">Void Black</div>
+      </div>
+      <div class="swatch" style="background:#0d0d0d;border:1px solid #1e1800;color:#3a2e0c;">
+        <div class="swatch-hex">#0D0D0D</div>
+        <div class="swatch-name">Surface</div>
+      </div>
+      <div class="swatch" style="background:#f5f0e8;color:#8a7040;">
+        <div class="swatch-hex">#F5F0E8</div>
+        <div class="swatch-name">Paper</div>
+      </div>
+      <div class="swatch" style="background:#1a1400;color:#6a5020;">
+        <div class="swatch-hex">#1A1400</div>
+        <div class="swatch-name">Ink</div>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:36px;">Core palette</div>
+
+    <div class="section-label">Type Scale</div>
+    <div style="background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:24px 28px;margin-bottom:2px;">
+      <div class="type-row">
+        <div class="type-meta">Display / 52px</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:48px;color:var(--amber);letter-spacing:0.06em;line-height:1;">Zero Operators</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">Heading / 32px</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:30px;color:var(--amber);letter-spacing:0.08em;">The Operator Bottleneck</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">Subheading / 20px</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:600;font-size:19px;color:var(--amber);letter-spacing:0.1em;">Autonomous Decision Engine</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">Body / 15px</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:300;font-size:15px;color:#8a7030;letter-spacing:0.04em;line-height:1.7;">Human operators introduce latency, error, and cost at every decision point. Modern systems demand sub-second responses at scale.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">Mono / 11px</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#6a5020;letter-spacing:0.15em;text-transform:uppercase;">System status — All agents nominal — ZO-2026</div>
+      </div>
+      <div class="type-row" style="border-bottom:none;">
+        <div class="type-meta">Label / 9px</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a2e0c;letter-spacing:0.25em;text-transform:uppercase;">Confidential — Zero Operators © 2026</div>
+      </div>
+    </div>
+    <div class="slide-label" style="margin-bottom:36px;">Rajdhani + Share Tech Mono</div>
+
+    <div class="section-label">Grid / Background Motif</div>
+    <div style="background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:0;overflow:hidden;margin-bottom:2px;">
+      <svg width="100%" viewBox="0 0 680 160" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="motif" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#F0C040" stroke-width="0.4" opacity="0.1"/>
+          </pattern>
+        </defs>
+        <rect width="680" height="160" fill="#0d0d0d"/>
+        <rect width="680" height="160" fill="url(#motif)"/>
+        <!-- Usage note -->
+        <text x="340" y="65" font-family="'Share Tech Mono',monospace" font-size="10" fill="#3a2e0c" text-anchor="middle" letter-spacing="3">STANDARD BACKGROUND MOTIF</text>
+        <text x="340" y="88" font-family="'Share Tech Mono',monospace" font-size="9" fill="#2a2010" text-anchor="middle" letter-spacing="2">40×40px grid / #F0C040 / 10% opacity / use on void black surfaces</text>
+        <line x1="100" y1="108" x2="580" y2="108" stroke="#1e1800" stroke-width="0.5"/>
+        <text x="340" y="128" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a2010" text-anchor="middle" letter-spacing="2">Never use on paper / light backgrounds</text>
+      </svg>
+    </div>
+    <div class="slide-label">Tactical grid — background texture</div>
+
+  </div>
+
+</div>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+</script>

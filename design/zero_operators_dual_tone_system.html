@@ -1,0 +1,313 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .root { background: #080808; font-family: 'Share Tech Mono', monospace; padding: 36px 24px 56px; }
+
+  .header { font-size: 10px; letter-spacing: 0.2em; color: #2e2e2e; text-transform: uppercase; margin-bottom: 40px; padding-bottom: 12px; border-bottom: 1px solid #161616; display: flex; justify-content: space-between; }
+
+  .section-label { font-size: 9px; letter-spacing: 0.25em; color: #2a2a2a; text-transform: uppercase; margin: 36px 0 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: #161616; }
+  .section-label.amber-accent { color: #8a6020; }
+  .section-label.amber-accent::after { background: #2a1e00; }
+  .section-label.bone-accent { color: #5a5850; }
+  .section-label.bone-accent::after { background: #1e1e1a; }
+
+  /* Split hero */
+  .split { display: flex; gap: 2px; margin-bottom: 2px; }
+  .half {
+    flex: 1; border-radius: 6px; padding: 36px 28px;
+    display: flex; flex-direction: column; gap: 20px;
+    position: relative; overflow: hidden;
+  }
+  .half-amber { background: #0d0d0d; border: 1px solid #2a1e00; }
+  .half-bone  { background: #0d0d0d; border: 1px solid #1e1e1a; }
+  .half::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .half-amber::before { background: #F0C040; opacity: 0.7; }
+  .half-bone::before  { background: #E8E4D8; opacity: 0.5; }
+
+  .tone-label { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; }
+  .tone-label.a { color: #8a6020; }
+  .tone-label.b { color: #5a5850; }
+
+  .tone-logotype { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.14em; line-height: 1; }
+  .tone-sub { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 0.24em; text-transform: uppercase; margin-top: 3px; }
+
+  .tone-use { font-size: 9px; letter-spacing: 0.1em; line-height: 1.8; border-top: 1px solid; padding-top: 14px; }
+  .tone-use.a { color: #6a5020; border-color: #2a1e00; }
+  .tone-use.b { color: #4a4840; border-color: #1e1e1a; }
+
+  .use-item { display: flex; gap: 8px; align-items: flex-start; }
+  .use-dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+
+  /* Usage matrix */
+  .matrix { background: #0a0a0a; border: 1px solid #161616; border-radius: 6px; overflow: hidden; margin-bottom: 2px; }
+  .matrix-row { display: flex; align-items: stretch; border-bottom: 1px solid #111; }
+  .matrix-row:last-child { border-bottom: none; }
+  .matrix-col { padding: 14px 18px; font-size: 10px; letter-spacing: 0.1em; }
+  .col-context { flex: 2; color: #3a3a3a; border-right: 1px solid #111; display: flex; align-items: center; }
+  .col-amber { flex: 1; border-right: 1px solid #111; display: flex; align-items: center; justify-content: center; }
+  .col-bone  { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .matrix-header .col-context { color: #2a2a2a; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .matrix-header .col-amber { color: #8a6020; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .matrix-header .col-bone  { color: #5a5850; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; }
+
+  .dot-amber { width: 8px; height: 8px; border-radius: 50%; background: #F0C040; }
+  .dot-bone  { width: 8px; height: 8px; border-radius: 50%; background: #E8E4D8; }
+  .dot-both  { display: flex; gap: 3px; }
+  .dot-none  { width: 8px; height: 8px; border-radius: 50%; background: #1e1e1e; }
+
+  /* Slide pair */
+  .slide-pair { display: flex; gap: 2px; margin-bottom: 2px; }
+  .slide-wrap { flex: 1; }
+  .slide { width: 100%; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; border: 1px solid #161616; }
+  .slide-cap { font-size: 8px; color: #2a2a2a; letter-spacing: 0.15em; text-align: right; padding: 6px 2px; }
+
+  /* Combined lockup */
+  .lockup-row { display: flex; gap: 2px; }
+  .lockup-card { flex: 1; border-radius: 6px; padding: 32px 28px; display: flex; align-items: center; gap: 18px; position: relative; overflow: hidden; }
+  .lc-amber { background: #0d0d0d; border: 1px solid #2a1e00; }
+  .lc-bone  { background: #0d0d0d; border: 1px solid #1e1e1a; }
+  .lc-amber::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:#F0C040; opacity:0.7; }
+  .lc-bone::before  { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:#E8E4D8; opacity:0.5; }
+  .lc-text { display: flex; flex-direction: column; gap: 4px; }
+  .lc-name { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.14em; }
+  .lc-tag  { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; }
+  .lc-div  { width: 1px; height: 32px; opacity: 0.3; flex-shrink: 0; }
+</style>
+
+<div class="root">
+  <div class="header">
+    <span>Zero Operators — Dual-Tone Brand System</span>
+    <span>Amber × Bone</span>
+  </div>
+
+  <!-- SPLIT HERO -->
+  <div class="section-label">Two tones, one mark</div>
+  <div class="split">
+
+    <div class="half half-amber">
+      <div class="tone-label a">Phosphor Amber — Product tone</div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg width="48" height="48" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2" fill="none"/>
+          <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/>
+          <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+          <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+          <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+          <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+          <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+        </svg>
+        <div>
+          <div class="tone-logotype" style="color:#F0C040;">Zero Operators</div>
+          <div class="tone-sub" style="color:#8a6020;">Autonomous AI Systems</div>
+        </div>
+      </div>
+      <div class="tone-use a">
+        <div class="use-item"><div class="use-dot" style="background:#F0C040;"></div><span>Product dashboard & UI</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#F0C040;"></div><span>Technical decks & demos</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#F0C040;"></div><span>Developer docs & CLI</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#F0C040;"></div><span>Marketing & social</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#F0C040;"></div><span>Conference / event assets</span></div>
+      </div>
+    </div>
+
+    <div class="half half-bone">
+      <div class="tone-label b">Bone White — Enterprise tone</div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <svg width="48" height="48" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="32" stroke="#E8E4D8" stroke-width="1.2" fill="none"/>
+          <circle cx="36" cy="36" r="24" stroke="#E8E4D8" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/>
+          <line x1="12" y1="60" x2="60" y2="12" stroke="#E8E4D8" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="36" y1="4" x2="36" y2="10" stroke="#E8E4D8" stroke-width="1"/>
+          <line x1="36" y1="62" x2="36" y2="68" stroke="#E8E4D8" stroke-width="1"/>
+          <line x1="4" y1="36" x2="10" y2="36" stroke="#E8E4D8" stroke-width="1"/>
+          <line x1="62" y1="36" x2="68" y2="36" stroke="#E8E4D8" stroke-width="1"/>
+          <circle cx="36" cy="36" r="3" fill="#E8E4D8"/>
+        </svg>
+        <div>
+          <div class="tone-logotype" style="color:#E8E4D8;">Zero Operators</div>
+          <div class="tone-sub" style="color:#5a5850;">Autonomous AI Systems</div>
+        </div>
+      </div>
+      <div class="tone-use b">
+        <div class="use-item"><div class="use-dot" style="background:#E8E4D8;"></div><span>Investor & Series A decks</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#E8E4D8;"></div><span>Enterprise sales materials</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#E8E4D8;"></div><span>Legal & compliance docs</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#E8E4D8;"></div><span>Board reporting</span></div>
+        <div class="use-item"><div class="use-dot" style="background:#E8E4D8;"></div><span>Executive briefings</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- USAGE MATRIX -->
+  <div class="section-label">When to use which</div>
+  <div class="matrix">
+    <div class="matrix-row matrix-header">
+      <div class="matrix-col col-context">Context</div>
+      <div class="matrix-col col-amber">Amber</div>
+      <div class="matrix-col col-bone">Bone</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Product dashboard / app UI</div>
+      <div class="matrix-col col-amber"><div class="dot-amber"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-none"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Investor / Series A pitch deck</div>
+      <div class="matrix-col col-amber"><div class="dot-none"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-bone"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Technical demo / product walkthrough</div>
+      <div class="matrix-col col-amber"><div class="dot-amber"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-none"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Enterprise sales deck</div>
+      <div class="matrix-col col-amber"><div class="dot-none"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-bone"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Website / marketing site</div>
+      <div class="matrix-col col-amber"><div class="dot-amber"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-none"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Business cards</div>
+      <div class="matrix-col col-amber"><div class="dot-both"><div class="dot-amber"></div><div class="dot-bone"></div></div></div>
+      <div class="matrix-col col-bone"><div class="dot-both"><div class="dot-amber"></div><div class="dot-bone"></div></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Board / executive reports</div>
+      <div class="matrix-col col-amber"><div class="dot-none"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-bone"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Conference / event assets</div>
+      <div class="matrix-col col-amber"><div class="dot-amber"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-none"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Legal / compliance documents</div>
+      <div class="matrix-col col-amber"><div class="dot-none"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-bone"></div></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-col col-context">Social media / community</div>
+      <div class="matrix-col col-amber"><div class="dot-amber"></div></div>
+      <div class="matrix-col col-bone"><div class="dot-none"></div></div>
+    </div>
+  </div>
+
+  <!-- SLIDE PAIR -->
+  <div class="section-label">Cover slides side by side</div>
+  <div class="slide-pair">
+    <div class="slide-wrap">
+      <div class="slide">
+        <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="ga" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="#F0C040" stroke-width="0.3" opacity="0.08"/></pattern></defs>
+          <rect width="800" height="450" fill="#080808"/><rect width="800" height="450" fill="url(#ga)"/>
+          <rect x="0" y="0" width="800" height="3" fill="#F0C040" opacity="0.6"/>
+          <line x1="60" y1="0" x2="60" y2="450" stroke="#F0C040" stroke-width="0.5" opacity="0.12"/>
+          <g transform="translate(80,162)"><circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2" fill="none"/><circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/><line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/><line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/><line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/><line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/><line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/><circle cx="36" cy="36" r="3" fill="#F0C040"/></g>
+          <text x="176" y="190" font-family="Rajdhani,sans-serif" font-weight="700" font-size="50" fill="#F0C040" letter-spacing="4">ZERO</text>
+          <text x="176" y="242" font-family="Rajdhani,sans-serif" font-weight="700" font-size="50" fill="#F0C040" letter-spacing="4">OPERATORS</text>
+          <text x="177" y="268" font-family="'Share Tech Mono',monospace" font-size="10" fill="#8a6020" letter-spacing="3">AUTONOMOUS AI SYSTEMS</text>
+          <line x1="176" y1="283" x2="520" y2="283" stroke="#F0C040" stroke-width="0.5" opacity="0.25"/>
+          <text x="177" y="304" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#4a3010" letter-spacing="2">Series A — Investor Presentation — 2026</text>
+          <rect x="0" y="430" width="800" height="20" fill="#050505"/>
+          <text x="740" y="442" font-family="'Share Tech Mono',monospace" font-size="8" fill="#2a1e00" text-anchor="end">PHOSPHOR AMBER</text>
+        </svg>
+      </div>
+      <div class="slide-cap">Phosphor Amber — Product / Tech</div>
+    </div>
+    <div class="slide-wrap">
+      <div class="slide">
+        <svg width="100%" height="100%" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="gb" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="#E8E4D8" stroke-width="0.3" opacity="0.09"/></pattern></defs>
+          <rect width="800" height="450" fill="#080808"/><rect width="800" height="450" fill="url(#gb)"/>
+          <rect x="0" y="0" width="800" height="3" fill="#E8E4D8" opacity="0.5"/>
+          <line x1="60" y1="0" x2="60" y2="450" stroke="#E8E4D8" stroke-width="0.5" opacity="0.1"/>
+          <g transform="translate(80,162)"><circle cx="36" cy="36" r="32" stroke="#E8E4D8" stroke-width="1.2" fill="none"/><circle cx="36" cy="36" r="24" stroke="#E8E4D8" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/><line x1="12" y1="60" x2="60" y2="12" stroke="#E8E4D8" stroke-width="1.8" stroke-linecap="round"/><line x1="36" y1="4" x2="36" y2="10" stroke="#E8E4D8" stroke-width="1"/><line x1="36" y1="62" x2="36" y2="68" stroke="#E8E4D8" stroke-width="1"/><line x1="4" y1="36" x2="10" y2="36" stroke="#E8E4D8" stroke-width="1"/><line x1="62" y1="36" x2="68" y2="36" stroke="#E8E4D8" stroke-width="1"/><circle cx="36" cy="36" r="3" fill="#E8E4D8"/></g>
+          <text x="176" y="190" font-family="Rajdhani,sans-serif" font-weight="700" font-size="50" fill="#E8E4D8" letter-spacing="4">ZERO</text>
+          <text x="176" y="242" font-family="Rajdhani,sans-serif" font-weight="700" font-size="50" fill="#E8E4D8" letter-spacing="4">OPERATORS</text>
+          <text x="177" y="268" font-family="'Share Tech Mono',monospace" font-size="10" fill="#5a5850" letter-spacing="3">AUTONOMOUS AI SYSTEMS</text>
+          <line x1="176" y1="283" x2="520" y2="283" stroke="#E8E4D8" stroke-width="0.5" opacity="0.2"/>
+          <text x="177" y="304" font-family="Rajdhani,sans-serif" font-weight="300" font-size="15" fill="#3a3830" letter-spacing="2">Series A — Investor Presentation — 2026</text>
+          <rect x="0" y="430" width="800" height="20" fill="#050505"/>
+          <text x="740" y="442" font-family="'Share Tech Mono',monospace" font-size="8" fill="#1e1e1a" text-anchor="end">BONE WHITE</text>
+        </svg>
+      </div>
+      <div class="slide-cap">Bone White — Investor / Enterprise</div>
+    </div>
+  </div>
+
+  <!-- LOCKUP PAIR -->
+  <div class="section-label">Lockups — both tones</div>
+  <div class="lockup-row">
+    <div class="lockup-card lc-amber">
+      <svg width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2" fill="none"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="lc-div" style="background:#F0C040;"></div>
+      <div class="lc-text">
+        <div class="lc-name" style="color:#F0C040;">Zero Operators</div>
+        <div class="lc-tag" style="color:#8a6020;">Autonomous · Precise · Relentless</div>
+      </div>
+    </div>
+    <div class="lockup-card lc-bone">
+      <svg width="44" height="44" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#E8E4D8" stroke-width="1.2" fill="none"/>
+        <circle cx="36" cy="36" r="24" stroke="#E8E4D8" stroke-width="0.6" stroke-dasharray="3 4" fill="none"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#E8E4D8" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#E8E4D8" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#E8E4D8" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#E8E4D8" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#E8E4D8" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#E8E4D8"/>
+      </svg>
+      <div class="lc-div" style="background:#E8E4D8;"></div>
+      <div class="lc-text">
+        <div class="lc-name" style="color:#E8E4D8;">Zero Operators</div>
+        <div class="lc-tag" style="color:#5a5850;">Autonomous · Precise · Relentless</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOUR TOKENS -->
+  <div class="section-label">Colour tokens — dual system</div>
+  <div style="display:flex;gap:2px;">
+    <!-- Amber tokens -->
+    <div style="flex:1;background:#0d0d0d;border:1px solid #2a1e00;border-radius:6px;padding:24px 20px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:8px;letter-spacing:0.25em;color:#8a6020;text-transform:uppercase;margin-bottom:4px;">Amber Tokens</div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#F0C040;"></div><div><div style="font-size:10px;color:#F0C040;letter-spacing:0.1em;">#F0C040</div><div style="font-size:8px;color:#4a3a10;letter-spacing:0.15em;margin-top:2px;">Primary</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#8a6020;"></div><div><div style="font-size:10px;color:#8a6020;letter-spacing:0.1em;">#8A6020</div><div style="font-size:8px;color:#4a3a10;letter-spacing:0.15em;margin-top:2px;">Secondary</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#3a2e0c;"></div><div><div style="font-size:10px;color:#3a2e0c;letter-spacing:0.1em;">#3A2E0C</div><div style="font-size:8px;color:#2a1e00;letter-spacing:0.15em;margin-top:2px;">Ghost</div></div></div>
+    </div>
+    <!-- Shared -->
+    <div style="flex:1;background:#0d0d0d;border:1px solid #161616;border-radius:6px;padding:24px 20px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:8px;letter-spacing:0.25em;color:#3a3a3a;text-transform:uppercase;margin-bottom:4px;">Shared Tokens</div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#080808;border:1px solid #1e1e1e;"></div><div><div style="font-size:10px;color:#3a3a3a;letter-spacing:0.1em;">#080808</div><div style="font-size:8px;color:#2a2a2a;letter-spacing:0.15em;margin-top:2px;">Void</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#0d0d0d;border:1px solid #1e1e1e;"></div><div><div style="font-size:10px;color:#3a3a3a;letter-spacing:0.1em;">#0D0D0D</div><div style="font-size:8px;color:#2a2a2a;letter-spacing:0.15em;margin-top:2px;">Surface</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#f5f0e8;"></div><div><div style="font-size:10px;color:#8a8878;letter-spacing:0.1em;">#F5F0E8</div><div style="font-size:8px;color:#3a3a3a;letter-spacing:0.15em;margin-top:2px;">Paper (light)</div></div></div>
+    </div>
+    <!-- Bone tokens -->
+    <div style="flex:1;background:#0d0d0d;border:1px solid #1e1e1a;border-radius:6px;padding:24px 20px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:8px;letter-spacing:0.25em;color:#5a5850;text-transform:uppercase;margin-bottom:4px;">Bone Tokens</div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#E8E4D8;"></div><div><div style="font-size:10px;color:#E8E4D8;letter-spacing:0.1em;">#E8E4D8</div><div style="font-size:8px;color:#3a3a3a;letter-spacing:0.15em;margin-top:2px;">Primary</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#9a9888;"></div><div><div style="font-size:10px;color:#9a9888;letter-spacing:0.1em;">#9A9888</div><div style="font-size:8px;color:#3a3a3a;letter-spacing:0.15em;margin-top:2px;">Secondary</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div style="width:28px;height:28px;border-radius:3px;background:#3a3a34;"></div><div><div style="font-size:10px;color:#3a3a34;letter-spacing:0.1em;">#3A3A34</div><div style="font-size:8px;color:#2a2a2a;letter-spacing:0.15em;margin-top:2px;">Ghost</div></div></div>
+    </div>
+  </div>
+
+</div>
