@@ -1,0 +1,442 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body, .root {
+    background: #080808;
+    color: #F0C040;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .root {
+    padding: 40px 24px 48px;
+    min-height: 100vh;
+  }
+
+  .header {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: #5a4a1a;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    border-bottom: 1px solid #1e1800;
+    padding-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: #4a3a10;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .logo-card {
+    background: #0d0d0d;
+    border: 1px solid #1e1800;
+    border-radius: 6px;
+    padding: 48px 40px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+  }
+
+  .logo-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #F0C04040, transparent);
+  }
+
+  .logo-card.dark-bg {
+    background: #000;
+  }
+
+  .logo-card.light-bg {
+    background: #f5f0e8;
+  }
+
+  /* Scanline overlay */
+  .logo-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+    pointer-events: none;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  .variant-label {
+    font-size: 10px;
+    color: #3a2e0c;
+    letter-spacing: 0.15em;
+    padding: 8px 12px;
+    text-align: right;
+    text-transform: uppercase;
+  }
+
+  /* ───── LOGO 1: Wordmark ───── */
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .wm-zero {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 58px;
+    color: #F0C040;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    position: relative;
+  }
+
+  .wm-zero::before {
+    content: '⊘';
+    position: absolute;
+    font-size: 62px;
+    color: transparent;
+    -webkit-text-stroke: 1.5px #F0C040;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .wm-divider {
+    width: 1px;
+    height: 42px;
+    background: #F0C04066;
+    margin: 0 20px;
+  }
+
+  .wm-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .wm-main {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    color: #F0C040;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .wm-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: #8a7030;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  /* ───── LOGO 2: Icon Mark ───── */
+  .icon-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .icon-svg-wrap {
+    position: relative;
+    width: 96px;
+    height: 96px;
+  }
+
+  .icon-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: #8a7030;
+    text-transform: uppercase;
+  }
+
+  /* ───── LOGO 3: Horizontal lockup ───── */
+  .lockup-h {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .lockup-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .lockup-main {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #F0C040;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .lockup-tagline {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9.5px;
+    color: #7a6025;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  /* Light variants */
+  .light-bg .wm-zero { color: #1a1400; -webkit-text-stroke: 0; }
+  .light-bg .wm-zero::before { color: transparent; -webkit-text-stroke: 1.5px #1a1400; }
+  .light-bg .wm-divider { background: #1a140066; }
+  .light-bg .wm-main { color: #1a1400; }
+  .light-bg .wm-sub { color: #6a5820; }
+  .light-bg .lockup-main { color: #1a1400; }
+  .light-bg .lockup-tagline { color: #6a5820; }
+  .light-bg .icon-name { color: #6a5820; }
+
+  /* Small badge */
+  .badge-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge-small .icon-svg-wrap { width: 40px; height: 40px; }
+  .badge-small .icon-name { font-size: 9px; letter-spacing: 0.22em; }
+
+  .badge-medium .icon-svg-wrap { width: 64px; height: 64px; }
+  .badge-medium .icon-name { font-size: 10px; }
+
+  .badge-large .icon-svg-wrap { width: 96px; height: 96px; }
+  .badge-large .icon-name { font-size: 11px; }
+
+</style>
+
+<div class="root">
+
+  <div class="header">
+    <span>Zero Operators — Brand Identity System</span>
+    <span>v1.0 / 2026</span>
+  </div>
+
+  <!-- WORDMARK -->
+  <div class="section-label">01 — Primary Wordmark</div>
+  <div class="logo-card dark-bg" style="margin-bottom:2px">
+    <div class="wordmark">
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer ring -->
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <!-- Second ring (inner) -->
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <!-- Diagonal slash (the zero mark) -->
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <!-- Corner tick marks -->
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
+        <!-- Center node -->
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="wm-divider"></div>
+      <div class="wm-text">
+        <div class="wm-main">Zero Operators</div>
+        <div class="wm-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+  <div class="variant-label">Dark / Primary</div>
+
+  <div class="logo-card light-bg" style="margin-bottom:2px">
+    <div class="wordmark">
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="36" cy="36" r="32" stroke="#1a1400" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#1a1400" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#1a1400" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#1a1400" stroke-width="1" stroke-linecap="round"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#1a1400" stroke-width="1" stroke-linecap="round"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#1a1400" stroke-width="1" stroke-linecap="round"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#1a1400" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="36" cy="36" r="3" fill="#1a1400"/>
+      </svg>
+      <div class="wm-divider"></div>
+      <div class="wm-text">
+        <div class="wm-main">Zero Operators</div>
+        <div class="wm-sub">Autonomous AI Systems</div>
+      </div>
+    </div>
+  </div>
+  <div class="variant-label" style="margin-bottom:36px">Light / Reversed</div>
+
+  <!-- ICON MARK -->
+  <div class="section-label">02 — Icon Mark &amp; Scale Variants</div>
+  <div class="logo-card dark-bg" style="margin-bottom:2px; min-height: 180px;">
+    <div class="badge-wrap">
+
+      <div class="badge badge-small">
+        <div class="icon-svg-wrap">
+          <svg width="40" height="40" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="2"/>
+            <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="1" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1.5"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1.5"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1.5"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1.5"/>
+            <circle cx="36" cy="36" r="4" fill="#F0C040"/>
+          </svg>
+        </div>
+        <div class="icon-name">16px</div>
+      </div>
+
+      <div class="badge badge-medium">
+        <div class="icon-svg-wrap">
+          <svg width="64" height="64" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.5"/>
+            <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.8" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="2.2" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1.2"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1.2"/>
+            <circle cx="36" cy="36" r="3.5" fill="#F0C040"/>
+          </svg>
+        </div>
+        <div class="icon-name">32px</div>
+      </div>
+
+      <div class="badge badge-large">
+        <div class="icon-svg-wrap">
+          <svg width="96" height="96" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+            <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+            <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+            <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+            <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+            <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+            <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+          </svg>
+        </div>
+        <div class="icon-name">64px</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="variant-label" style="margin-bottom:36px">Scale test — dark ground</div>
+
+  <!-- HORIZONTAL LOCKUP -->
+  <div class="section-label">03 — Compact Horizontal Lockup</div>
+  <div class="logo-card dark-bg" style="min-height:140px; margin-bottom:2px">
+    <div class="lockup-h">
+      <svg width="52" height="52" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+      </svg>
+      <div class="lockup-text">
+        <div class="lockup-main">Zero Operators</div>
+        <div class="lockup-tagline">Autonomous · Precise · Relentless</div>
+      </div>
+    </div>
+  </div>
+  <div class="variant-label" style="margin-bottom:2px">Dark / App bar / Nav use</div>
+
+  <div class="logo-card light-bg" style="min-height:140px; margin-bottom:2px">
+    <div class="lockup-h">
+      <svg width="52" height="52" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="32" stroke="#1a1400" stroke-width="1.2"/>
+        <circle cx="36" cy="36" r="24" stroke="#1a1400" stroke-width="0.6" stroke-dasharray="3 4"/>
+        <line x1="12" y1="60" x2="60" y2="12" stroke="#1a1400" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="36" y1="4" x2="36" y2="10" stroke="#1a1400" stroke-width="1"/>
+        <line x1="36" y1="62" x2="36" y2="68" stroke="#1a1400" stroke-width="1"/>
+        <line x1="4" y1="36" x2="10" y2="36" stroke="#1a1400" stroke-width="1"/>
+        <line x1="62" y1="36" x2="68" y2="36" stroke="#1a1400" stroke-width="1"/>
+        <circle cx="36" cy="36" r="3" fill="#1a1400"/>
+      </svg>
+      <div class="lockup-text">
+        <div class="lockup-main">Zero Operators</div>
+        <div class="lockup-tagline">Autonomous · Precise · Relentless</div>
+      </div>
+    </div>
+  </div>
+  <div class="variant-label" style="margin-bottom:36px">Light / Reversed</div>
+
+  <!-- COLOR SYSTEM -->
+  <div class="section-label">04 — Color System</div>
+  <div class="logo-card dark-bg" style="min-height:auto; padding: 32px 40px; margin-bottom:2px;">
+    <div style="display:flex; gap:32px; align-items:center; width:100%;">
+
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+        <div style="width:64px;height:64px;background:#F0C040;border-radius:6px;"></div>
+        <div style="font-size:9px;letter-spacing:0.2em;color:#4a3a10">#F0C040</div>
+        <div style="font-size:9px;letter-spacing:0.15em;color:#4a3a10">Phosphor</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+        <div style="width:64px;height:64px;background:#8a6020;border-radius:6px;"></div>
+        <div style="font-size:9px;letter-spacing:0.2em;color:#4a3a10">#8A6020</div>
+        <div style="font-size:9px;letter-spacing:0.15em;color:#4a3a10">Dim Amber</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+        <div style="width:64px;height:64px;background:#080808;border:1px solid #1e1800;border-radius:6px;"></div>
+        <div style="font-size:9px;letter-spacing:0.2em;color:#4a3a10">#080808</div>
+        <div style="font-size:9px;letter-spacing:0.15em;color:#4a3a10">Void Black</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+        <div style="width:64px;height:64px;background:#0d0d0d;border:1px solid #1e1800;border-radius:6px;"></div>
+        <div style="font-size:9px;letter-spacing:0.2em;color:#4a3a10">#0D0D0D</div>
+        <div style="font-size:9px;letter-spacing:0.15em;color:#4a3a10">Surface</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+        <div style="width:64px;height:64px;background:#f5f0e8;border-radius:6px;"></div>
+        <div style="font-size:9px;letter-spacing:0.2em;color:#4a3a10">#F5F0E8</div>
+        <div style="font-size:9px;letter-spacing:0.15em;color:#4a3a10">Paper</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="variant-label">Core palette</div>
+
+</div>
