@@ -14,7 +14,7 @@
 
 <br/>
 
-[![Status](https://img.shields.io/badge/phase-0_complete-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Status](https://img.shields.io/badge/phase-2_complete-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-16_written-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![Specs](https://img.shields.io/badge/specs-8_documents-F0C040?style=flat-square&labelColor=080808)](#repository-structure)
 [![Build Plan](https://img.shields.io/badge/build_plan-v2.0-F0C040?style=flat-square&labelColor=080808)](#status)
@@ -139,19 +139,16 @@ All ZO outputs follow the brand system in [`design/`](design/).
 
 ## Status
 
-**Phase 0 complete. Phase 1 ready to begin.**
-
-All 8 specification documents written and QA'd. Build plan v2.0 finalized with 10 modules, 6 gates, 18 oracle verification checks, and all design decisions resolved. All 16 agent definition files written to `.claude/agents/`. Project-level settings configured.
+**Phase 2 complete. 151 tests, 96% coverage.**
 
 | Milestone | Status |
 |-----------|--------|
 | Specifications (8 docs) | Done |
 | Build plan v2.0 | Done |
 | Agent definitions (16 files) | Done |
-| Claude Code setup | Done |
-| Phase 1: Plan parser, target parser, comms logger, setup | Next |
-| Phase 2: Memory layer, semantic index | Pending |
-| Phase 3: Orchestration engine (hybrid) | Pending |
+| Phase 1: Plan parser, target parser, comms logger, setup | Done (76 tests) |
+| Phase 2: Memory layer, semantic index | Done (151 tests, 96% cov) |
+| Phase 3: Orchestration engine (hybrid) | Next |
 | Phase 4: Evolution engine, CLI, integration tests | Pending |
 | Phase 5: End-to-end validation | Pending |
 
@@ -192,7 +189,7 @@ zo draft sources/               # generate plan.md from docs
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v0.2` · `phase 0 complete`
+`ZERO OPERATORS` · `v0.2` · `phase 2 complete — 151 tests`
 
 <br/>
 </div>

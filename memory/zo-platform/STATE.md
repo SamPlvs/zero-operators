@@ -2,42 +2,52 @@
 
 project: zero-operators-build
 mode: build
-phase: phase_1_complete
+phase: phase_2_complete
 iteration: 1
 status: active
 
 ## Current Position
 
-Phase 1 (Scaffolding) is **complete**. Gate 1 passed — all modules have unit tests, 97% coverage, ruff clean. Phase 2 (Core Infrastructure) is ready to begin.
+Phase 2 (Core Infrastructure) is **complete**. Gate 2 ready for human review. Phase 3 (Orchestration Engine) is next.
 
 ## Agent Statuses
 
 | Agent | Status | Last Action |
 |-------|--------|-------------|
 | software-architect | idle | Module decomposition complete |
-| backend-engineer | idle | Phase 1 modules delivered |
-| platform-test-engineer | idle | 76 tests passing |
-| platform-code-reviewer | idle | ruff clean, 97% coverage |
-| documentation-agent | idle | README.md updated |
+| backend-engineer | idle | Phase 2 modules delivered (memory + semantic) |
+| platform-test-engineer | idle | 151 tests passing, 96% coverage |
+| platform-code-reviewer | idle | ruff clean |
+| documentation-agent | idle | README.md + STATE.md updated |
 
 ## Completed
 
 - [x] Phase 0: Agent definitions (16 files), settings.json, build plan v2.0
-- [x] Phase 1: Scaffolding
-  - [x] pyproject.toml + src/zo/__init__.py
-  - [x] Module 1: Plan Parser (src/zo/plan.py) — 540 lines, 39 tests
-  - [x] Module 2: Target Parser (src/zo/target.py) — 87 stmts, 21 tests
-  - [x] Module 5: Comms Logger (src/zo/comms.py) — 165 stmts, 16 tests
-  - [x] Module 8: setup.sh — 11 checks passing
-  - [x] Gate 1: 76 tests passing, 97% coverage, ruff clean
+- [x] Phase 1: Plan Parser, Target Parser, Comms Logger, setup.sh (76 tests, 97% coverage)
+- [x] Phase 2: Core Infrastructure
+  - [x] Module 3: Memory Layer (src/zo/memory.py + _memory_models.py + _memory_formats.py)
+    - SessionState read/write with atomic ops
+    - DECISION_LOG append-only with markdown parsing
+    - PRIORS.md manager with seed/append/supersede
+    - Session summaries write/read
+    - Session recovery (valid/missing/corrupt/git mismatch)
+    - 32 unit tests
+  - [x] Module 4: Semantic Index (src/zo/semantic.py)
+    - fastembed + SQLite with summary-prefix embedding
+    - Graceful fallback when fastembed not installed (word-overlap scoring)
+    - Full decision entries returned on retrieval
+    - 32 unit tests (25 always-run + 7 fastembed-gated)
+  - [x] Integration tests (11 tests: plan+target+comms end-to-end)
+  - [x] Test fixtures (test-project plan.md, target.md, conftest.py)
+  - [x] Gate 2 ready: 151 tests, 96% coverage, ruff clean
 
 ## Next Steps
 
-1. **Phase 2 — Core Infrastructure (parallel):**
-   - Module 3: Memory Layer (`src/zo/memory.py`) — STATE.md read/write, DECISION_LOG append, PRIORS manager, session recovery
-   - Module 4: Semantic Index (`src/zo/semantic.py`) — fastembed + SQLite, summary-prefix embedding
-
-2. **Gate 2:** Human reviews integration plan
+1. **Gate 2:** Human reviews integration plan
+2. **Phase 3 — Integration:**
+   - Module 6: Orchestration Engine (src/zo/orchestrator.py + src/zo/wrapper.py)
+   - The core: reads plan, selects workflow, decomposes phases, manages gates
+   - Python lifecycle wrapper invokes claude CLI, captures events
 
 ## Blockers
 
@@ -45,6 +55,6 @@ None.
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-09T18:00:00Z
-last_session: session-001
+last_checkpoint: 2026-04-09T19:00:00Z
+last_session: session-002
 branch: claude/strange-swartz
