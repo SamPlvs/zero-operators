@@ -12,6 +12,19 @@ from pydantic import BaseModel, Field
 from zo.plan import WorkflowMode  # noqa: TC001
 
 
+class GateMode(StrEnum):
+    """Controls how phase gates are evaluated.
+
+    SUPERVISED: every phase transition requires human approval.
+    AUTO: only gates marked BLOCKING in the plan require human approval.
+    FULL_AUTO: no human gates — ZO runs to completion autonomously.
+    """
+
+    SUPERVISED = "supervised"
+    AUTO = "auto"
+    FULL_AUTO = "full_auto"
+
+
 class PhaseStatus(StrEnum):
     """Lifecycle status of a workflow phase."""
 

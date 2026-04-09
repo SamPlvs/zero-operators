@@ -13,6 +13,7 @@ import pytest
 from zo._orchestrator_models import (
     AgentContract,
     GateDecision,
+    GateMode,
     GateType,
     PhaseDefinition,
     PhaseStatus,
@@ -331,6 +332,65 @@ class TestAdvancePhase:
         assert result.decision == GateDecision.HOLD
         assert result.requires_human is True
         assert phase_2.status == PhaseStatus.GATED
+
+    def test_supervised_mode_all_gates_block(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """In supervised mode, even automated gates require human approval."""
+        orchestrator.gate_mode = GateMode.SUPERVISED
+        decomp = orchestrator.decompose_plan()
+        phase = decomp.phases[0]  # phase_1 is normally automated
+        for subtask in phase.subtasks:
+            orchestrator.mark_subtask_complete(phase.phase_id, subtask)
+
+        result = orchestrator.advance_phase(phase.phase_id)
+        assert result.decision == GateDecision.HOLD
+        assert result.requires_human is True
+
+    def test_full_auto_mode_no_gates_block(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """In full_auto mode, even blocking gates proceed automatically."""
+        orchestrator.gate_mode = GateMode.FULL_AUTO
+        decomp = orchestrator.decompose_plan()
+        phase_2 = decomp.phases[1]  # phase_2 is normally blocking
+        for subtask in phase_2.subtasks:
+            orchestrator.mark_subtask_complete(phase_2.phase_id, subtask)
+
+        result = orchestrator.advance_phase(phase_2.phase_id)
+        assert result.decision == GateDecision.PROCEED
+        assert result.requires_human is False
+        assert phase_2.status == PhaseStatus.COMPLETED
+
+    def test_auto_mode_respects_plan_gates(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """Auto mode (default) uses the gate type defined in the plan."""
+        assert orchestrator.gate_mode == GateMode.AUTO
+        decomp = orchestrator.decompose_plan()
+        # phase_1 automated -> PROCEED
+        phase_1 = decomp.phases[0]
+        for subtask in phase_1.subtasks:
+            orchestrator.mark_subtask_complete(phase_1.phase_id, subtask)
+        r1 = orchestrator.advance_phase(phase_1.phase_id)
+        assert r1.decision == GateDecision.PROCEED
+
+        # phase_2 blocking -> HOLD
+        phase_2 = decomp.phases[1]
+        for subtask in phase_2.subtasks:
+            orchestrator.mark_subtask_complete(phase_2.phase_id, subtask)
+        r2 = orchestrator.advance_phase(phase_2.phase_id)
+        assert r2.decision == GateDecision.HOLD
+
+    def test_gate_mode_changeable_at_runtime(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """Gate mode can be changed between phases."""
+        assert orchestrator.gate_mode == GateMode.AUTO
+        orchestrator.gate_mode = GateMode.SUPERVISED
+        assert orchestrator.gate_mode == GateMode.SUPERVISED
+        orchestrator.gate_mode = GateMode.FULL_AUTO
+        assert orchestrator.gate_mode == GateMode.FULL_AUTO
 
 
 # ---------------------------------------------------------------------------
