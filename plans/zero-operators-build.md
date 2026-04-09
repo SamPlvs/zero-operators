@@ -198,12 +198,16 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 **File:** `src/zo/comms.py`
 **Priority:** P0
 
-### Module 6: Orchestration Engine (Hybrid)
+### Module 6: Orchestration Engine (Hybrid) ✅
 **Spec source:** specs/workflow.md, specs/agents.md, specs/oracle.md
-**Responsibility:** Core engine. Reads parsed plan, selects workflow mode, decomposes into phases, manages gating. Python wrapper invokes `claude` CLI to launch agent teams, captures lifecycle events, pipes to comms logger. Agents communicate natively.
-**Outputs:** Orchestrator class + LifecycleWrapper class.
-**Files:** `src/zo/orchestrator.py`, `src/zo/wrapper.py`
-**Priority:** P0 (depends on Modules 1-5)
+**Responsibility:** Three-layer architecture:
+1. `orchestrator.py` — Parses plan, decomposes phases (classical_ml/deep_learning/research), generates agent contracts, builds lead prompt with full context (plan + phases + agent roster + memory + coordination instructions), manages gates, detects plan edits
+2. `wrapper.py` — Launches ONE Claude Code session as Lead Orchestrator (`claude --teammate-mode tmux`), monitors team via `~/.claude/tasks/` and session logs, captures tmux pane output, handles rate limits, pipes events to CommsLogger
+3. Lead Orchestrator agent (inside Claude Code) uses `TeamCreate` + `Agent(team_name=...)` for native peer-to-peer messaging. Can dynamically create new agent definitions if project needs expertise beyond 16 pre-defined agents.
+**Outputs:** Orchestrator class + LifecycleWrapper class (73 tests).
+**Files:** `src/zo/orchestrator.py` (532 lines), `src/zo/_orchestrator_models.py`, `src/zo/_orchestrator_phases.py`, `src/zo/wrapper.py` (382 lines), `src/zo/_wrapper_models.py`
+**Architecture note:** Python layer does NOT spawn agents directly. It builds context and launches one session. Agent coordination is native Claude Code with peer-to-peer comms.
+**Status:** COMPLETE
 
 ### Module 7: Evolution Engine
 **Spec source:** specs/evolution.md
