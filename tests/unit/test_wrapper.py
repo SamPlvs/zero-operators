@@ -118,10 +118,9 @@ class TestLaunchLeadSession:
         assert "opus" in cmd
         assert "--max-turns" in cmd
         assert "100" in cmd
-        assert "--cwd" in cmd
+        assert "--add-dir" in cmd
         assert "/target" in cmd
-        assert "--teammate-mode" in cmd
-        assert "tmux" in cmd
+        assert "--dangerously-skip-permissions" in cmd
         assert "-p" in cmd
         assert "do the thing" in cmd
 
@@ -131,17 +130,17 @@ class TestLaunchLeadSession:
         assert result.stdout_log is not None
 
     @mock.patch("zo.wrapper.subprocess.Popen")
-    def test_no_tmux_flag_when_disabled(
+    def test_add_dir_flag_present(
         self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
     ) -> None:
         mock_popen.return_value.pid = 10
         wrapper.launch_lead_session(
-            "prompt", cwd="/cwd", team_name="t", use_tmux=False
+            "prompt", cwd="/my/delivery", team_name="t", use_tmux=False
         )
 
         cmd = mock_popen.call_args[0][0]
-        assert "--teammate-mode" not in cmd
-        assert "tmux" not in cmd
+        assert "--add-dir" in cmd
+        assert "/my/delivery" in cmd
 
 
 # ------------------------------------------------------------------ #

@@ -1,6 +1,6 @@
 ---
 project: "mnist-digit-classifier"
-target_repo: "../mnist-delivery"
+target_repo: "/Users/samtukra/Documents/code/personal/mnist-delivery"
 target_branch: "main"
 worktree_base: "/tmp/zo-worktrees/mnist-digit-classifier"
 
