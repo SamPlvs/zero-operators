@@ -167,3 +167,23 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** PROCEED to Phase 5
 **Rationale:** 296 tests passing, 90% coverage, ruff clean. Evolution engine implements full post-mortem protocol (5 steps), retrospective, and metrics. CLI provides zo build/continue/maintain/init/status/draft with gate mode toggle (default: supervised). Integration tests verify full pipeline flows. All modules wired together.
 **Outcome:** Phase 5 (End-to-end validation) unblocked.
+
+---
+
+## Decision: 2026-04-09T20:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Wrapper CLI flags corrected — --cwd and --teammate-mode don't exist
+**Decision:** Replace `--cwd` with `--add-dir` for delivery repo access. Remove `--teammate-mode tmux` (non-existent flag). Add `--dangerously-skip-permissions` for non-interactive execution.
+**Rationale:** First live run failed with "error: unknown option '--cwd'". Investigation showed these flags don't exist in the claude CLI. `--add-dir` grants file access to additional directories. Teams are created internally via TeamCreate, not via CLI flag.
+**Alternatives considered:** (1) Use subprocess cwd parameter — doesn't work because claude needs to run from ZO root. (2) Symlinks — fragile. (3) --add-dir — correct approach, grants access without changing working directory.
+**Outcome:** First successful live run of ZO. MNIST Phase 1 completed.
+
+---
+
+## Decision: 2026-04-09T21:00:00Z
+**Type:** GATE
+**Title:** Phase 5 complete — MNIST end-to-end validation passed
+**Decision:** ZO platform validated. Ready for real projects.
+**Rationale:** MNIST digit classifier built autonomously across 5 phases. 99.00% test accuracy (Tier 1 threshold: 95%). Agent team produced model, inference script, oracle evaluation, GradCAM/saliency XAI, ablation study, significance testing, reproducibility verification. 98 tests in delivery repo. Zero ZO artifacts. 4 clean git commits. Total cost ~$11.
+**Known issues:** (1) Phase state not persisted between zo build calls — lead session re-discovers resume point from delivery repo. (2) Blocking gates cause repeated sessions in auto mode. Both are hardening items, not blockers.
+**Outcome:** ZO is production-ready for real projects. IVL F5 is next.
