@@ -93,10 +93,9 @@ class LifecycleWrapper:
             "--output-format", "json",
             "--model", model,
             "--max-turns", str(max_turns),
-            "--cwd", cwd,
+            "--add-dir", cwd,
+            "--dangerously-skip-permissions",
         ]
-        if use_tmux:
-            cmd.extend(["--teammate-mode", "tmux"])
         cmd.extend(["-p", prompt])
 
         stdout_log = self._log_dir / f"{team_name}-stdout.log"
