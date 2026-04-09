@@ -130,3 +130,31 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** Memory layer and semantic index both built, tested, and verified.
 **Rationale:** 151 tests passing (32 memory + 32 semantic + 76 Phase 1 + 11 integration), 96% coverage, ruff clean. End-to-end smoke test demonstrates full lifecycle: initialize → write state → log decisions → add priors → write summary → build index → semantic query → session recovery.
 **Outcome:** Gate 2 ready for human review. Phase 3 (Orchestration Engine) unblocked pending approval.
+
+---
+
+## Decision: 2026-04-09T19:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Wrapper redesign — observer/launcher, not agent spawner
+**Decision:** wrapper.py launches ONE Claude Code session (the Lead Orchestrator), does NOT spawn individual agents via subprocess. The Lead Orchestrator creates the team internally using TeamCreate + Agent(team_name=...). Wrapper monitors via file system (tasks, logs, tmux).
+**Rationale:** Research confirmed that Claude Code agent teams with peer-to-peer comms (SendMessage) can only be created from WITHIN a running Claude Code session, not via external CLI calls. Previous design of wrapper.py spawning N individual agents would have produced isolated sessions without peer-to-peer messaging — defeating the core requirement.
+**Alternatives considered:** (1) N subprocess calls per agent (no peer-to-peer). (2) Custom file-based messaging (fragile, not native). (3) Single session with TeamCreate (chosen — leverages native peer-to-peer).
+**Outcome:** wrapper.py redesigned as observer/launcher. orchestrator.py builds the lead prompt. Lead Orchestrator agent definition updated with 16-agent roster and dynamic agent creation capability.
+
+---
+
+## Decision: 2026-04-09T19:10:00Z
+**Type:** ARCHITECTURE
+**Title:** Lead Orchestrator — dynamic agent creation
+**Decision:** Lead Orchestrator can create new agent definition files (.claude/agents/*.md) on the fly if a project requires expertise not covered by the 16 pre-defined agents.
+**Rationale:** The agent roster is a starting point, not a ceiling. Real projects will need domain-specific experts (NLP specialist, time-series expert, security auditor). The Lead Orchestrator has the context to identify gaps and write appropriate agent definitions following the established template.
+**Outcome:** lead-orchestrator.md updated with agent roster table and dynamic creation protocol.
+
+---
+
+## Decision: 2026-04-09T19:30:00Z
+**Type:** GATE
+**Title:** Phase 3 complete — Orchestration engine + wrapper built
+**Decision:** PROCEED to Phase 4
+**Rationale:** 224 tests passing, 93% coverage, ruff clean. Orchestrator decomposes plans into phases for all 3 workflow modes, generates agent contracts, builds lead prompts with full context. Wrapper launches sessions, monitors teams, handles rate limits. Architecture validated: Python CLI → one Claude session → native agent team with peer-to-peer comms.
+**Outcome:** Phase 4 (Hardening — Evolution Engine, CLI, integration tests) unblocked.

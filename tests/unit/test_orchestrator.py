@@ -408,7 +408,7 @@ class TestGetCurrentPhase:
         self, orchestrator: Orchestrator,
     ) -> None:
         """Does not return phase_2 until phase_1 is completed."""
-        decomp = orchestrator.decompose_plan()
+        orchestrator.decompose_plan()
         # phase_2 depends on phase_1 which is still PENDING
         # So get_current_phase should return phase_1, not phase_2
         phase = orchestrator.get_current_phase()
