@@ -14,10 +14,10 @@
 
 <br/>
 
-[![Status](https://img.shields.io/badge/phase-4_complete-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Tests](https://img.shields.io/badge/tests-296_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-16_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-F0C040?style=flat-square&labelColor=080808)](#status)
+[![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
 ---
 
@@ -341,9 +341,40 @@ zero-operators/
 
 ---
 
+## E2E Validation
+
+ZO has been validated end-to-end with an MNIST digit classification project.
+
+**The agent team autonomously:**
+- Built a data pipeline with DataLoaders and 32 data tests
+- Designed a CNN (2 conv + BN + 2 FC layers)
+- Trained to **99.00% test accuracy** (oracle threshold: 95%)
+- Produced GradCAM visualizations, ablation study, significance testing
+- Delivered 98 passing tests in the clean delivery repo
+- Zero ZO artifacts leaked — 4 clean git commits
+
+**Total cost:** ~$11 across all sessions.
+
+```
+mnist-delivery/          ← delivery repo (clean)
+├── src/
+│   ├── model.py         ← CNN architecture
+│   ├── train.py         ← training loop
+│   ├── inference.py     ← prediction pipeline
+│   └── data_loader.py   ← MNIST DataLoader
+├── models/best_model.pt ← trained checkpoint (99% accuracy)
+├── oracle/eval.py       ← oracle evaluation script
+├── xai/gradcam.py       ← GradCAM visualizations
+├── experiments/         ← ablation, significance, reproducibility
+├── tests/               ← 98 tests passing
+└── pyproject.toml
+```
+
+---
+
 ## Status
 
-**Phase 4 complete. 296 tests, 92% coverage.**
+**All phases complete. Validated end-to-end.**
 
 | Phase | What | Status |
 |-------|------|--------|
@@ -352,7 +383,9 @@ zero-operators/
 | 2 | Memory layer, semantic index | Done |
 | 3 | Orchestration engine + lifecycle wrapper | Done |
 | 4 | Evolution engine, CLI, integration tests | Done |
-| 5 | End-to-end validation (toy project, then IVL F5) | Next |
+| 5 | E2E validation (MNIST: 99% accuracy) | Done |
+
+296 platform tests. 92% coverage. ruff clean.
 
 ---
 
@@ -364,7 +397,7 @@ zero-operators/
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v0.4` · `296 tests` · `92% coverage`
+`ZERO OPERATORS` · `v1.0` · `validated` · `99% MNIST accuracy`
 
 <br/>
 </div>
