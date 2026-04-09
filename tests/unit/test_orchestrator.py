@@ -71,7 +71,9 @@ def orchestrator(plan: Plan, tmp_path: Path) -> Orchestrator:
     )
     semantic = SemanticIndex(db_path=tmp_path / "index.db")
 
-    # Use the repo root as zo_root so agent roster discovery works
+    # Use the repo root as zo_root so agent roster discovery works.
+    # Fixture uses AUTO mode so existing gate tests work as expected.
+    # Gate mode tests explicitly switch modes.
     return Orchestrator(
         plan=plan,
         target=target,
@@ -79,6 +81,7 @@ def orchestrator(plan: Plan, tmp_path: Path) -> Orchestrator:
         comms=comms,
         semantic=semantic,
         zo_root=REPO_ROOT,
+        gate_mode=GateMode.AUTO,
     )
 
 
@@ -365,8 +368,8 @@ class TestAdvancePhase:
     def test_auto_mode_respects_plan_gates(
         self, orchestrator: Orchestrator,
     ) -> None:
-        """Auto mode (default) uses the gate type defined in the plan."""
-        assert orchestrator.gate_mode == GateMode.AUTO
+        """Auto mode uses the gate type defined in the plan."""
+        orchestrator.gate_mode = GateMode.AUTO
         decomp = orchestrator.decompose_plan()
         # phase_1 automated -> PROCEED
         phase_1 = decomp.phases[0]
@@ -386,9 +389,10 @@ class TestAdvancePhase:
         self, orchestrator: Orchestrator,
     ) -> None:
         """Gate mode can be changed between phases."""
-        assert orchestrator.gate_mode == GateMode.AUTO
         orchestrator.gate_mode = GateMode.SUPERVISED
         assert orchestrator.gate_mode == GateMode.SUPERVISED
+        orchestrator.gate_mode = GateMode.AUTO
+        assert orchestrator.gate_mode == GateMode.AUTO
         orchestrator.gate_mode = GateMode.FULL_AUTO
         assert orchestrator.gate_mode == GateMode.FULL_AUTO
 

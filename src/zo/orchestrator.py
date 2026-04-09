@@ -119,7 +119,7 @@ class Orchestrator:
         semantic: SemanticIndex,
         zo_root: Path,
         *,
-        gate_mode: GateMode = GateMode.AUTO,
+        gate_mode: GateMode = GateMode.SUPERVISED,
     ) -> None:
         self._plan = plan
         self._target = target
