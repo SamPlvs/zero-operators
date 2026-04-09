@@ -192,6 +192,22 @@ zo status my-project
 
 ---
 
+## Commands
+
+ZO provides 23 slash commands for Claude Code. See [docs/COMMANDS.md](docs/COMMANDS.md) for the full reference.
+
+| Category | Key Commands |
+|----------|-------------|
+| Project | `/project/import`, `/project/connect`, `/project/plan`, `/project/launch` |
+| Memory | `/memory/recall`, `/memory/prime`, `/memory/priors`, `/memory/session-summary` |
+| Gates | `/gates/approve`, `/gates/reject`, `/gates/gates` |
+| Observe | `/observe/watch`, `/observe/logs`, `/observe/decisions`, `/observe/history` |
+| Document | `/document/code-docs`, `/document/model-card`, `/document/retrospective`, `/document/validation-report` |
+| Agents | `/agents/agents`, `/agents/spawn`, `/agents/create-agent` |
+| Utility | `/commit` |
+
+---
+
 ## ML Workflow
 
 ZO follows a structured pipeline defined in `specs/workflow.md`. Three modes available:
