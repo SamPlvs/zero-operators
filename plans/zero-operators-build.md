@@ -157,41 +157,41 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 
 ## Module Decomposition
 
-### Module 0: Agent Definitions + Claude Code Setup
+### Module 0: Agent Definitions + Claude Code Setup ✅
 **Spec source:** specs/agents.md
 **Responsibility:** Write all 16 agent `.md` files to `.claude/agents/` with YAML frontmatter and full spawn prompts. Create `.claude/settings.json`. Validate agents can be spawned.
 **Outputs:** 16 `.md` files, `.claude/settings.json`, validation report.
 **Status:** COMPLETE
 
-### Module 1: Plan Parser and Validator
+### Module 1: Plan Parser and Validator ✅
 **Spec source:** specs/plan.md
 **Responsibility:** Parse plan.md files, validate all 8 required sections, extract YAML frontmatter, check oracle definition completeness, validate workflow mode, verify data source paths.
 **Outputs:** Parsed plan object (Pydantic model), validation report.
 **File:** `src/zo/plan.py`
 **Priority:** P0
 
-### Module 2: Target File Parser and Isolation Enforcer
+### Module 2: Target File Parser and Isolation Enforcer ✅
 **Spec source:** specs/architecture.md
 **Responsibility:** Parse target files, resolve delivery repo paths, validate agent working directories, enforce zo_only_paths blocklist, halt on violation.
 **Outputs:** Parsed target config, path validation function, isolation violation logger.
 **File:** `src/zo/target.py`
 **Priority:** P0
 
-### Module 3: Memory Layer
+### Module 3: Memory Layer ✅
 **Spec source:** specs/memory.md
 **Responsibility:** STATE.md read/write with atomic operations, DECISION_LOG.md append-only writer, PRIORS.md manager, session summary writer, session recovery.
 **Outputs:** MemoryManager class.
 **File:** `src/zo/memory.py`
 **Priority:** P0
 
-### Module 4: Semantic Index
+### Module 4: Semantic Index ✅
 **Spec source:** specs/memory.md (semantic search section)
 **Responsibility:** Embed DECISION_LOG entries as full decision units. Extract 1-line summary from title + outcome at index time. Summary is embedded for matching; full entry injected into context on retrieval. SQLite with cosine similarity.
 **Outputs:** SemanticIndex class.
 **File:** `src/zo/semantic.py`
 **Priority:** P1
 
-### Module 5: Comms Logger
+### Module 5: Comms Logger ✅
 **Spec source:** specs/comms.md
 **Responsibility:** JSONL events (message, decision, gate, error, checkpoint), daily log rotation, query interface. Accepts events from Python lifecycle wrapper.
 **Outputs:** CommsLogger class.
@@ -212,7 +212,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 **File:** `src/zo/evolution.py`
 **Priority:** P1
 
-### Module 8: Setup and Initialization
+### Module 8: Setup and Initialization ✅
 **Spec source:** PRD.md, specs/architecture.md
 **Responsibility:**
 1. `setup.sh` — validates Claude CLI, agent teams enabled, model access, `.claude/agents/` completeness, uv, git state

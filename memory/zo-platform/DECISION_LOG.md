@@ -103,3 +103,30 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** PROCEED to Phase 2
 **Rationale:** All 4 Phase 1 modules built and tested. 76 tests passing, 97% code coverage, ruff lint clean. Modules: plan parser (src/zo/plan.py), target parser (src/zo/target.py), comms logger (src/zo/comms.py), setup.sh. PyYAML added as dependency.
 **Outcome:** Phase 2 (Core Infrastructure) unblocked.
+
+---
+
+## Decision: 2026-04-09T18:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Memory layer — three-file split for 500-line limit
+**Decision:** Split memory module into memory.py (292 lines), _memory_models.py (89 lines), _memory_formats.py (285 lines).
+**Rationale:** Single file would exceed 500-line limit. Models have zero deps beyond pydantic, formats depend only on models, memory.py re-exports everything for clean imports.
+**Outcome:** Clean separation, all tests pass.
+
+---
+
+## Decision: 2026-04-09T18:45:00Z
+**Type:** ARCHITECTURE
+**Title:** Semantic index — graceful fallback without fastembed
+**Decision:** When fastembed/numpy are not installed, store entries without embeddings and fall back to word-overlap scoring on summaries for query().
+**Rationale:** fastembed is an optional dependency. Core ZO must function without it. Word-overlap is a reasonable fallback for small decision sets.
+**Outcome:** 25 tests run without fastembed, 7 additional tests verify embedding path. Both paths verified.
+
+---
+
+## Decision: 2026-04-09T19:00:00Z
+**Type:** GATE
+**Title:** Phase 2 complete — Gate 2 ready for human review
+**Decision:** Memory layer and semantic index both built, tested, and verified.
+**Rationale:** 151 tests passing (32 memory + 32 semantic + 76 Phase 1 + 11 integration), 96% coverage, ruff clean. End-to-end smoke test demonstrates full lifecycle: initialize → write state → log decisions → add priors → write summary → build index → semantic query → session recovery.
+**Outcome:** Gate 2 ready for human review. Phase 3 (Orchestration Engine) unblocked pending approval.
