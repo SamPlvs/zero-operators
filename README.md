@@ -1,22 +1,22 @@
 <div align="center">
 
-```
-        ╭──────────╮
-      ╭─┤          ├─╮
-    ╭─┤  ╭──────╮  ├─╮
-    │ │  │  ZO  │  │ │
-    ╰─┤  ╰──────╯  ├─╯
-      ╰─┤          ├─╯
-        ╰──────────╯
-```
+<img src="design/banner-dark.svg" alt="Zero Operators — Autonomous AI Systems" width="680"/>
 
-# ZERO OPERATORS
+<br/>
+<br/>
 
-**Autonomous AI research and engineering team system.**
+<img src="design/logo-dark.svg" alt="ZO orbital mark" width="64"/>
 
-You input a plan. Agents coordinate to build, continue, or maintain code.
+<br/>
+<br/>
 
-*The human edits the plan; agents execute the plan; the oracle verifies the work.*
+**You input a plan. Agents execute. The oracle verifies.**
+
+<br/>
+
+[![Status](https://img.shields.io/badge/phase-specs_complete-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Agents](https://img.shields.io/badge/agents-16_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
+[![Specs](https://img.shields.io/badge/specs-8_documents-F0C040?style=flat-square&labelColor=080808)](#repository-structure)
 
 ---
 
@@ -82,7 +82,7 @@ zero-operators/
 
 ## Agent teams
 
-**Project Delivery Team** (10 agents) — executes research/ML/engineering projects defined in plan.md.
+**Project Delivery Team** — 10 agents that execute research/ML/engineering projects.
 
 | # | Agent | Model | Role |
 |---|-------|-------|------|
@@ -92,9 +92,9 @@ zero-operators/
 | 4 | Oracle / QA | Sonnet | Hard metric evaluation, gating |
 | 5 | Code Reviewer | Sonnet | Code quality, convention enforcement |
 | 6 | Test Engineer | Sonnet | Unit, integration, regression tests |
-| 7+ | XAI, Domain Evaluator, ML Engineer, Infra Engineer | Mixed | Phase-in after core loop proven |
+| 7–10 | XAI, Domain Eval, ML Eng, Infra | Mixed | Phase-in after core loop proven |
 
-**Platform Build Team** (6 agents) — builds ZO itself.
+**Platform Build Team** — 6 agents that build ZO itself.
 
 | # | Agent | Model | Role |
 |---|-------|-------|------|
@@ -107,29 +107,35 @@ zero-operators/
 
 ## Design system
 
-All ZO outputs follow the brand system defined in `design/`.
+All ZO outputs follow the brand system in [`design/`](design/).
 
-| Token | Value |
-|-------|-------|
-| Primary | `#F0C040` amber |
-| Dim | `#8a6020` |
-| Void | `#080808` |
-| Surface | `#0d0d0d` |
-| Paper | `#f5f0e8` |
-| Ink | `#1a1400` |
-| Mono font | Share Tech Mono |
-| Heading font | Rajdhani 300/400/600/700 |
+| Token | Value | Name |
+|-------|-------|------|
+| ![#F0C040](https://via.placeholder.com/12/F0C040/F0C040.png) | `#F0C040` | Phosphor (primary) |
+| ![#8a6020](https://via.placeholder.com/12/8a6020/8a6020.png) | `#8a6020` | Dim Amber |
+| ![#080808](https://via.placeholder.com/12/080808/080808.png) | `#080808` | Void Black |
+| ![#0d0d0d](https://via.placeholder.com/12/0d0d0d/0d0d0d.png) | `#0d0d0d` | Surface |
+| ![#f5f0e8](https://via.placeholder.com/12/f5f0e8/f5f0e8.png) | `#f5f0e8` | Paper |
+
+**Fonts:** Share Tech Mono (monospace) · Rajdhani 300/400/600/700 (headings)
 
 ## Status
 
-**Phase: Specification complete. Build not started.**
+**Specs complete. Build not started.**
 
-All specs written and QA'd. Platform build plan defined. Next step: bootstrap `src/zo/` package and write agent definition files.
+All 8 specification documents written and QA'd. Platform build plan defined with 9 modules, 5 gates, and 14 oracle verification checks. Next: bootstrap `src/zo/` and write agent definition files.
 
 ---
 
 <div align="center">
+<br/>
+
+<img src="design/logo-dark.svg" alt="ZO" width="32"/>
+
+<br/>
+<br/>
 
 `ZERO OPERATORS` · `v0.1` · `specs complete`
 
+<br/>
 </div>
