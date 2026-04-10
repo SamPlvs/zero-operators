@@ -142,13 +142,14 @@ class LifecycleWrapper:
         )
         pane_id = result.stdout.strip()
 
-        # 2. Start claude interactively (NO -p flag → shows TUI)
+        # 2. Start claude interactively (NO -p, NO --dangerously-skip-permissions)
+        #    --dangerously-skip-permissions exits immediately in interactive mode.
+        #    Permissions are handled via .claude/settings.json allow/deny rules.
         interactive_cmd = (
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
-            f' --dangerously-skip-permissions'
         )
         subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, interactive_cmd, "Enter"],
