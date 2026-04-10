@@ -64,7 +64,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 - Phase 6: Packaging and release
 
 **Gates:**
-- Gate 0: blocking (human verifies all 16 agent definitions are correct, Claude Code setup validated)
+- Gate 0: blocking (human verifies all 17 agent definitions are correct, Claude Code setup validated)
 - Gate 1: automated (plan parser, target parser, comms logger, setup tooling pass unit tests)
 - Gate 2: blocking (human reviews module contracts and integration plan)
 - Gate 3: automated (orchestration engine passes unit tests with mocked agents)
