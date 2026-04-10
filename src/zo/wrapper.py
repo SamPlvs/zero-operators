@@ -115,52 +115,67 @@ class LifecycleWrapper:
         model: str,
         max_turns: int,
     ) -> LeadProcess:
-        """Launch Claude Code in a visible tmux pane (interactive TUI)."""
+        """Launch Claude Code interactively in a visible tmux window.
+
+        ``claude -p "..." --dangerously-skip-permissions`` runs
+        non-interactively (no TUI).  To get the full interactive
+        experience the user wants, we:
+
+        1. Open a tmux window and start ``claude`` without ``-p``
+        2. Wait for the TUI to render
+        3. Paste the prompt into the TUI via tmux's paste buffer
+        4. Send Enter — Claude processes it with the TUI visible
+        """
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
-        stderr_log = self._log_dir / f"{team_name}-stderr.log"
         stdout_log = self._log_dir / f"{team_name}-stdout.log"
+        stderr_log = self._log_dir / f"{team_name}-stderr.log"
 
-        # Resolve the absolute path to claude so tmux doesn't rely on PATH
         claude_abs = self._resolve_claude_bin()
 
-        # Write a launcher script. Uses login shell (-l) to inherit PATH,
-        # logs stderr, and keeps the window open on failure so the user
-        # can read the error.
-        launcher = self._log_dir / f"{team_name}-launch.sh"
-        launcher.write_text(
-            f'#!/usr/bin/env bash -l\n'
-            f'PROMPT=$(cat {shlex.quote(str(prompt_file))})\n'
+        # 1. Create a new tmux window with a shell
+        result = subprocess.run(
+            ["tmux", "new-window", "-d", "-n", team_name,
+             "-P", "-F", "#{pane_id}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        pane_id = result.stdout.strip()
+
+        # 2. Start claude interactively (NO -p, NO --dangerously-skip-permissions)
+        #    --dangerously-skip-permissions exits immediately in interactive mode.
+        #    Permissions are handled via .claude/settings.json allow/deny rules.
+        interactive_cmd = (
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
-            f' --dangerously-skip-permissions'
-            f' -p "$PROMPT"'
-            f' 2>{shlex.quote(str(stderr_log))}\n'
-            f'EXIT_CODE=$?\n'
-            f'if [ $EXIT_CODE -ne 0 ]; then\n'
-            f'  echo "\\n[ZO] Claude exited with code $EXIT_CODE"\n'
-            f'  echo "[ZO] stderr: {stderr_log}"\n'
-            f'  echo "[ZO] Press Enter to close this window..."\n'
-            f'  read\n'
-            f'fi\n',
-            encoding="utf-8",
         )
-        launcher.chmod(0o755)
-
-        # Create a new tmux window running the launcher script
-        result = subprocess.run(
-            [
-                "tmux", "new-window", "-d",
-                "-n", team_name,
-                "-P", "-F", "#{pane_id}",
-                str(launcher),
-            ],
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, interactive_cmd, "Enter"],
             capture_output=True, text=True, timeout=10,
         )
-        pane_id = result.stdout.strip()
+
+        # 3. Wait for TUI to initialize before pasting
+        time.sleep(3)
+
+        # 4. Load the prompt into tmux's paste buffer and paste it
+        #    into the Claude TUI input field
+        subprocess.run(
+            ["tmux", "load-buffer", str(prompt_file)],
+            capture_output=True, text=True, timeout=10,
+        )
+        subprocess.run(
+            ["tmux", "paste-buffer", "-t", pane_id],
+            capture_output=True, text=True, timeout=10,
+        )
+
+        # 5. Send Enter to submit the prompt
+        time.sleep(0.5)
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, "Enter"],
+            capture_output=True, text=True, timeout=10,
+        )
 
         lead = LeadProcess(
             pid=None, status=AgentStatus.SPAWNING,

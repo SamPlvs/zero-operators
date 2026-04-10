@@ -25,7 +25,7 @@ class TestCliGroup:
     """Tests for the CLI group and its registered commands."""
 
     def test_cli_group_has_all_commands(self) -> None:
-        expected = {"build", "continue", "maintain", "init", "status", "draft"}
+        expected = {"build", "continue", "init", "status", "draft"}
         actual = set(cli.commands.keys())
         assert expected == actual
 
@@ -221,38 +221,15 @@ class TestBuildCommand:
 class TestContinueCommand:
     """Tests for the ``zo continue`` command."""
 
-    def test_continue_unbuilt_project(
+    def test_continue_missing_plan(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        # Init but don't build
-        mem_root = tmp_path / "memory" / "test-project"
-        mem_root.mkdir(parents=True)
-        (mem_root / "sessions").mkdir()
-        (mem_root / "STATE.md").touch()
-
+        """zo continue fails if no plan file exists for the project."""
         with patch("zo.cli._zo_root", return_value=tmp_path):
             result = runner.invoke(cli, ["continue", "test-project"])
 
         assert result.exit_code == 1
-        assert "not been built" in result.output
-
-
-# ---------------------------------------------------------------------------
-# maintain command
-# ---------------------------------------------------------------------------
-
-
-class TestMaintainCommand:
-    """Tests for the ``zo maintain`` command."""
-
-    def test_maintain_uninitialized(
-        self, runner: click.testing.CliRunner, tmp_path: Path
-    ) -> None:
-        with patch("zo.cli._zo_root", return_value=tmp_path):
-            result = runner.invoke(cli, ["maintain", "nonexistent"])
-
-        assert result.exit_code == 1
-        assert "not been initialized" in result.output
+        assert "Plan not found" in result.output
 
 
 # ---------------------------------------------------------------------------
