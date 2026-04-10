@@ -2,7 +2,7 @@
 
 ## Overview
 
-Zero Operators (ZO) is an autonomous AI research and engineering team system. A human inputs a plan describing what should be built; a coordinated team of AI agents executes the work with minimal further intervention. The system operates in three modes: **Build** (from scratch), **Continue** (pick up where left off), and **Maintain** (update with new instructions). 
+Zero Operators (ZO) is an autonomous AI research and engineering team system. A human inputs a plan describing what should be built; a coordinated team of AI agents executes the work with minimal further intervention. The system operates in two modes: **Build** (from scratch or resume, auto-detects state) and **Continue** (shorthand to resume from current phase). 
 
 Zero Operators is not a coding assistant. It is a digital research and engineering team that happens to express itself in code, mathematical models, reports, and data artifacts. The human is the research director; the plan is the only communication medium.
 
@@ -36,9 +36,7 @@ A human writes a `plan.md` file describing research objectives, success criteria
 
 **Build Mode**: Initialize from a plan.md, create foundational artifacts (data preparation, architecture sketches, initial models), and iterate.
 
-**Continue Mode**: Restore state from previous sessions, load decision logs and memory, and resume from the last gate/checkpoint.
-
-**Maintain Mode**: Accept new instructions in plan.md, replan current work, and execute updated directives without losing prior progress.
+**Continue Mode**: Shorthand for `zo build` — finds the project plan and resumes. Build auto-detects plan edits and re-decomposes when needed.
 
 ### The Human-Agent Contract
 

@@ -16,7 +16,7 @@
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Tests](https://img.shields.io/badge/tests-295_passing-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Agents](https://img.shields.io/badge/agents-16_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
+[![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
 ---
@@ -293,6 +293,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | Agent | Model | When Active | What They Do |
 |-------|-------|-------------|-------------|
 | Lead Orchestrator | Opus | Always | Creates team, decomposes phases, manages gates, coordinates |
+| Research Scout | Opus | Phase 0 | Literature survey, SOTA, open-source code, experiment plan |
 | Data Engineer | Sonnet | Phases 1-2 | Data pipeline, cleaning, EDA, DataLoaders |
 | Model Builder | Opus | Phases 3-5 | Architecture selection, training, iteration |
 | Oracle / QA | Sonnet | Phases 3-5 | Hard metric evaluation, pass/fail gating |
@@ -341,7 +342,7 @@ zero-operators/
 │   ├── semantic.py             # fastembed + SQLite semantic search
 │   ├── comms.py                # JSONL event logger (5 event types)
 │   └── evolution.py            # Self-evolving post-mortem protocol
-├── .claude/agents/             # 16 agent definitions
+├── .claude/agents/             # 17 agent definitions
 ├── specs/                      # 8 specification documents
 ├── plans/                      # Project plan files
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)

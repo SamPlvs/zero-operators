@@ -13,7 +13,7 @@ owner: "Sam"
 
 Build the Zero Operators (ZO) platform itself — the orchestration engine, memory layer, communication system, plan parser, target file enforcer, agent definitions, setup tooling, and CLI that together form an autonomous AI research and engineering team system. The platform reads a `plan.md`, spawns a coordinated agent team via Claude Code's native agent teams, executes work against delivery repositories, and enforces oracle-driven validation at every gate.
 
-Deliverables: a working ZO platform deployed as a Python package in the `zero-operators/` repository, with all 16 agent definition files in `.claude/agents/`, a functional memory layer, hybrid orchestration engine (native Claude Code teams + Python lifecycle wrapper), JSONL comms logger, plan.md validator, target file parser with isolation enforcement, semantic search index (full decision entries with summary prefix), a `zo` CLI with build/continue/maintain/draft subcommands, `setup.sh` bootstrapper, `zo init` project scaffolder, and a comprehensive test suite proving the system can execute a real project end-to-end.
+Deliverables: a working ZO platform deployed as a Python package in the `zero-operators/` repository, with all 17 agent definition files in `.claude/agents/`, a functional memory layer, hybrid orchestration engine (native Claude Code teams + Python lifecycle wrapper), JSONL comms logger, plan.md validator, target file parser with isolation enforcement, semantic search index (full decision entries with summary prefix), a `zo` CLI with build/continue/draft subcommands, `setup.sh` bootstrapper, `zo init` project scaffolder, and a comprehensive test suite proving the system can execute a real project end-to-end.
 
 ## Oracle
 
@@ -88,7 +88,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 - **Access:** Read-only reference for all visual outputs.
 
 ### Source 3: Feature Reference
-- **Location:** `zero-operators/plan/zero_operators_features_and_separation.html`
+- **Location:** `zero-operators/docs/source-design/zero_operators_features_and_separation.html`
 - **Format:** HTML with 4-tab layout
 - **Access:** Read-only. The 27-feature list defines the full feature backlog; v1 scope is a subset.
 - **Known issues:** Some features reference project-specific context (IVL F5). Abstract to general use.
@@ -159,7 +159,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 
 ### Module 0: Agent Definitions + Claude Code Setup ✅
 **Spec source:** specs/agents.md
-**Responsibility:** Write all 16 agent `.md` files to `.claude/agents/` with YAML frontmatter and full spawn prompts. Create `.claude/settings.json`. Validate agents can be spawned.
+**Responsibility:** Write all 17 agent `.md` files to `.claude/agents/` with YAML frontmatter and full spawn prompts. Create `.claude/settings.json`. Validate agents can be spawned.
 **Outputs:** 16 `.md` files, `.claude/settings.json`, validation report.
 **Status:** COMPLETE
 
@@ -226,7 +226,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 
 ### Module 9: CLI Entry Point ✅
 **Spec source:** PRD.md
-**Responsibility:** CLI with subcommands: `zo build`, `zo continue`, `zo maintain`, `zo draft`, `zo init`, `zo status`.
+**Responsibility:** CLI with subcommands: `zo build`, `zo continue`, `zo draft`, `zo init`, `zo status`.
 - `zo draft <source-dir>` indexes source docs (project-scoped, persisted), generates compliant plan.md via agent with plan spec loaded.
 **Outputs:** `zo` CLI via click.
 **Files:** `src/zo/cli.py`, `src/zo/draft.py`
@@ -237,7 +237,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 ```
 Phase 0 — Agent Definitions + Claude Code Setup
 └── Module 0: Agent Definitions + Claude Code Setup  ✅ COMPLETE
-    ├── 16 agent .md files in .claude/agents/
+    ├── 17 agent .md files in .claude/agents/
     ├── .claude/settings.json
     └── Validation pending
 
