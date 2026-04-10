@@ -88,7 +88,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 - **Access:** Read-only reference for all visual outputs.
 
 ### Source 3: Feature Reference
-- **Location:** `zero-operators/plan/zero_operators_features_and_separation.html`
+- **Location:** `zero-operators/docs/source-design/zero_operators_features_and_separation.html`
 - **Format:** HTML with 4-tab layout
 - **Access:** Read-only. The 27-feature list defines the full feature backlog; v1 scope is a subset.
 - **Known issues:** Some features reference project-specific context (IVL F5). Abstract to general use.
