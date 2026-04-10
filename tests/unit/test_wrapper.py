@@ -6,7 +6,6 @@ import json
 import os
 import signal
 import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest import mock
 
@@ -20,7 +19,6 @@ from zo._wrapper_models import (
 )
 from zo.comms import CommsLogger
 from zo.wrapper import LifecycleWrapper
-
 
 # ------------------------------------------------------------------ #
 # Fixtures
@@ -94,9 +92,10 @@ class TestModels:
 
 class TestLaunchLeadSession:
     @mock.patch("zo.wrapper.subprocess.Popen")
-    def test_builds_correct_command(
+    def test_headless_builds_correct_command(
         self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
     ) -> None:
+        """When use_tmux=False, launches headless with --print."""
         mock_popen.return_value.pid = 42
 
         result = wrapper.launch_lead_session(
@@ -105,7 +104,7 @@ class TestLaunchLeadSession:
             team_name="alpha",
             model="opus",
             max_turns=100,
-            use_tmux=True,
+            use_tmux=False,
         )
 
         args = mock_popen.call_args
@@ -128,6 +127,7 @@ class TestLaunchLeadSession:
         assert result.status == AgentStatus.SPAWNING
         assert result.team_name == "alpha"
         assert result.stdout_log is not None
+        assert result.tmux_pane_id is None
 
     @mock.patch("zo.wrapper.subprocess.Popen")
     def test_add_dir_flag_present(
@@ -141,6 +141,51 @@ class TestLaunchLeadSession:
         cmd = mock_popen.call_args[0][0]
         assert "--add-dir" in cmd
         assert "/my/delivery" in cmd
+
+    @mock.patch("zo.wrapper.subprocess.run")
+    def test_tmux_launch_creates_pane(
+        self, mock_run: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """When inside tmux, launches in a visible tmux pane."""
+        mock_run.return_value = mock.MagicMock(
+            stdout="%5\n", returncode=0
+        )
+
+        with mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux,1,0"}):
+            result = wrapper.launch_lead_session(
+                "do the thing",
+                cwd="/target",
+                team_name="alpha",
+                model="opus",
+                max_turns=100,
+                use_tmux=True,
+            )
+
+        # Should have called tmux new-window
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == "tmux"
+        assert "new-window" in call_args
+
+        assert result.tmux_pane_id == "%5"
+        assert result.pid is None  # No subprocess in tmux mode
+        assert result.status == AgentStatus.SPAWNING
+        assert result.team_name == "alpha"
+
+    @mock.patch("zo.wrapper.subprocess.Popen")
+    def test_tmux_falls_back_headless_when_not_in_tmux(
+        self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """use_tmux=True but not inside tmux -> headless fallback."""
+        mock_popen.return_value.pid = 42
+
+        with mock.patch.dict(os.environ, {}, clear=True):
+            result = wrapper.launch_lead_session(
+                "prompt", cwd="/target", team_name="t", use_tmux=True
+            )
+
+        assert result.pid == 42
+        assert result.tmux_pane_id is None
+        assert mock_popen.called
 
 
 # ------------------------------------------------------------------ #
@@ -240,19 +285,55 @@ class TestObserveTmuxPanes:
     def test_captures_panes_when_in_tmux(
         self, wrapper: LifecycleWrapper
     ) -> None:
-        with mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default,123,0"}):
-            with mock.patch.object(
+        with (
+            mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default,123,0"}),
+            mock.patch.object(
                 LifecycleWrapper,
                 "_list_tmux_panes",
                 return_value=[{"id": "%0", "title": "main"}, {"id": "%1", "title": "agent"}],
-            ):
-                with mock.patch.object(
-                    LifecycleWrapper,
-                    "_capture_tmux_pane",
-                    side_effect=["output-0", "output-1"],
-                ):
-                    result = wrapper.observe_tmux_panes()
-                    assert result == {"%0": "output-0", "%1": "output-1"}
+            ),
+            mock.patch.object(
+                LifecycleWrapper,
+                "_capture_tmux_pane",
+                side_effect=["output-0", "output-1"],
+            ),
+        ):
+            result = wrapper.observe_tmux_panes()
+            assert result == {"%0": "output-0", "%1": "output-1"}
+
+
+# ------------------------------------------------------------------ #
+# _tmux_pane_alive
+# ------------------------------------------------------------------ #
+
+
+class TestTmuxPaneAlive:
+    @mock.patch("zo.wrapper.subprocess.run")
+    def test_returns_true_when_pane_exists(
+        self, mock_run: mock.MagicMock
+    ) -> None:
+        mock_run.return_value = mock.MagicMock(
+            stdout="%0\n%5\n%7\n", returncode=0
+        )
+        assert LifecycleWrapper._tmux_pane_alive("%5") is True
+
+    @mock.patch("zo.wrapper.subprocess.run")
+    def test_returns_false_when_pane_gone(
+        self, mock_run: mock.MagicMock
+    ) -> None:
+        mock_run.return_value = mock.MagicMock(
+            stdout="%0\n%7\n", returncode=0
+        )
+        assert LifecycleWrapper._tmux_pane_alive("%5") is False
+
+    def test_returns_false_for_empty_id(self) -> None:
+        assert LifecycleWrapper._tmux_pane_alive("") is False
+
+    @mock.patch("zo.wrapper.subprocess.run", side_effect=FileNotFoundError)
+    def test_returns_false_when_tmux_missing(
+        self, mock_run: mock.MagicMock
+    ) -> None:
+        assert LifecycleWrapper._tmux_pane_alive("%5") is False
 
 
 # ------------------------------------------------------------------ #
@@ -340,6 +421,30 @@ class TestWaitForCompletion:
 
         result = wrapper.wait_for_completion(lead, poll_interval=0.01)
         assert result.status == AgentStatus.RATE_LIMITED
+
+    @mock.patch("zo.wrapper.time.sleep")
+    def test_tmux_wait_completes_when_pane_closes(
+        self, mock_sleep: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """tmux mode: session completes when pane disappears."""
+        lead = LeadProcess(
+            tmux_pane_id="%5", team_name="alpha",
+            status=AgentStatus.SPAWNING,
+        )
+
+        with mock.patch.object(
+            LifecycleWrapper, "_tmux_pane_alive",
+            side_effect=[True, True, False],
+        ), mock.patch.object(
+            wrapper, "monitor_team",
+            return_value=TeamStatus(team_name="alpha"),
+        ):
+            result = wrapper.wait_for_completion(
+                lead, poll_interval=0.01, on_status=lambda *_: None
+            )
+
+        assert result.status == AgentStatus.COMPLETED
+        assert result.exit_code == 0
 
 
 # ------------------------------------------------------------------ #
