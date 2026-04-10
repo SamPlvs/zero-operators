@@ -115,14 +115,17 @@ class LifecycleWrapper:
         model: str,
         max_turns: int,
     ) -> LeadProcess:
-        """Launch Claude Code in a visible tmux window.
+        """Launch Claude Code interactively in a visible tmux window.
 
-        Instead of running a script, this does exactly what the user
-        would do manually: opens a tmux window, types the claude
-        command, and presses Enter.  Claude gets a real interactive
-        TTY and renders its TUI normally.
+        ``claude -p "..." --dangerously-skip-permissions`` runs
+        non-interactively (no TUI).  To get the full interactive
+        experience the user wants, we:
+
+        1. Open a tmux window and start ``claude`` without ``-p``
+        2. Wait for the TUI to render
+        3. Paste the prompt into the TUI via tmux's paste buffer
+        4. Send Enter — Claude processes it with the TUI visible
         """
-        # Save the prompt to a file — too large for command-line args
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
@@ -131,7 +134,7 @@ class LifecycleWrapper:
 
         claude_abs = self._resolve_claude_bin()
 
-        # 1. Create a new tmux window with a plain shell
+        # 1. Create a new tmux window with a shell
         result = subprocess.run(
             ["tmux", "new-window", "-d", "-n", team_name,
              "-P", "-F", "#{pane_id}"],
@@ -139,18 +142,37 @@ class LifecycleWrapper:
         )
         pane_id = result.stdout.strip()
 
-        # 2. Type the claude command into the shell, exactly like the
-        #    user would.  send-keys handles quoting naturally.
-        cmd = (
+        # 2. Start claude interactively (NO -p flag → shows TUI)
+        interactive_cmd = (
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
             f' --dangerously-skip-permissions'
-            f' -p "$(cat {shlex.quote(str(prompt_file))})"'
         )
         subprocess.run(
-            ["tmux", "send-keys", "-t", pane_id, cmd, "Enter"],
+            ["tmux", "send-keys", "-t", pane_id, interactive_cmd, "Enter"],
+            capture_output=True, text=True, timeout=10,
+        )
+
+        # 3. Wait for TUI to initialize before pasting
+        time.sleep(3)
+
+        # 4. Load the prompt into tmux's paste buffer and paste it
+        #    into the Claude TUI input field
+        subprocess.run(
+            ["tmux", "load-buffer", str(prompt_file)],
+            capture_output=True, text=True, timeout=10,
+        )
+        subprocess.run(
+            ["tmux", "paste-buffer", "-t", pane_id],
+            capture_output=True, text=True, timeout=10,
+        )
+
+        # 5. Send Enter to submit the prompt
+        time.sleep(0.5)
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, "Enter"],
             capture_output=True, text=True, timeout=10,
         )
 
