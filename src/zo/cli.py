@@ -1,16 +1,15 @@
 """CLI entry point for Zero Operators.
 
 Provides the ``zo`` command group with subcommands for building,
-continuing, maintaining, initializing, and inspecting ZO projects.
+continuing, initializing, and inspecting ZO projects.
 
 Usage::
 
     zo build plans/my-project.md --gate-mode auto
+    zo continue my-project
     zo init my-project
     zo status my-project
-    zo continue my-project
-    zo maintain my-project
-    zo draft ./docs --project my-project
+    zo draft ~/docs/req.md ~/data/ --project my-project
 """
 
 from __future__ import annotations
@@ -29,6 +28,8 @@ console = Console()
 # ZO brand amber for highlights
 _AMBER = "bold #F0C040"
 _DIM = "#8a6020"
+_VOID = "#080808"
+_VERSION = "1.0.1"
 
 
 def _zo_root() -> Path:
@@ -46,8 +47,43 @@ def _gate_mode_from_str(value: str) -> GateMode:
     return mapping[value]
 
 
+def _show_banner(
+    project: str = "",
+    mode: str = "",
+    phase: str = "",
+    gate_mode: str = "",
+) -> None:
+    """Display the ZO brand panel at startup."""
+    from rich.panel import Panel
+    from rich.text import Text
+
+    logo = Text()
+    logo.append("  ◎ ", style="#F0C040 bold")
+    logo.append("Zero Operators", style="#F0C040 bold")
+    logo.append(f"  v{_VERSION}\n", style=_DIM)
+    logo.append("     Autonomous AI Research & Engineering Teams\n", style=_DIM)
+    if project:
+        logo.append("\n  Project:   ", style=_DIM)
+        logo.append(project, style="#F0C040")
+    if mode:
+        logo.append("\n  Mode:      ", style=_DIM)
+        logo.append(mode, style="#F0C040")
+    if phase:
+        logo.append("\n  Phase:     ", style=_DIM)
+        logo.append(phase, style="#F0C040")
+    if gate_mode:
+        logo.append("\n  Gates:     ", style=_DIM)
+        logo.append(gate_mode, style="#F0C040")
+
+    console.print(Panel(
+        logo,
+        border_style="#F0C040",
+        padding=(0, 1),
+    ))
+
+
 @click.group()
-@click.version_option(package_name="zero-operators")
+@click.version_option(version=_VERSION, package_name="zero-operators")
 def cli() -> None:
     """Zero Operators -- Autonomous AI research and engineering team system."""
 
@@ -267,8 +303,10 @@ def _launch_and_monitor(
 def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     """Launch a project from a plan.md file.
 
-    Parses the plan, validates it, initializes memory, decomposes into
-    phases, and launches the Lead Orchestrator via Claude Code agent team.
+    Smart mode detection:
+    - Fresh project (no state) -> build from scratch
+    - Existing state -> continue from current phase
+    - Plan edited since last run -> re-decompose and continue
     """
     from zo.comms import CommsLogger
     from zo.memory import MemoryManager
@@ -281,7 +319,6 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     zo_root = _zo_root()
 
     # 1. Parse and validate plan
-    console.print(f"[{_AMBER}]Parsing plan:[/] {plan_path}")
     plan = parse_plan(plan_path)
     report = validate_plan(plan)
     if not report.valid:
@@ -289,7 +326,6 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         for issue in report.issues:
             console.print(f"  [{_DIM}]{issue.section}:[/] {issue.message}")
         raise SystemExit(1)
-    console.print(f"[green]Plan validated:[/] {plan.frontmatter.project_name}")
 
     project_name = plan.frontmatter.project_name
 
@@ -299,22 +335,30 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         console.print(f"[red bold]Target file not found:[/] {target_path}")
         raise SystemExit(1)
     target = parse_target(target_path)
-    console.print(f"[green]Target loaded:[/] {target.project}")
 
-    # 3. Initialize memory
+    # 3. Initialize memory and detect mode
     memory = MemoryManager(project_dir=zo_root, project_name=project_name)
     memory.initialize_project()
-    console.print(f"[green]Memory initialized:[/] {memory.memory_root}")
+    state_check = memory.read_state()
+    detected_mode = "build" if state_check.phase == "init" else "continue"
 
-    # 4. Create CommsLogger and SemanticIndex
+    # 4. Show brand banner
+    _show_banner(
+        project=project_name,
+        mode=detected_mode,
+        phase=state_check.phase if detected_mode == "continue" else "starting",
+        gate_mode=gate_mode,
+    )
+
+    # 5. Create CommsLogger and SemanticIndex
     session_id = f"s-{uuid.uuid4().hex[:8]}"
-    log_dir = zo_root / "logs" / "comms"
-    comms = CommsLogger(log_dir=log_dir, project=project_name, session_id=session_id)
-
+    comms = CommsLogger(
+        log_dir=zo_root / "logs" / "comms",
+        project=project_name, session_id=session_id,
+    )
     db_path = memory.memory_root / "index.db"
     semantic = SemanticIndex(db_path=db_path)
 
-    # Index existing decisions and priors
     decisions = memory.read_decisions()
     priors = memory.read_priors()
     if decisions:
@@ -322,48 +366,39 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     if priors:
         semantic.index_priors(priors)
 
-    # 5. Create Orchestrator
+    # 6. Create Orchestrator
     gm = _gate_mode_from_str(gate_mode)
     orchestrator = Orchestrator(
-        plan=plan,
-        target=target,
-        memory=memory,
-        comms=comms,
-        semantic=semantic,
-        zo_root=zo_root,
-        gate_mode=gm,
+        plan=plan, target=target, memory=memory, comms=comms,
+        semantic=semantic, zo_root=zo_root, gate_mode=gm,
     )
+    orchestrator.start_session()
 
-    # 6. Start session
-    state = orchestrator.start_session()
-    console.print(f"[{_AMBER}]Session started:[/] mode={state.mode}, phase={state.phase}")
-
-    # 7. Decompose plan
+    # 7. Check for plan edits (continue mode)
     decomp = orchestrator.decompose_plan()
+    if detected_mode == "continue" and orchestrator.check_plan_edited():
+        console.print(f"[{_AMBER}]Plan changed since last run — re-decomposed.[/]")
+
     console.print(
-        f"[{_AMBER}]Plan decomposed:[/] {len(decomp.phases)} phases, "
-        f"{len(decomp.agent_contracts)} contracts"
+        f"[{_DIM}]{len(decomp.phases)} phases, "
+        f"{len(decomp.agent_contracts)} contracts[/]"
     )
 
-    # 8. Get current phase and build lead prompt
+    # 8. Get current phase
     phase = orchestrator.get_current_phase()
     if phase is None:
-        console.print("[red bold]No actionable phase found.[/]")
-        raise SystemExit(1)
+        console.print("[green bold]All phases complete. Nothing to do.[/]")
+        raise SystemExit(0)
 
-    # 8b. Pre-launch review (all modes) + additional instructions
+    # 9. Phase review + additional instructions
     _show_phase_review(phase, decomp, plan, gate_mode)
     extra = _ask_additional_instructions(gate_mode)
 
     prompt = orchestrator.build_lead_prompt(phase)
     if extra:
-        prompt += (
-            "\n\n---\n\n"
-            "# Additional Human Instructions\n\n"
-            f"{extra}\n"
-        )
+        prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
 
-    # 9-10. Launch, monitor, end session
+    # 10. Launch, monitor, end session
     wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
     _launch_and_monitor(
         wrapper=wrapper,
@@ -385,209 +420,20 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 )
 @click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
 def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
-    """Resume a paused project from STATE.md.
+    """Resume a paused project. Shorthand for zo build with the existing plan.
 
-    Reads the project's memory, finds the plan, resumes from the
-    current phase, and launches an interactive agent session.
+    Finds plans/{project_name}.md and runs zo build on it.
     """
-    from zo.comms import CommsLogger
-    from zo.memory import MemoryManager
-    from zo.orchestrator import Orchestrator
-    from zo.plan import parse_plan, validate_plan
-    from zo.semantic import SemanticIndex
-    from zo.target import parse_target
-    from zo.wrapper import LifecycleWrapper
-
     zo_root = _zo_root()
-
-    # 1. Recover session state
-    memory = MemoryManager(project_dir=zo_root, project_name=project_name)
-    state = memory.recover_session()
-
-    if state.phase == "init":
-        console.print(
-            f"[red bold]Project '{project_name}' has not been built yet.[/] "
-            "Run [bold]zo build[/] first."
-        )
-        raise SystemExit(1)
-
-    console.print(f"[{_AMBER}]Recovering session:[/] {project_name}")
-    console.print(f"  Mode: {state.mode}  Phase: {state.phase}")
-    if state.active_blockers:
-        console.print(f"  Blockers: {', '.join(state.active_blockers)}")
-
-    # Show recent session context
-    recent = memory.read_recent_summaries(count=3)
-    if recent:
-        console.print(f"[{_AMBER}]Recent sessions:[/]")
-        for s in recent:
-            console.print(
-                f"  {s.date}: {', '.join(s.accomplished[:2]) or 'no summary'}"
-            )
-
-    # 2. Find and parse the plan
     plan_path = zo_root / "plans" / f"{project_name}.md"
     if not plan_path.exists():
         console.print(f"[red bold]Plan not found:[/] {plan_path}")
-        raise SystemExit(1)
-    plan = parse_plan(plan_path)
-    report = validate_plan(plan)
-    if not report.valid:
-        console.print("[red bold]Plan validation failed.[/]")
+        console.print("Run [bold]zo build plans/your-plan.md[/] first.")
         raise SystemExit(1)
 
-    # 3. Parse target
-    target_path = zo_root / "targets" / f"{project_name}.target.md"
-    if not target_path.exists():
-        console.print(f"[red bold]Target not found:[/] {target_path}")
-        raise SystemExit(1)
-    target = parse_target(target_path)
-
-    # 4. Set up orchestrator
-    session_id = f"s-{uuid.uuid4().hex[:8]}"
-    comms = CommsLogger(
-        log_dir=zo_root / "logs" / "comms",
-        project=project_name, session_id=session_id,
-    )
-    db_path = memory.memory_root / "index.db"
-    semantic = SemanticIndex(db_path=db_path)
-
-    decisions = memory.read_decisions()
-    priors = memory.read_priors()
-    if decisions:
-        semantic.index_decisions(decisions)
-    if priors:
-        semantic.index_priors(priors)
-
-    gm = _gate_mode_from_str(gate_mode)
-    orchestrator = Orchestrator(
-        plan=plan, target=target, memory=memory, comms=comms,
-        semantic=semantic, zo_root=zo_root, gate_mode=gm,
-    )
-    orchestrator.start_session()
-    decomp = orchestrator.decompose_plan()
-
-    # 5. Get current phase
-    phase = orchestrator.get_current_phase()
-    if phase is None:
-        console.print("[green bold]All phases complete. Nothing to continue.[/]")
-        raise SystemExit(0)
-
-    # 6. Review and launch
-    _show_phase_review(phase, decomp, plan, gate_mode)
-    extra = _ask_additional_instructions(gate_mode)
-
-    prompt = orchestrator.build_lead_prompt(phase)
-    if extra:
-        prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
-
-    wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
-    _launch_and_monitor(
-        wrapper=wrapper,
-        prompt=prompt,
-        team_name=f"zo-{project_name}",
-        zo_root=zo_root,
-        orchestrator=orchestrator,
-        semantic=semantic,
-        no_tmux=no_tmux,
-    )
-
-
-@cli.command()
-@click.argument("project_name")
-@click.option(
-    "--gate-mode",
-    type=click.Choice(["supervised", "auto", "full-auto"]),
-    default="supervised",
-)
-@click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
-def maintain(project_name: str, gate_mode: str, no_tmux: bool) -> None:
-    """Apply updated plan instructions to a running project.
-
-    Reads the plan, detects changes, and launches an interactive
-    agent session focused on targeted updates rather than full rebuild.
-    """
-    from zo.comms import CommsLogger
-    from zo.memory import MemoryManager
-    from zo.orchestrator import Orchestrator
-    from zo.plan import parse_plan, validate_plan
-    from zo.semantic import SemanticIndex
-    from zo.target import parse_target
-    from zo.wrapper import LifecycleWrapper
-
-    zo_root = _zo_root()
-    memory = MemoryManager(project_dir=zo_root, project_name=project_name)
-    state = memory.read_state()
-
-    if state.phase == "init":
-        console.print(
-            f"[red bold]Project '{project_name}' has not been initialized.[/]"
-        )
-        raise SystemExit(1)
-
-    console.print(f"[{_AMBER}]Maintain mode:[/] {project_name}")
-    console.print(f"  Current phase: {state.phase}")
-
-    # Parse plan and target
-    plan_path = zo_root / "plans" / f"{project_name}.md"
-    if not plan_path.exists():
-        console.print(f"[red bold]Plan not found:[/] {plan_path}")
-        raise SystemExit(1)
-    plan = parse_plan(plan_path)
-    report = validate_plan(plan)
-    if not report.valid:
-        console.print("[red bold]Plan validation failed.[/]")
-        raise SystemExit(1)
-
-    target_path = zo_root / "targets" / f"{project_name}.target.md"
-    if not target_path.exists():
-        console.print(f"[red bold]Target not found:[/] {target_path}")
-        raise SystemExit(1)
-    target = parse_target(target_path)
-
-    # Set up orchestrator
-    session_id = f"s-{uuid.uuid4().hex[:8]}"
-    comms = CommsLogger(
-        log_dir=zo_root / "logs" / "comms",
-        project=project_name, session_id=session_id,
-    )
-    db_path = memory.memory_root / "index.db"
-    semantic = SemanticIndex(db_path=db_path)
-
-    gm = _gate_mode_from_str(gate_mode)
-    orchestrator = Orchestrator(
-        plan=plan, target=target, memory=memory, comms=comms,
-        semantic=semantic, zo_root=zo_root, gate_mode=gm,
-    )
-    orchestrator.start_session()
-    decomp = orchestrator.decompose_plan()
-
-    # Check for plan edits
-    if orchestrator.check_plan_edited():
-        console.print(f"[{_AMBER}]Plan changed since last run — will re-decompose.[/]")
-
-    phase = orchestrator.get_current_phase()
-    if phase is None:
-        console.print("[green bold]All phases complete.[/]")
-        raise SystemExit(0)
-
-    _show_phase_review(phase, decomp, plan, gate_mode)
-    extra = _ask_additional_instructions(gate_mode)
-
-    prompt = orchestrator.build_lead_prompt(phase)
-    if extra:
-        prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
-
-    wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
-    _launch_and_monitor(
-        wrapper=wrapper,
-        prompt=prompt,
-        team_name=f"zo-{project_name}",
-        zo_root=zo_root,
-        orchestrator=orchestrator,
-        semantic=semantic,
-        no_tmux=no_tmux,
-    )
+    # Delegate to build
+    ctx = click.get_current_context()
+    ctx.invoke(build, plan_path=plan_path, gate_mode=gate_mode, no_tmux=no_tmux)
 
 
 @cli.command("init")
