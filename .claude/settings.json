@@ -12,6 +12,15 @@
       "Bash(claude *)",
       "Bash(ls *)",
       "Bash(mkdir *)",
+      "Bash(cd *)",
+      "Bash(pip *)",
+      "Bash(source *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(touch *)",
       "Read(*)",
       "Write(*)",
       "Edit(*)",
@@ -22,6 +31,14 @@
     "deny": [
       "Bash(rm -rf *)",
       "Bash(git push --force *)"
+    ]
+  },
+  "hooks": {
+    "preCommit": [
+      {
+        "type": "command",
+        "command": "echo '\\n[ZO] Pre-commit reminder:\\n  - STATE.md updated?\\n  - DECISION_LOG.md updated?\\n  - PRIORS.md updated (if failure/learning)?\\n  - README.md badges current?\\n  - specs/ agent counts current?\\n'"
+      }
     ]
   },
   "thinking": {
