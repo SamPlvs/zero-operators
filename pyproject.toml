@@ -1,6 +1,6 @@
 [project]
 name = "zero-operators"
-version = "1.0.0"
+version = "1.0.1"
 description = "Autonomous AI research and engineering team system"
 readme = "README.md"
 requires-python = ">=3.11"
