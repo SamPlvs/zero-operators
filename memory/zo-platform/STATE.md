@@ -12,13 +12,13 @@ ZO v1.0.1 — **complete, validated, and user-tested**. Interactive tmux agent s
 
 ## Completed
 
-- [x] Phase 0: Agent definitions (16 files), settings.json, build plan v2.0
+- [x] Phase 0: Agent definitions (17 files), settings.json, build plan v2.0
 - [x] Phase 1: Plan Parser, Target Parser, Comms Logger, setup.sh
 - [x] Phase 2: Memory Layer, Semantic Index
 - [x] Phase 3: Orchestration Engine + Lifecycle Wrapper + gate mode toggle
 - [x] Phase 4: Evolution Engine, CLI, integration tests
 - [x] Phase 5: End-to-end validation (MNIST: 99% accuracy, 98 tests, ~$11)
-- [x] Slash commands: 23 commands across 6 categories
+- [x] Slash commands: 24 commands across 8 categories
 - [x] Documentation: COMMANDS.md reference, interactive HTML demo
 - [x] README: full user workflow, architecture, commands, e2e results
 - [x] v1.0.1: Interactive tmux agent sessions (send-keys + paste-buffer)

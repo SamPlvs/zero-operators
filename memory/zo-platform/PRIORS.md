@@ -125,3 +125,51 @@ file changes to src/zo/cli.py or .claude/agents/.
 3. **Open-source code saves iteration cycles.**
    If a working implementation exists for a similar problem, adapting it
    is faster than building from scratch. Research Scout catalogs these.
+
+---
+
+## PR-005: Aspirational Rules Without Enforcement Are Dead Letter
+**Source:** Session 009 (2026-04-10), doc-codebase drift audit
+**Root cause category:** missing_rule
+**Failure:** CLAUDE.md "Cascade doc updates" protocol existed as text instructions
+but had ZERO enforcement. Adding the 17th agent (Research Scout) left 10+ files
+with stale agent counts (16 instead of 17), stale version (1.0.0 instead of 1.0.1),
+stale test counts, and incorrect model tiers. PR-003 recommended a postToolUse hook
+but it was never implemented — deferred prevention is no prevention.
+
+### Rules
+
+1. **Every protocol that says MUST needs a corresponding enforcement mechanism.**
+   Text-only rules degrade to suggestions within one session. If CLAUDE.md says
+   "Claude MUST update X before commit", there must be a hook, script, or CI check
+   that blocks the commit if X is not updated.
+   - *Failure ref:* CLAUDE.md cascade protocol was ignored across 3+ sessions.
+
+2. **When a PRIOR recommends a preventive action, implement it immediately.**
+   PR-003 recommended hooks. They were never built. The exact failure PR-003
+   warned about then happened. Deferred prevention is no prevention.
+   - *Failure ref:* PR-003 recommended hooks (2026-04-10). Same session ended
+     without implementing them. Next session repeated the drift failure.
+
+3. **Documentation consistency is verified programmatically before every commit.**
+   `scripts/validate-docs.sh` checks agent count, command count, version,
+   model tiers, and name registry. A PreToolUse hook in `.claude/settings.json`
+   blocks `git commit` if validation fails.
+   - *Failure ref:* Manual doc updates across 10+ files are error-prone.
+     Automated validation catches drift before it reaches git history.
+
+### Verified Solution
+
+Three-layer defense against doc-codebase drift:
+
+1. **Layer 1 — Validation script** (`scripts/validate-docs.sh`):
+   7 checks, runs in <2 seconds, exits non-zero on failure. Checks agent
+   count, agent names, command count, version, model tiers, test badge.
+
+2. **Layer 2 — Claude Code hooks** (`.claude/settings.json`):
+   - PreToolUse hook on `Bash(git commit *)` runs validation script, blocks commit on failure
+   - PostToolUse hook on `Write|Edit` injects cascade reminders when trigger files are modified
+
+3. **Layer 3 — Explicit cascade mappings** (CLAUDE.md):
+   File-to-file cascade chains for agent, command, version, and tier changes.
+   No ambiguity about which files to update.
