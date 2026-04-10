@@ -52,6 +52,75 @@ def cli() -> None:
     """Zero Operators -- Autonomous AI research and engineering team system."""
 
 
+def _show_phase_review(phase, decomp, plan, gate_mode: str) -> None:  # noqa: ANN001
+    """Display phase overview for human review before launch."""
+    from rich.rule import Rule
+
+    console.print()
+    console.print(Rule(f"[{_AMBER}] Phase Review ", style=_AMBER))
+    console.print()
+
+    # Phase header
+    console.print(f"  [{_AMBER}]Phase:[/]  {phase.phase_id} — {phase.name}")
+    console.print(f"  [{_AMBER}]Goal:[/]   {phase.description}")
+    console.print(f"  [{_AMBER}]Gate:[/]   {phase.gate_type} ({gate_mode} mode)")
+    console.print()
+
+    # Subtasks
+    console.print(f"  [{_AMBER}]Subtasks:[/]")
+    for i, st in enumerate(phase.subtasks, 1):
+        console.print(f"    {i}. {st}")
+    console.print()
+
+    # Agents
+    console.print(f"  [{_AMBER}]Agents:[/]  {', '.join(phase.assigned_agents)}")
+    console.print()
+
+    # Contracts summary
+    phase_contracts = [
+        c for c in decomp.agent_contracts if c.phase_id == phase.phase_id
+    ]
+    if phase_contracts:
+        console.print(f"  [{_AMBER}]Contracts:[/]")
+        for c in phase_contracts:
+            owns = ", ".join(c.ownership) if c.ownership else "n/a"
+            console.print(f"    [{_DIM}]{c.agent_name}[/] → owns: {owns}")
+        console.print()
+
+    # Oracle / gate criteria
+    if plan.oracle:
+        console.print(f"  [{_AMBER}]Gate Criteria (Oracle):[/]")
+        if plan.oracle.primary_metric:
+            console.print(f"    Metric: {plan.oracle.primary_metric}")
+        if plan.oracle.target_threshold:
+            console.print(f"    Target: {plan.oracle.target_threshold}")
+        if plan.oracle.evaluation_method:
+            console.print(f"    Method: {plan.oracle.evaluation_method}")
+        console.print()
+
+    # Dependencies
+    if phase.depends_on:
+        console.print(
+            f"  [{_AMBER}]Depends on:[/]  {', '.join(phase.depends_on)}"
+        )
+        console.print()
+
+    console.print(Rule(style=_DIM))
+
+
+def _ask_additional_instructions() -> str:
+    """Prompt the user for additional instructions before launch."""
+    console.print(
+        f"  [{_AMBER}]Additional instructions?[/]"
+        f" [{_DIM}](press Enter to skip, or type your request)[/]"
+    )
+    console.print()
+    user_input = console.input(f"  [{_AMBER}]>[/] ").strip()
+    if user_input:
+        console.print(f"  [{_DIM}]Added to lead prompt.[/]")
+    return user_input
+
+
 @cli.command()
 @click.argument("plan_path", type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -147,14 +216,28 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     if phase is None:
         console.print("[red bold]No actionable phase found.[/]")
         raise SystemExit(1)
+
+    # 8b. Pre-launch review (supervised mode)
+    if gm == GateMode.SUPERVISED:
+        _show_phase_review(phase, decomp, plan, gate_mode)
+        extra = _ask_additional_instructions()
+    else:
+        extra = ""
+
     prompt = orchestrator.build_lead_prompt(phase)
+    if extra:
+        prompt += (
+            "\n\n---\n\n"
+            "# Additional Human Instructions\n\n"
+            f"{extra}\n"
+        )
 
     # 9. Launch via LifecycleWrapper
     wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
     team_name = f"zo-{project_name}"
 
     use_tmux = not no_tmux
-    console.print(f"[{_AMBER}]Launching lead session:[/] team={team_name}")
+    console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
     process = wrapper.launch_lead_session(
         prompt,
         cwd=str(zo_root),
