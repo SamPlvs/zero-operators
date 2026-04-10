@@ -164,56 +164,113 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 
     # 10. Monitor and handle gates
     if process.tmux_pane_id:
+        console.print(f"[{_AMBER}]Agent session running in tmux.[/]")
         console.print(
-            f"[{_AMBER}]Agent session running in tmux pane:[/] {process.tmux_pane_id}"
+            f"[{_DIM}]Ctrl-b n → agent window  |  Ctrl-b p → back here[/]"
         )
         console.print(
-            f"[{_DIM}]Switch to the '{team_name}' tmux window to watch agents work.[/]"
+            f"[{_DIM}]Ctrl-b q N → jump to pane N  |  Ctrl-b z → zoom pane[/]"
         )
-        console.print(
-            f"[{_DIM}]Tip: Ctrl-b n (next window) / Ctrl-b p (prev window)[/]"
-        )
-        console.print()
     else:
         console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
         console.print(
             f"[{_DIM}]Headless mode — logs at: logs/wrapper/{team_name}-stdout.log[/]"
         )
+    console.print()
 
-    _last_snapshot = {"text": ""}
+    _seen_events: set[str] = set()
 
     def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
-        """Print live team/pane status during monitoring."""
-        parts: list[str] = []
+        """Print live dashboard: elapsed, team, tasks, recent comms events."""
+        from datetime import UTC, datetime
+
+        # -- Elapsed --
         elapsed = ""
         if process.started_at:
-            from datetime import UTC, datetime
             secs = int((datetime.now(UTC) - process.started_at).total_seconds())
             mins, sec = divmod(secs, 60)
             elapsed = f"{mins}m{sec:02d}s"
 
+        # -- Header line: elapsed + team summary --
+        header_parts = []
+        if elapsed:
+            header_parts.append(f"[{_DIM}][{elapsed}][/]")
         if team_status.members:
-            members_str = ", ".join(m.name for m in team_status.members)
-            parts.append(
-                f"[{_AMBER}]Team:[/] {members_str} | "
-                f"Tasks: {team_status.tasks_completed}/{team_status.tasks_total} done"
+            names = ", ".join(m.name for m in team_status.members)
+            header_parts.append(f"[{_AMBER}]Team:[/] {names}")
+        if team_status.tasks_total > 0:
+            header_parts.append(
+                f"Tasks: [{_AMBER}]{team_status.tasks_completed}[/]"
+                f"/{team_status.tasks_total} done, "
+                f"{team_status.tasks_in_progress} active"
             )
+        if header_parts:
+            console.print("  " + "  ".join(header_parts))
 
-        # Show latest pane activity (last non-empty line)
-        if pane_snapshot and pane_snapshot.strip():
-            lines = [ln for ln in pane_snapshot.strip().splitlines() if ln.strip()]
-            if lines:
-                last_line = lines[-1].strip()[:100]
-                if last_line != _last_snapshot["text"]:
-                    _last_snapshot["text"] = last_line
-                    parts.append(f"[{_DIM}]Agent: {last_line}[/]")
+        # -- Task board --
+        tasks = wrapper.read_task_list(process.team_name)
+        for task in tasks:
+            status = task.get("status", "")
+            content = task.get("content", "")[:60]
+            owner = task.get("owner", "")
+            if status == "completed":
+                icon = "[green]✓[/]"
+            elif status == "in_progress":
+                icon = f"[{_AMBER}]▶[/]"
+            else:
+                icon = f"[{_DIM}]○[/]"
+            owner_str = f" [{_DIM}]({owner})[/]" if owner else ""
+            console.print(f"    {icon} {content}{owner_str}")
 
-        if parts:
-            prefix = f"[{_DIM}][{elapsed}][/] " if elapsed else ""
-            for p in parts:
-                console.print(f"  {prefix}{p}")
-        elif elapsed:
-            console.print(f"  [{_DIM}][{elapsed}] Running...[/]")
+        # -- Recent comms events (JSONL log) --
+        comms_dir = zo_root / "logs" / "comms"
+        if comms_dir.is_dir():
+            import json as _json
+            for log_file in sorted(comms_dir.glob("*.jsonl"), reverse=True)[:1]:
+                try:
+                    lines = log_file.read_text(encoding="utf-8").splitlines()
+                except OSError:
+                    continue
+                for line in lines[-10:]:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        evt = _json.loads(line)
+                    except ValueError:
+                        continue
+                    eid = evt.get("event_id", "")
+                    if eid in _seen_events:
+                        continue
+                    _seen_events.add(eid)
+                    etype = evt.get("event_type", "")
+                    agent = evt.get("agent", "")
+                    if etype == "decision":
+                        title = evt.get("title", "")[:70]
+                        console.print(
+                            f"    [{_AMBER}]◆ DECISION[/] [{_DIM}]{agent}:[/] {title}"
+                        )
+                    elif etype == "gate":
+                        result = evt.get("result", "")
+                        phase = evt.get("phase_id", "")
+                        console.print(
+                            f"    [{_AMBER}]⊘ GATE[/] {phase}: {result}"
+                        )
+                    elif etype == "checkpoint":
+                        progress = evt.get("progress", "")[:70]
+                        console.print(
+                            f"    [{_DIM}]↳ {agent}: {progress}[/]"
+                        )
+                    elif etype == "error":
+                        desc = evt.get("description", "")[:70]
+                        console.print(
+                            f"    [red]✗ ERROR[/] [{_DIM}]{agent}:[/] {desc}"
+                        )
+
+        # -- Separator between polls --
+        if not tasks and not header_parts:
+            console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
+        console.print()
 
     process = wrapper.wait_for_completion(process, on_status=_print_status)
 
