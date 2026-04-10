@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.1 — **complete, validated, and user-tested**. Interactive tmux agent sessions working. Brand panel, smart build, simplified CLI. Ready for IVL F5.
+ZO v1.0.1 — **complete, validated, user-tested, and self-enforcing**. All docs verified consistent with codebase. Hook system prevents doc-code drift. Ready for IVL F5.
 
 ## Completed
 
@@ -29,23 +29,29 @@ ZO v1.0.1 — **complete, validated, and user-tested**. Interactive tmux agent s
 - [x] v1.0.1: zo continue is thin alias for zo build
 - [x] v1.0.1: zo draft accepts multiple file/dir paths + interactive refinement
 - [x] v1.0.1: Live monitoring dashboard (tasks, team, comms events)
+- [x] v1.0.1: Doc-code consistency: validate-docs.sh (10 checks, <2s)
+- [x] v1.0.1: Hook system: SessionStart (auto-context), PreToolUse (commit gate), PostToolUse (cascade reminder), Stop (drift check)
+- [x] v1.0.1: Self-evolution: PR-005 (enforcement > aspiration), three-layer defense
+- [x] v1.0.1: Full doc audit: agent counts 16→17, version 1.0.0→1.0.1, test badge 295→298, Model Builder/Backend Engineer tiers fixed
 
 ## Known Issues
 
 1. Phase state not persisted between zo build calls — re-decomposes each time
 2. Blocking gates cause repeated sessions in auto mode without advancing
 3. MNIST Phase 6 (packaging: model card, validation report) not completed
-4. Agent permissions need broader .claude/settings.json allow patterns
+4. ~~Agent permissions need broader .claude/settings.json allow patterns~~ (resolved: cd, pip, source, cat, head, tail, find, wc, touch all added)
 
 ## What's Next
 
 1. **IVL F5** — first real production project
 2. Fix phase persistence between sessions
-3. Broader permission patterns in settings.json (Bash(cd *), Bash(pip *), etc.)
-4. v1.1: phase-in agents, multi-project support
+3. v1.1: phase-in agents, multi-project support
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-10T12:00:00Z
-last_session: session-008
-branch: claude/blissful-babbage
+last_checkpoint: 2026-04-10T15:00:00Z
+last_session: session-009
+branch: main (merged PR #16, #17)
+test_count: 295 passed, 7 skipped
+lint: ruff clean
+validation: scripts/validate-docs.sh 10/10 passed
