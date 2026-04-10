@@ -125,24 +125,22 @@ class LifecycleWrapper:
         # Resolve the absolute path to claude so tmux doesn't rely on PATH
         claude_abs = self._resolve_claude_bin()
 
-        # Write a launcher script. Uses login shell (-l) to inherit PATH,
-        # logs stderr, and keeps the window open on failure so the user
-        # can read the error.
+        # Write a launcher script. Uses login shell to inherit PATH.
+        # Do NOT redirect stderr — Claude Code renders its TUI to stderr.
         launcher = self._log_dir / f"{team_name}-launch.sh"
         launcher.write_text(
-            f'#!/usr/bin/env bash -l\n'
+            f'#!/bin/bash -l\n'
             f'PROMPT=$(cat {shlex.quote(str(prompt_file))})\n'
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
             f' --dangerously-skip-permissions'
-            f' -p "$PROMPT"'
-            f' 2>{shlex.quote(str(stderr_log))}\n'
+            f' -p "$PROMPT"\n'
             f'EXIT_CODE=$?\n'
             f'if [ $EXIT_CODE -ne 0 ]; then\n'
-            f'  echo "\\n[ZO] Claude exited with code $EXIT_CODE"\n'
-            f'  echo "[ZO] stderr: {stderr_log}"\n'
+            f'  echo ""\n'
+            f'  echo "[ZO] Claude exited with code $EXIT_CODE"\n'
             f'  echo "[ZO] Press Enter to close this window..."\n'
             f'  read\n'
             f'fi\n',
