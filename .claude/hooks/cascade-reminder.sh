@@ -28,13 +28,13 @@ case "$FILE_PATH" in
     *.claude/commands/*)
         REMINDER="Command file modified. Cascade check: update README.md (command count), docs/COMMANDS.md (add/remove entry), memory/zo-platform/STATE.md (count). Run: ./scripts/validate-docs.sh"
         ;;
-    */pyproject.toml)
+    *pyproject.toml)
         REMINDER="pyproject.toml modified. If version changed, also update: src/zo/__init__.py (__version__), src/zo/cli.py (_VERSION). Run: ./scripts/validate-docs.sh"
         ;;
-    */src/zo/__init__.py)
+    *src/zo/__init__.py|*__init__.py)
         REMINDER="__init__.py modified. If version changed, also update: pyproject.toml (version), src/zo/cli.py (_VERSION). Run: ./scripts/validate-docs.sh"
         ;;
-    */src/zo/cli.py)
+    *src/zo/cli.py|*cli.py)
         REMINDER="cli.py modified. If version or commands changed, also update: pyproject.toml (version), src/zo/__init__.py (__version__), README.md, docs/COMMANDS.md. Run: ./scripts/validate-docs.sh"
         ;;
 esac
