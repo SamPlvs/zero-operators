@@ -173,21 +173,47 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         console.print(
             f"[{_DIM}]Tip: Ctrl-b n (next window) / Ctrl-b p (prev window)[/]"
         )
+        console.print()
     else:
         console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
         console.print(
             f"[{_DIM}]Headless mode — logs at: logs/wrapper/{team_name}-stdout.log[/]"
         )
 
-    def _print_status(team_status):  # noqa: ANN001
-        """Print live team status during monitoring."""
+    _last_snapshot = {"text": ""}
+
+    def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
+        """Print live team/pane status during monitoring."""
+        parts: list[str] = []
+        elapsed = ""
+        if process.started_at:
+            from datetime import UTC, datetime
+            secs = int((datetime.now(UTC) - process.started_at).total_seconds())
+            mins, sec = divmod(secs, 60)
+            elapsed = f"{mins}m{sec:02d}s"
+
         if team_status.members:
             members_str = ", ".join(m.name for m in team_status.members)
-            console.print(
-                f"  [{_DIM}]Team: {members_str} | "
-                f"Tasks: {team_status.tasks_completed}/{team_status.tasks_total} done, "
-                f"{team_status.tasks_in_progress} active[/]",
+            parts.append(
+                f"[{_AMBER}]Team:[/] {members_str} | "
+                f"Tasks: {team_status.tasks_completed}/{team_status.tasks_total} done"
             )
+
+        # Show latest pane activity (last non-empty line)
+        if pane_snapshot and pane_snapshot.strip():
+            lines = [ln for ln in pane_snapshot.strip().splitlines() if ln.strip()]
+            if lines:
+                last_line = lines[-1].strip()[:100]
+                if last_line != _last_snapshot["text"]:
+                    _last_snapshot["text"] = last_line
+                    parts.append(f"[{_DIM}]Agent: {last_line}[/]")
+
+        if parts:
+            prefix = f"[{_DIM}][{elapsed}][/] " if elapsed else ""
+            for p in parts:
+                console.print(f"  {prefix}{p}")
+        elif elapsed:
+            console.print(f"  [{_DIM}][{elapsed}] Running...[/]")
 
     process = wrapper.wait_for_completion(process, on_status=_print_status)
 

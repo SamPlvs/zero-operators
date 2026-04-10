@@ -116,22 +116,36 @@ class LifecycleWrapper:
         max_turns: int,
     ) -> LeadProcess:
         """Launch Claude Code in a visible tmux pane (interactive TUI)."""
-        # Write prompt to a file — avoids shell escaping issues entirely
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
-        # Write a launcher script that reads the prompt and execs claude.
-        # This avoids nested quoting problems with tmux new-window.
+        stderr_log = self._log_dir / f"{team_name}-stderr.log"
+        stdout_log = self._log_dir / f"{team_name}-stdout.log"
+
+        # Resolve the absolute path to claude so tmux doesn't rely on PATH
+        claude_abs = self._resolve_claude_bin()
+
+        # Write a launcher script. Uses login shell (-l) to inherit PATH,
+        # logs stderr, and keeps the window open on failure so the user
+        # can read the error.
         launcher = self._log_dir / f"{team_name}-launch.sh"
         launcher.write_text(
-            f'#!/usr/bin/env bash\n'
-            f'exec {shlex.quote(self._claude_bin)}'
+            f'#!/usr/bin/env bash -l\n'
+            f'PROMPT=$(cat {shlex.quote(str(prompt_file))})\n'
+            f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
             f' --dangerously-skip-permissions'
-            f' -p "$(cat {shlex.quote(str(prompt_file))})"'
-            f'\n',
+            f' -p "$PROMPT"'
+            f' 2>{shlex.quote(str(stderr_log))}\n'
+            f'EXIT_CODE=$?\n'
+            f'if [ $EXIT_CODE -ne 0 ]; then\n'
+            f'  echo "\\n[ZO] Claude exited with code $EXIT_CODE"\n'
+            f'  echo "[ZO] stderr: {stderr_log}"\n'
+            f'  echo "[ZO] Press Enter to close this window..."\n'
+            f'  read\n'
+            f'fi\n',
             encoding="utf-8",
         )
         launcher.chmod(0o755)
@@ -148,10 +162,6 @@ class LifecycleWrapper:
         )
         pane_id = result.stdout.strip()
 
-        # Also log stdout for post-session parsing
-        stdout_log = self._log_dir / f"{team_name}-stdout.log"
-        stderr_log = self._log_dir / f"{team_name}-stderr.log"
-
         lead = LeadProcess(
             pid=None, status=AgentStatus.SPAWNING,
             started_at=datetime.now(UTC), team_name=team_name,
@@ -162,7 +172,6 @@ class LifecycleWrapper:
             agent="wrapper", phase="launch", subtask="lead-session",
             progress=f"Launched lead session in tmux pane={pane_id} team={team_name}",
         )
-        # No subprocess handle in tmux mode
         self._proc = None
         self._stdout_fh = None
         self._stderr_fh = None
@@ -322,7 +331,10 @@ class LifecycleWrapper:
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
-                on_status(team_status)
+                pane_snapshot = self._capture_tmux_pane(
+                    process.tmux_pane_id or "", lines=5,
+                )
+                on_status(team_status, pane_snapshot)
 
             if timeout and (time.monotonic() - start_time) > timeout:
                 process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
@@ -381,7 +393,7 @@ class LifecycleWrapper:
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
-                on_status(team_status)
+                on_status(team_status, "")
 
             if timeout and (time.monotonic() - start_time) > timeout:
                 process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
@@ -469,6 +481,21 @@ class LifecycleWrapper:
     def _backoff_wait(self, attempt: int) -> float:
         """Exponential backoff: base * 2^attempt + random(0, 5)."""
         return self._base_backoff * (2 ** attempt) + random.uniform(0, 5)
+
+    # --- Private: resolve claude binary ---
+
+    def _resolve_claude_bin(self) -> str:
+        """Return absolute path to the claude binary."""
+        try:
+            result = subprocess.run(
+                ["which", self._claude_bin],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        return self._claude_bin
 
     # --- Private: tmux helpers ---
 

@@ -440,7 +440,7 @@ class TestWaitForCompletion:
             return_value=TeamStatus(team_name="alpha"),
         ):
             result = wrapper.wait_for_completion(
-                lead, poll_interval=0.01, on_status=lambda _: None
+                lead, poll_interval=0.01, on_status=lambda *_: None
             )
 
         assert result.status == AgentStatus.COMPLETED
