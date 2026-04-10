@@ -115,50 +115,44 @@ class LifecycleWrapper:
         model: str,
         max_turns: int,
     ) -> LeadProcess:
-        """Launch Claude Code in a visible tmux pane (interactive TUI)."""
+        """Launch Claude Code in a visible tmux window.
+
+        Instead of running a script, this does exactly what the user
+        would do manually: opens a tmux window, types the claude
+        command, and presses Enter.  Claude gets a real interactive
+        TTY and renders its TUI normally.
+        """
+        # Save the prompt to a file — too large for command-line args
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
-        stderr_log = self._log_dir / f"{team_name}-stderr.log"
         stdout_log = self._log_dir / f"{team_name}-stdout.log"
+        stderr_log = self._log_dir / f"{team_name}-stderr.log"
 
-        # Resolve the absolute path to claude so tmux doesn't rely on PATH
         claude_abs = self._resolve_claude_bin()
 
-        # Write a launcher script. Uses login shell to inherit PATH.
-        # Do NOT redirect stderr — Claude Code renders its TUI to stderr.
-        launcher = self._log_dir / f"{team_name}-launch.sh"
-        launcher.write_text(
-            f'#!/bin/bash -l\n'
-            f'PROMPT=$(cat {shlex.quote(str(prompt_file))})\n'
+        # 1. Create a new tmux window with a plain shell
+        result = subprocess.run(
+            ["tmux", "new-window", "-d", "-n", team_name,
+             "-P", "-F", "#{pane_id}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        pane_id = result.stdout.strip()
+
+        # 2. Type the claude command into the shell, exactly like the
+        #    user would.  send-keys handles quoting naturally.
+        cmd = (
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
             f' --add-dir {shlex.quote(cwd)}'
             f' --dangerously-skip-permissions'
-            f' -p "$PROMPT"\n'
-            f'EXIT_CODE=$?\n'
-            f'if [ $EXIT_CODE -ne 0 ]; then\n'
-            f'  echo ""\n'
-            f'  echo "[ZO] Claude exited with code $EXIT_CODE"\n'
-            f'  echo "[ZO] Press Enter to close this window..."\n'
-            f'  read\n'
-            f'fi\n',
-            encoding="utf-8",
+            f' -p "$(cat {shlex.quote(str(prompt_file))})"'
         )
-        launcher.chmod(0o755)
-
-        # Create a new tmux window running the launcher script
-        result = subprocess.run(
-            [
-                "tmux", "new-window", "-d",
-                "-n", team_name,
-                "-P", "-F", "#{pane_id}",
-                str(launcher),
-            ],
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, cmd, "Enter"],
             capture_output=True, text=True, timeout=10,
         )
-        pane_id = result.stdout.strip()
 
         lead = LeadProcess(
             pid=None, status=AgentStatus.SPAWNING,

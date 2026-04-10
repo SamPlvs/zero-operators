@@ -146,7 +146,7 @@ class TestLaunchLeadSession:
     def test_tmux_launch_creates_pane(
         self, mock_run: mock.MagicMock, wrapper: LifecycleWrapper
     ) -> None:
-        """When inside tmux, launches in a visible tmux pane."""
+        """When inside tmux, creates a window and sends the command."""
         mock_run.return_value = mock.MagicMock(
             stdout="%5\n", returncode=0
         )
@@ -161,13 +161,22 @@ class TestLaunchLeadSession:
                 use_tmux=True,
             )
 
-        # Should have called tmux new-window
-        call_args = mock_run.call_args[0][0]
-        assert call_args[0] == "tmux"
-        assert "new-window" in call_args
+        # Two tmux calls: new-window then send-keys
+        assert mock_run.call_count == 3  # which + new-window + send-keys
+        calls = mock_run.call_args_list
+        # First call: which claude (resolve binary)
+        # Second call: tmux new-window
+        new_window_args = calls[1][0][0]
+        assert new_window_args[0] == "tmux"
+        assert "new-window" in new_window_args
+        # Third call: tmux send-keys
+        send_keys_args = calls[2][0][0]
+        assert send_keys_args[0] == "tmux"
+        assert "send-keys" in send_keys_args
+        assert "Enter" in send_keys_args
 
         assert result.tmux_pane_id == "%5"
-        assert result.pid is None  # No subprocess in tmux mode
+        assert result.pid is None
         assert result.status == AgentStatus.SPAWNING
         assert result.team_name == "alpha"
 
