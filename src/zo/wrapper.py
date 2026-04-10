@@ -2,6 +2,16 @@
 
 Launches ONE Claude Code session (the Lead Orchestrator), then observes
 team activity by monitoring file-system artefacts and tmux panes.
+
+Two launch modes:
+
+* **tmux** (default when inside a tmux session): spawns Claude Code
+  in a visible tmux pane so the user can watch the interactive TUI.
+  Agent teams with ``teammateMode: "tmux"`` naturally split into
+  additional panes.
+* **headless** (``--no-tmux`` or not inside tmux): runs Claude Code
+  with ``--print --output-format json`` in a background subprocess
+  with stdout/stderr piped to log files.
 """
 
 from __future__ import annotations
@@ -11,6 +21,7 @@ import json
 import os
 import random
 import re
+import shlex
 import signal
 import subprocess
 import time
@@ -85,9 +96,82 @@ class LifecycleWrapper:
     ) -> LeadProcess:
         """Launch one Claude Code session as the Lead Orchestrator.
 
-        Starts a non-blocking subprocess with stdout/stderr tee'd to log files.
-        Returns a LeadProcess with pid and SPAWNING status.
+        When inside tmux (and ``use_tmux`` is True), spawns Claude Code
+        in a visible tmux pane so the user can watch the interactive TUI.
+        Otherwise falls back to headless mode with ``--print``.
         """
+        if use_tmux and self._is_in_tmux():
+            return self._launch_tmux(prompt, cwd=cwd, team_name=team_name,
+                                     model=model, max_turns=max_turns)
+        return self._launch_headless(prompt, cwd=cwd, team_name=team_name,
+                                     model=model, max_turns=max_turns)
+
+    def _launch_tmux(
+        self,
+        prompt: str,
+        *,
+        cwd: str,
+        team_name: str,
+        model: str,
+        max_turns: int,
+    ) -> LeadProcess:
+        """Launch Claude Code in a visible tmux pane (interactive TUI)."""
+        # Write prompt to a temp file to avoid shell escaping issues
+        prompt_file = self._log_dir / f"{team_name}-prompt.txt"
+        prompt_file.write_text(prompt, encoding="utf-8")
+
+        cmd_parts: list[str] = [
+            self._claude_bin,
+            "--model", model,
+            "--max-turns", str(max_turns),
+            "--add-dir", shlex.quote(cwd),
+            "--dangerously-skip-permissions",
+            "-p", f'"$(cat {shlex.quote(str(prompt_file))})"',
+        ]
+        shell_cmd = " ".join(cmd_parts)
+
+        # Create a new tmux window (full-size, not a split) for the agent
+        result = subprocess.run(
+            [
+                "tmux", "new-window", "-d",
+                "-n", team_name,
+                "-P", "-F", "#{pane_id}",
+                shell_cmd,
+            ],
+            capture_output=True, text=True, timeout=10,
+        )
+        pane_id = result.stdout.strip()
+
+        # Also log stdout for post-session parsing
+        stdout_log = self._log_dir / f"{team_name}-stdout.log"
+        stderr_log = self._log_dir / f"{team_name}-stderr.log"
+
+        lead = LeadProcess(
+            pid=None, status=AgentStatus.SPAWNING,
+            started_at=datetime.now(UTC), team_name=team_name,
+            stdout_log=stdout_log, stderr_log=stderr_log,
+            tmux_pane_id=pane_id,
+        )
+        self._comms.log_checkpoint(
+            agent="wrapper", phase="launch", subtask="lead-session",
+            progress=f"Launched lead session in tmux pane={pane_id} team={team_name}",
+        )
+        # No subprocess handle in tmux mode
+        self._proc = None
+        self._stdout_fh = None
+        self._stderr_fh = None
+        return lead
+
+    def _launch_headless(
+        self,
+        prompt: str,
+        *,
+        cwd: str,
+        team_name: str,
+        model: str,
+        max_turns: int,
+    ) -> LeadProcess:
+        """Launch Claude Code as a headless subprocess (--print mode)."""
         cmd: list[str] = [
             self._claude_bin, "--print",
             "--output-format", "json",
@@ -192,18 +276,72 @@ class LifecycleWrapper:
         *,
         poll_interval: float = 10.0,
         timeout: float | None = None,
+        on_status: Any | None = None,
     ) -> LeadProcess:
-        """Poll until the lead session subprocess completes.
+        """Poll until the lead session completes.
 
-        Checks subprocess status, scans stdout for rate-limit patterns,
-        and retries with exponential backoff when rate-limited.
+        In tmux mode, monitors the pane existence. In headless mode,
+        polls the subprocess. Calls ``on_status(team_status)`` each
+        cycle if provided, so the CLI can print live progress.
         """
+        if process.tmux_pane_id:
+            return self._wait_tmux(process, poll_interval=poll_interval,
+                                   timeout=timeout, on_status=on_status)
+        return self._wait_headless(process, poll_interval=poll_interval,
+                                   timeout=timeout, on_status=on_status)
+
+    def _wait_tmux(
+        self,
+        process: LeadProcess,
+        *,
+        poll_interval: float,
+        timeout: float | None,
+        on_status: Any | None,
+    ) -> LeadProcess:
+        """Wait for the tmux pane to close (session complete)."""
+        start_time = time.monotonic()
+        process = process.model_copy(update={"status": AgentStatus.RUNNING})
+
+        while True:
+            if not self._tmux_pane_alive(process.tmux_pane_id or ""):
+                process = process.model_copy(update={
+                    "exit_code": 0, "completed_at": datetime.now(UTC),
+                    "status": AgentStatus.COMPLETED,
+                })
+                self._comms.log_checkpoint(
+                    agent="wrapper", phase="lifecycle", subtask="completion",
+                    progress="Lead session tmux pane closed",
+                )
+                return process
+
+            if on_status:
+                team_status = self.monitor_team(process.team_name)
+                on_status(team_status)
+
+            if timeout and (time.monotonic() - start_time) > timeout:
+                process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
+                self._comms.log_error(
+                    agent="wrapper", error_type="timeout", severity="blocking",
+                    description=f"Lead session timed out after {timeout}s",
+                )
+                return process
+            time.sleep(poll_interval)
+
+    def _wait_headless(
+        self,
+        process: LeadProcess,
+        *,
+        poll_interval: float,
+        timeout: float | None,
+        on_status: Any | None,
+    ) -> LeadProcess:
+        """Wait for the headless subprocess to exit."""
         start_time = time.monotonic()
         retries = 0
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
 
         while True:
-            rc = self._proc.poll()
+            rc = self._proc.poll() if self._proc else -1
             if rc is not None:
                 self._close_log_handles()
                 process = process.model_copy(update={
@@ -235,6 +373,10 @@ class LifecycleWrapper:
                 retries += 1
                 continue
 
+            if on_status:
+                team_status = self.monitor_team(process.team_name)
+                on_status(team_status)
+
             if timeout and (time.monotonic() - start_time) > timeout:
                 process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
                 self._comms.log_error(
@@ -246,12 +388,29 @@ class LifecycleWrapper:
 
     def kill_session(self, process: LeadProcess) -> LeadProcess:
         """Terminate the lead session. SIGTERM, wait 5s, SIGKILL if needed."""
+        if process.tmux_pane_id:
+            # Kill the tmux pane (sends SIGHUP to the process inside)
+            subprocess.run(
+                ["tmux", "kill-pane", "-t", process.tmux_pane_id],
+                capture_output=True, timeout=5,
+            )
+            self._comms.log_error(
+                agent="wrapper", error_type="session_killed", severity="warning",
+                description=f"Killed lead session tmux pane={process.tmux_pane_id}",
+            )
+            return process.model_copy(update={
+                "status": AgentStatus.ERRORED,
+                "completed_at": datetime.now(UTC),
+                "exit_code": -9,
+            })
+
         if process.pid is None:
             return process
         with contextlib.suppress(ProcessLookupError):
             os.kill(process.pid, signal.SIGTERM)
         try:
-            self._proc.wait(timeout=5)
+            if self._proc:
+                self._proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             with contextlib.suppress(ProcessLookupError):
                 os.kill(process.pid, signal.SIGKILL)
@@ -306,6 +465,20 @@ class LifecycleWrapper:
         return self._base_backoff * (2 ** attempt) + random.uniform(0, 5)
 
     # --- Private: tmux helpers ---
+
+    @staticmethod
+    def _tmux_pane_alive(pane_id: str) -> bool:
+        """Check if a tmux pane still exists (process running in it)."""
+        if not pane_id:
+            return False
+        try:
+            result = subprocess.run(
+                ["tmux", "list-panes", "-a", "-F", "#{pane_id}"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+        return pane_id in result.stdout.splitlines()
 
     @staticmethod
     def _is_in_tmux() -> bool:
