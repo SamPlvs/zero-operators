@@ -2,7 +2,7 @@
 
 ## Overview
 
-Zero Operators provides 23 slash commands for Claude Code, covering the full project lifecycle from import to retrospective. Commands are organized into seven categories: Project Lifecycle, Memory & Continuity, Gate Management, Observability, Documentation, Agent Management, and Utility.
+Zero Operators provides 24 slash commands for Claude Code, covering the full project lifecycle from import to retrospective. Commands are organized into eight categories: Project Lifecycle, Memory & Continuity, Gate Management, Observability, Documentation, Agent Management, Platform Development, and Utility.
 
 All commands are defined in `.claude/commands/` and invoked as `/category/command` in a Claude Code session.
 
@@ -489,6 +489,30 @@ Create a new agent definition file interactively.
 **Example:**
 ```
 /agents/create-agent time-series-specialist
+```
+
+---
+
+## Platform Development
+
+### /zo-dev
+
+Resume building/improving ZO itself -- loads full platform context and picks up where we left off.
+
+**Arguments:** None
+
+**What happens:**
+
+1. Reads CLAUDE.md for project rules and self-evolution protocol.
+2. Reads memory/zo-platform/STATE.md for current state.
+3. Reads recent decisions from DECISION_LOG.md.
+4. Reads accumulated learnings from PRIORS.md.
+5. Presents a concise briefing: state, recent work, what's next.
+6. Asks what to work on.
+
+**Example:**
+```
+/zo-dev
 ```
 
 ---
