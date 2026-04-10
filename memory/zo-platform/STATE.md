@@ -1,14 +1,14 @@
 # STATE.md — Zero Operators Platform Build
 
 project: zero-operators-build
-mode: build
+mode: maintain
 phase: complete
 iteration: 1
 status: complete
 
 ## Current Position
 
-ZO v1.0 is **complete and validated**. All phases done. 23 slash commands added. Interactive demo built. Ready for real projects.
+ZO v1.0 is **complete and validated**. v1.0.1 patch applied: tmux-visible agent sessions. Ready for IVL F5.
 
 ## Completed
 
@@ -21,6 +21,7 @@ ZO v1.0 is **complete and validated**. All phases done. 23 slash commands added.
 - [x] Slash commands: 23 commands across 6 categories
 - [x] Documentation: COMMANDS.md reference, interactive HTML demo
 - [x] README: full user workflow, architecture, commands, e2e results
+- [x] v1.0.1: tmux-visible agent sessions (wrapper launches Claude in visible tmux pane)
 
 ## Known Issues
 
@@ -36,6 +37,6 @@ ZO v1.0 is **complete and validated**. All phases done. 23 slash commands added.
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-09T22:00:00Z
-last_session: session-006
-branch: claude/strange-swartz
+last_checkpoint: 2026-04-10T10:00:00Z
+last_session: session-007
+branch: claude/blissful-babbage

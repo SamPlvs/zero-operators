@@ -153,17 +153,43 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
     team_name = f"zo-{project_name}"
 
+    use_tmux = not no_tmux
     console.print(f"[{_AMBER}]Launching lead session:[/] team={team_name}")
     process = wrapper.launch_lead_session(
         prompt,
         cwd=str(zo_root),
         team_name=team_name,
-        use_tmux=not no_tmux,
+        use_tmux=use_tmux,
     )
 
     # 10. Monitor and handle gates
-    console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
-    process = wrapper.wait_for_completion(process)
+    if process.tmux_pane_id:
+        console.print(
+            f"[{_AMBER}]Agent session running in tmux pane:[/] {process.tmux_pane_id}"
+        )
+        console.print(
+            f"[{_DIM}]Switch to the '{team_name}' tmux window to watch agents work.[/]"
+        )
+        console.print(
+            f"[{_DIM}]Tip: Ctrl-b n (next window) / Ctrl-b p (prev window)[/]"
+        )
+    else:
+        console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
+        console.print(
+            f"[{_DIM}]Headless mode — logs at: logs/wrapper/{team_name}-stdout.log[/]"
+        )
+
+    def _print_status(team_status):  # noqa: ANN001
+        """Print live team status during monitoring."""
+        if team_status.members:
+            members_str = ", ".join(m.name for m in team_status.members)
+            console.print(
+                f"  [{_DIM}]Team: {members_str} | "
+                f"Tasks: {team_status.tasks_completed}/{team_status.tasks_total} done, "
+                f"{team_status.tasks_in_progress} active[/]",
+            )
+
+    process = wrapper.wait_for_completion(process, on_status=_print_status)
 
     if process.status == "completed":
         console.print("[green bold]Session completed successfully.[/]")
