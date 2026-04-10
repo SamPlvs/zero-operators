@@ -98,7 +98,7 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ### 3. Model Builder
 
-**Model tier**: Sonnet / Opus (combined researcher + engineer for v1)  
+**Model tier**: Opus  
 **Role**: Selects architecture, trains models, iterates against Oracle feedback, handles regime segmentation and GPU optimization.
 
 **Ownership**:
@@ -249,9 +249,44 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ---
 
+### 7. Research Scout
+
+**Model tier**: Opus  
+**Role**: Searches literature, identifies SOTA approaches, finds open-source implementations, and designs experiment plans with informed baselines.
+
+**Ownership**:
+- `research/` (literature reviews, SOTA summaries, open-source catalogs, experiment plans)
+- `research/references.bib` (BibTeX references)
+
+**Off-limits**:
+- `data/` (Data Engineer's responsibility)
+- `models/` (Model Builder's responsibility)
+- `oracle/` (Oracle/QA's responsibility)
+- `plan.md`, `STATE.md`, `DECISION_LOG.md` (Orchestrator's responsibility)
+
+**Key outputs**:
+- Literature review with 3+ relevant approaches and citations
+- SOTA summary with best known results (or analogous ranges)
+- Open-source implementation catalog with licenses
+- Experiment plan with baselines, candidates, and oracle threshold recommendations
+
+**Communication rules**:
+- Runs first: completes Phase 0 before Model Builder starts Phase 3
+- Informs oracle thresholds with literature-backed recommendations
+- Hands off open-source code references to Model Builder
+- Updates research if Phase 4 experiments reveal dead ends
+
+**Validation checklist**:
+- Literature review covers at least 3 relevant approaches
+- Experiment plan has at least 2 baselines and 1-2 candidates
+- Oracle threshold recommendations justified by evidence
+- All artifacts in `research/` — no off-limits files modified
+
+---
+
 ## Project Delivery Team — Phase-In Agents (Deployed When Core Loop Is Proven)
 
-### 7. XAI Agent
+### 8. XAI Agent
 
 **Model tier**: Sonnet  
 **Role**: Analyzes model explainability—SHAP values, attention patterns, feature importance—validates interpretability against domain assumptions.
@@ -267,7 +302,7 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ---
 
-### 8. Domain Evaluator
+### 9. Domain Evaluator
 
 **Model tier**: Opus  
 **Role**: Performs domain-specific validation—physical plausibility, logical consistency, regulatory compliance—independent of primary metrics.
@@ -282,7 +317,7 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ---
 
-### 9. ML Engineer
+### 10. ML Engineer
 
 **Model tier**: Sonnet  
 **Role**: Optimizes inference latency, GPU memory, batch throughput; maintains experiment tracking infrastructure; refines reproducibility.
@@ -298,7 +333,7 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ---
 
-### 10. Infra Engineer
+### 11. Infra Engineer
 
 **Model tier**: Haiku  
 **Role**: Sets up environments, manages dependencies, schedules data pipelines, provisions deployment infrastructure.
@@ -458,7 +493,7 @@ The platform build team is used to build and maintain ZO itself as software. It 
 
 ### B2. Backend Engineer
 
-**Model tier**: Sonnet / Opus  
+**Model tier**: Opus  
 **Team**: platform  
 **Role**: Implements core ZO infrastructure modules in Python. May be multiple instances for parallel module development.
 
@@ -553,7 +588,7 @@ The platform build team is used to build and maintain ZO itself as software. It 
 ### Project Delivery Team
 
 Before session 1 launch, verify:
-- [ ] All 6 launch agents have defined `.md` files with YAML frontmatter
+- [ ] All 7 launch agents have defined `.md` files with YAML frontmatter
 - [ ] Contracts between launch agents are documented and signed off
 - [ ] Data Engineer and Oracle test data split is locked
 - [ ] Orchestrator's plan.md reflects current phase and passes validation

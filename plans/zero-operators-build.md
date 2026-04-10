@@ -160,7 +160,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 ### Module 0: Agent Definitions + Claude Code Setup ✅
 **Spec source:** specs/agents.md
 **Responsibility:** Write all 17 agent `.md` files to `.claude/agents/` with YAML frontmatter and full spawn prompts. Create `.claude/settings.json`. Validate agents can be spawned.
-**Outputs:** 16 `.md` files, `.claude/settings.json`, validation report.
+**Outputs:** 17 `.md` files, `.claude/settings.json`, validation report.
 **Status:** COMPLETE
 
 ### Module 1: Plan Parser and Validator ✅
@@ -203,9 +203,9 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 **Responsibility:** Three-layer architecture:
 1. `orchestrator.py` — Parses plan, decomposes phases (classical_ml/deep_learning/research), generates agent contracts, builds lead prompt with full context (plan + phases + agent roster + memory + coordination instructions), manages gates, detects plan edits
 2. `wrapper.py` — Launches ONE Claude Code session as Lead Orchestrator (`claude --teammate-mode tmux`), monitors team via `~/.claude/tasks/` and session logs, captures tmux pane output, handles rate limits, pipes events to CommsLogger
-3. Lead Orchestrator agent (inside Claude Code) uses `TeamCreate` + `Agent(team_name=...)` for native peer-to-peer messaging. Can dynamically create new agent definitions if project needs expertise beyond 16 pre-defined agents.
+3. Lead Orchestrator agent (inside Claude Code) uses `TeamCreate` + `Agent(team_name=...)` for native peer-to-peer messaging. Can dynamically create new agent definitions if project needs expertise beyond 17 pre-defined agents.
 **Outputs:** Orchestrator class + LifecycleWrapper class (73 tests).
-**Files:** `src/zo/orchestrator.py` (532 lines), `src/zo/_orchestrator_models.py`, `src/zo/_orchestrator_phases.py`, `src/zo/wrapper.py` (382 lines), `src/zo/_wrapper_models.py`
+**Files:** `src/zo/orchestrator.py` (565 lines), `src/zo/_orchestrator_models.py`, `src/zo/_orchestrator_phases.py`, `src/zo/wrapper.py` (601 lines), `src/zo/_wrapper_models.py`
 **Architecture note:** Python layer does NOT spawn agents directly. It builds context and launches one session. Agent coordination is native Claude Code with peer-to-peer comms.
 **Status:** COMPLETE
 
@@ -294,19 +294,25 @@ Gate 5: Test project passes 18 oracle verification checks
 ```
 src/zo/
 ├── __init__.py
-├── plan.py           # Module 1
-├── target.py         # Module 2
-├── memory.py         # Module 3
-├── semantic.py       # Module 4
-├── comms.py          # Module 5
-├── orchestrator.py   # Module 6
-├── wrapper.py        # Module 6
-├── evolution.py      # Module 7
-├── cli.py            # Module 9
-└── draft.py          # Module 9
+├── plan.py                  # Module 1
+├── target.py                # Module 2
+├── memory.py                # Module 3
+├── _memory_models.py        # Module 3 (models)
+├── _memory_formats.py       # Module 3 (markdown I/O)
+├── semantic.py              # Module 4
+├── comms.py                 # Module 5
+├── orchestrator.py          # Module 6
+├── _orchestrator_models.py  # Module 6 (models)
+├── _orchestrator_phases.py  # Module 6 (phase definitions)
+├── wrapper.py               # Module 6
+├── _wrapper_models.py       # Module 6 (models)
+├── evolution.py             # Module 7
+├── _evolution_models.py     # Module 7 (models)
+├── cli.py                   # Module 9
+└── draft.py                 # Module 9
 
 .claude/
-├── agents/           # Module 0 (16 files) ✅
+├── agents/           # Module 0 (17 files) ✅
 └── settings.json     # Module 0 ✅
 
 setup.sh              # Module 8

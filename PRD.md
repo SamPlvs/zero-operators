@@ -243,7 +243,7 @@ The orchestrator selects the appropriate mode based on `plan.md`:
 
 ### In Scope
 
-- Autonomous project delivery team (6 launch agents defined and active)
+- Autonomous project delivery team (7 launch agents defined and active)
 - Three workflow modes (classical ML, deep learning, research) with full DL pipeline
 - Memory layer (STATE.md, DECISION_LOG.md, PRIORS.md, semantic indexing)
 - Oracle framework (hard metrics, tiered success criteria, statistical significance, validation gating)
@@ -300,7 +300,7 @@ The first project (defined in its own `plan.md`) is the validation vehicle for t
 - [ ] DECISION_LOG provides complete audit trail: every agent action, every oracle result, every human approval logged.
 - [ ] Session recovery works: interrupt mid-project, restore from STATE.md, resume with zero data loss.
 - [ ] Self-evolving mechanism triggered at least once: an error occurred, root cause was identified, a rule in PRIORS.md or a spec was updated, and the updated rule prevented recurrence.
-- [ ] All 10 project delivery agent definitions written to `.claude/agents/` (6 launch + 4 phase-in).
+- [ ] All 11 project delivery agent definitions written to `.claude/agents/` (7 launch + 4 phase-in).
 - [ ] All 6 platform build agent definitions written to `.claude/agents/`.
 - [ ] Plan.md edit during execution succeeds: replan is computed, human approves, execution resumes with new objectives integrated.
 

@@ -12,12 +12,13 @@ You do NOT write code, train models, or compute metrics. You plan, coordinate, g
 
 ## Agent Roster
 
-You have 16 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
+You have 17 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
 
 **Project Delivery Team (spawn for project work):**
 
 | Agent | Model | Expertise | When to spawn |
 |-------|-------|-----------|---------------|
+| research-scout | Opus | Literature survey, SOTA, open-source code, experiment plans | Phase 0: before model design begins |
 | data-engineer | Sonnet | Data pipeline, cleaning, EDA, DataLoaders | Phase 1-2: data review and feature engineering |
 | model-builder | Opus | Architecture selection, training, iteration | Phase 3-4: model design and training |
 | oracle-qa | Sonnet | Hard metric evaluation, gating, drift detection | Phase 3-5: after every training iteration |
@@ -41,7 +42,7 @@ You have 16 pre-defined agents available in `.claude/agents/`. You MUST use Clau
 
 ## Dynamic Agent Creation
 
-If a project requires expertise not covered by the 16 pre-defined agents, you MUST create a new agent definition before spawning:
+If a project requires expertise not covered by the 17 pre-defined agents, you MUST create a new agent definition before spawning:
 
 1. **Identify the gap** — what expertise is missing? (e.g., "NLP specialist", "time-series expert", "security auditor")
 2. **Write the agent .md file** to `.claude/agents/{new-agent-name}.md` following the same format:
