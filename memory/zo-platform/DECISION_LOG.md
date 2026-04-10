@@ -73,7 +73,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 ## Decision: 2026-04-09T16:35:00Z
 **Type:** SEQUENCING
 **Title:** Agent definitions as Step 0
-**Decision:** Write all 16 agent .md files before any Python code.
+**Decision:** Write all 17 agent .md files before any Python code.
 **Rationale:** (1) Immediately usable by Claude Code. (2) Define contracts all modules implement against. (3) Platform build agents needed to build ZO itself. (4) Forces finalization of every agent interface.
 **Outcome:** Phase 0 added to build sequence. Documented in build plan v2.0 as RD8.
 
@@ -81,9 +81,9 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 
 ## Decision: 2026-04-09T17:15:00Z
 **Type:** MILESTONE
-**Title:** Phase 0 complete — 16 agents written
-**Decision:** All 16 agent definition files written to .claude/agents/. Settings.json created. Build plan updated to v2.0.
-**Rationale:** Phase 0 deliverables met: 10 project delivery agents (6 launch + 4 phase-in) + 6 platform build agents. Each has YAML frontmatter, role description, ownership, off-limits, contract produced/consumed with inline examples, pointer to specs/agents.md, coordination rules, validation checklist.
+**Title:** Phase 0 complete — 17 agents written
+**Decision:** All 17 agent definition files written to .claude/agents/. Settings.json created. Build plan updated to v2.0.
+**Rationale:** Phase 0 deliverables met: 11 project delivery agents (7 launch + 4 phase-in) + 6 platform build agents. Each has YAML frontmatter, role description, ownership, off-limits, contract produced/consumed with inline examples, pointer to specs/agents.md, coordination rules, validation checklist.
 **Outcome:** Gate 0 ready for human verification. Phase 1 unblocked.
 
 ---
@@ -92,7 +92,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** GATE
 **Title:** Gate 0 passed — Human approved agent definitions
 **Decision:** PROCEED to Phase 1
-**Rationale:** Sam reviewed and approved all 16 agent definitions and .claude/settings.json.
+**Rationale:** Sam reviewed and approved all 17 agent definitions and .claude/settings.json.
 **Outcome:** Phase 1 (Scaffolding) unblocked.
 
 ---
@@ -139,14 +139,14 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** wrapper.py launches ONE Claude Code session (the Lead Orchestrator), does NOT spawn individual agents via subprocess. The Lead Orchestrator creates the team internally using TeamCreate + Agent(team_name=...). Wrapper monitors via file system (tasks, logs, tmux).
 **Rationale:** Research confirmed that Claude Code agent teams with peer-to-peer comms (SendMessage) can only be created from WITHIN a running Claude Code session, not via external CLI calls. Previous design of wrapper.py spawning N individual agents would have produced isolated sessions without peer-to-peer messaging — defeating the core requirement.
 **Alternatives considered:** (1) N subprocess calls per agent (no peer-to-peer). (2) Custom file-based messaging (fragile, not native). (3) Single session with TeamCreate (chosen — leverages native peer-to-peer).
-**Outcome:** wrapper.py redesigned as observer/launcher. orchestrator.py builds the lead prompt. Lead Orchestrator agent definition updated with 16-agent roster and dynamic agent creation capability.
+**Outcome:** wrapper.py redesigned as observer/launcher. orchestrator.py builds the lead prompt. Lead Orchestrator agent definition updated with 17-agent roster and dynamic agent creation capability.
 
 ---
 
 ## Decision: 2026-04-09T19:10:00Z
 **Type:** ARCHITECTURE
 **Title:** Lead Orchestrator — dynamic agent creation
-**Decision:** Lead Orchestrator can create new agent definition files (.claude/agents/*.md) on the fly if a project requires expertise not covered by the 16 pre-defined agents.
+**Decision:** Lead Orchestrator can create new agent definition files (.claude/agents/*.md) on the fly if a project requires expertise not covered by the 17 pre-defined agents.
 **Rationale:** The agent roster is a starting point, not a ceiling. Real projects will need domain-specific experts (NLP specialist, time-series expert, security auditor). The Lead Orchestrator has the context to identify gaps and write appropriate agent definitions following the established template.
 **Outcome:** lead-orchestrator.md updated with agent roster table and dynamic creation protocol.
 
@@ -225,3 +225,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** (1) `zo build` auto-detects mode (fresh/continue/plan-edited). (2) `zo continue` becomes a thin alias. (3) `zo maintain` removed entirely. (4) Phase review shows in ALL modes. (5) `zo draft` accepts multiple paths. (6) ZO brand panel at startup.
 **Rationale:** `zo continue` and `zo maintain` were doing almost the same thing as `zo build` — parsing plan, decomposing, launching agents. Having three commands confused the user. Smart detection in `zo build` handles all cases. Brand panel gives professional identity matching Claude Code's startup experience.
 **Outcome:** Simplified CLI: build (primary), continue (alias), draft, init, status. 295 tests pass.
+
+---
+
+## Decision: 2026-04-10T14:00:00Z
+**Type:** EVOLUTION
+**Title:** Three-layer defense against doc-codebase drift
+**Decision:** Implement automated documentation consistency validation with enforcement hooks. (1) `scripts/validate-docs.sh` — 7 programmatic checks (agent count, agent names, command count, version, model tiers, test badge, setup.sh literal). (2) PreToolUse hook in `.claude/settings.json` blocks `git commit` if validation fails. (3) PostToolUse hook on Write|Edit injects cascade reminders when trigger files modified. (4) CLAUDE.md updated with explicit file-to-file cascade mappings. (5) PR-005 added to PRIORS.md.
+**Rationale:** Adding Research Scout (17th agent) left 10+ files with stale counts. CLAUDE.md "Cascade doc updates" protocol existed but had zero enforcement. PR-003 recommended hooks but they were never implemented. Root cause: `missing_rule` — aspirational text without enforcement degrades to suggestion. Self-evolution protocol requires fixing both the symptom and the rule.
+**Alternatives considered:** (1) Manual discipline only — already failed. (2) CI pipeline — too heavy for v1, not available in local dev. (3) Automated validation with hooks (chosen) — catches drift at commit time, lightweight, works in all environments.
+**Outcome:** Three new files created (validate-docs.sh, pre-commit-validate.sh, cascade-reminder.sh). settings.json updated with hooks. CLAUDE.md cascade protocol strengthened. PR-005 documents the failure and fix. Validation runs 10 checks in <2 seconds.

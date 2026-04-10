@@ -71,10 +71,31 @@ Before creating ANY git commit, Claude MUST:
 1. **Update `memory/zo-platform/STATE.md`** — reflect current phase, completed items, known issues, what's next
 2. **Append to `memory/zo-platform/DECISION_LOG.md`** — every architectural decision, gate passage, or scope change made in this session
 3. **Update `memory/zo-platform/PRIORS.md`** — if any failure, error, or unexpected behaviour occurred, add a new prior with: failure description, root cause category, rules learned, verified solution
-4. **Cascade doc updates** — if the change affects the public interface:
-   - Agent added/removed → update `README.md` badge + roster, `specs/agents.md` counts
-   - Command added/removed → update `README.md`, `PRD.md`, `CLAUDE.md` operating modes
-   - Version changed → update `README.md` badges + footer
+4. **Cascade doc updates** — if the change affects the public interface, update ALL files in the cascade chain. Run `scripts/validate-docs.sh` to verify.
+
+   **Agent added/removed** (trigger: any change to `.claude/agents/`):
+   - `setup.sh` → update EXPECTED_AGENTS array AND hardcoded count
+   - `README.md` → update agents badge count AND agent roster table
+   - `specs/agents.md` → update team counts in Team Philosophy AND add/remove agent entry
+   - `.claude/agents/lead-orchestrator.md` → update agent count in "Agent Roster" section AND roster table
+   - `plans/zero-operators-build.md` → update agent count references
+   - `PRD.md` → update acceptance criteria counts
+
+   **Command added/removed** (trigger: any change to `.claude/commands/`):
+   - `README.md` → update slash command count
+   - `docs/COMMANDS.md` → add/remove command entry
+   - `memory/zo-platform/STATE.md` → update command count
+
+   **Version changed** (trigger: change to `pyproject.toml` version):
+   - `src/zo/__init__.py` → update `__version__`
+   - `src/zo/cli.py` → update `_VERSION`
+   - `README.md` → update version badge
+
+   **Model tier changed** (trigger: change to agent `model:` frontmatter):
+   - `specs/agents.md` → update "Model tier" line for that agent
+   - `README.md` → update agent roster table
+
+   A PreToolUse hook enforces this: `git commit` is blocked if `scripts/validate-docs.sh` fails.
 
 ### On Session End
 

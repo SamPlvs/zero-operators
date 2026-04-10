@@ -36,7 +36,16 @@ You are creating a git commit for the current changes following Zero Operators c
    - What scope is affected? (e.g., `orchestrator`, `memory`, `oracle`, `agents`)
    - What is the concise subject? (imperative mood, lowercase, no period)
 
-5. **Stage relevant files**. Do NOT stage:
+5. **Run documentation validation** to catch doc-codebase drift:
+   ```bash
+   ./scripts/validate-docs.sh
+   ```
+   If any checks fail, fix the inconsistencies before committing. Common cascade fixes:
+   - Agent added → update count in setup.sh, README.md, specs/agents.md, lead-orchestrator.md
+   - Command added → update count in README.md, docs/COMMANDS.md, STATE.md
+   - Version bumped → update pyproject.toml, src/zo/__init__.py, src/zo/cli.py
+
+6. **Stage relevant files**. Do NOT stage:
    - `.env` files
    - Credential files, API keys, tokens
    - Large binary files (unless intentional)
@@ -48,14 +57,14 @@ You are creating a git commit for the current changes following Zero Operators c
    git add {specific files}
    ```
 
-6. **Create the commit** with the conventional format:
+7. **Create the commit** with the conventional format:
    ```
    type(scope): subject
 
    Body explaining what changed and why (if non-obvious).
    ```
 
-7. **Report** to the user:
+8. **Report** to the user:
    - The commit message used
    - Files committed
    - The commit hash
