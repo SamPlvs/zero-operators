@@ -34,6 +34,7 @@ class LeadProcess(BaseModel):
     team_name: str = ""
     stdout_log: Path | None = None
     stderr_log: Path | None = None
+    tmux_pane_id: str | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
