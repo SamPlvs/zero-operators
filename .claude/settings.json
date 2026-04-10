@@ -33,14 +33,6 @@
       "Bash(git push --force *)"
     ]
   },
-  "hooks": {
-    "preCommit": [
-      {
-        "type": "command",
-        "command": "echo '\\n[ZO] Pre-commit reminder:\\n  - STATE.md updated?\\n  - DECISION_LOG.md updated?\\n  - PRIORS.md updated (if failure/learning)?\\n  - README.md badges current?\\n  - specs/ agent counts current?\\n'"
-      }
-    ]
-  },
   "thinking": {
     "enabled": true
   }

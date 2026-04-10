@@ -58,23 +58,43 @@ Canonical reference: `design/zero_operators_brand_system.html`
 - **Phase transitions** (planning → building): fresh context window, load only the artefacts produced by the previous phase
 - **Keep context lean**: read only the spec files relevant to current task
 
-## Self-Evolution Protocol (MANDATORY)
 
-When any failure, error, or unexpected behaviour occurs:
+## AUTOMATIC Memory & Docs Protocol (NON-NEGOTIABLE)
 
-1. **Document** the failure in DECISION_LOG.md
-2. **Root cause**: missing_rule? incomplete_rule? ignored_rule? novel_case? regression?
+These rules are AUTOMATIC. Claude executes them without being asked.
+The human should never need to remind Claude to update memory or docs.
+
+### On Every Commit
+
+Before creating ANY git commit, Claude MUST:
+
+1. **Update `memory/zo-platform/STATE.md`** — reflect current phase, completed items, known issues, what's next
+2. **Append to `memory/zo-platform/DECISION_LOG.md`** — every architectural decision, gate passage, or scope change made in this session
+3. **Update `memory/zo-platform/PRIORS.md`** — if any failure, error, or unexpected behaviour occurred, add a new prior with: failure description, root cause category, rules learned, verified solution
+4. **Cascade doc updates** — if the change affects the public interface:
+   - Agent added/removed → update `README.md` badge + roster, `specs/agents.md` counts
+   - Command added/removed → update `README.md`, `PRD.md`, `CLAUDE.md` operating modes
+   - Version changed → update `README.md` badges + footer
+
+### On Session End
+
+Before the session closes, Claude MUST:
+
+1. Write a session summary to `memory/zo-platform/sessions/`
+2. Ensure STATE.md reflects the final state
+3. Ensure DECISION_LOG has all decisions from this session
+
+### On Any Failure or Error
+
+When anything fails (build error, test failure, unexpected behaviour, user reports a bug):
+
+1. **Document** the failure in DECISION_LOG.md (timestamp, type, description)
+2. **Root cause**: classify as `missing_rule` | `incomplete_rule` | `ignored_rule` | `novel_case` | `regression`
 3. **Fix** the immediate problem
-4. **Update the rule** in PRIORS.md (or relevant spec/agent definition)
+4. **Add a prior** to PRIORS.md with: rules learned, verified solution, failure reference
 5. **Verify** the updated rule would have caught the original failure
 
-**After ANY code change**, update these files if affected:
-- `memory/zo-platform/STATE.md` — current state
-- `memory/zo-platform/DECISION_LOG.md` — decisions made
-- `memory/zo-platform/PRIORS.md` — new learnings
-- `README.md` — badges, commands, agent roster
-- `specs/agents.md` — team counts
-- `PRD.md` / `CLAUDE.md` — operating modes
+This is the self-evolution protocol. The same mistake must never happen twice.
 
 
 ## Operating Modes
