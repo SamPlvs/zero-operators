@@ -27,50 +27,71 @@ class PlanDrafter:
     """Generates a plan.md from indexed source documents.
 
     Args:
-        source_dir: Directory containing source documents to index.
+        source_paths: Files and/or directories to index.
         project_name: Name for the generated project plan.
         zo_root: Root directory of the ZO repository.
+        source_dir: Deprecated — use ``source_paths`` instead.
     """
 
-    def __init__(self, source_dir: Path, project_name: str, zo_root: Path) -> None:
-        self._source_dir = Path(source_dir)
+    def __init__(
+        self,
+        project_name: str,
+        zo_root: Path,
+        *,
+        source_paths: list[Path] | None = None,
+        source_dir: Path | None = None,
+    ) -> None:
+        # Backwards compat: source_dir → source_paths
+        if source_paths is not None:
+            self._source_paths = [Path(p) for p in source_paths]
+        elif source_dir is not None:
+            self._source_paths = [Path(source_dir)]
+        else:
+            self._source_paths = []
         self._project_name = project_name
         self._zo_root = Path(zo_root)
         self._db_path = zo_root / "memory" / project_name / "draft_index.db"
         self._index = SemanticIndex(db_path=self._db_path)
 
     def index_documents(self) -> int:
-        """Index all documents in source_dir using SemanticIndex.
+        """Index documents from all source paths.
+
+        Each path can be a file (indexed directly) or a directory
+        (recursed for supported file types).
 
         Returns:
             Count of indexed documents.
         """
         count = 0
-        for path in sorted(self._source_dir.rglob("*")):
-            if not path.is_file():
-                continue
-            if path.suffix.lower() not in _SUPPORTED_EXTENSIONS:
-                continue
-            try:
-                text = path.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError):
-                continue
-
-            # Use first line as summary, full text for retrieval
-            lines = text.strip().splitlines()
-            summary = lines[0][:200] if lines else path.name
-            rel_path = str(path.relative_to(self._source_dir))
-
-            entry = IndexEntry(
-                entry_id=f"doc-{count:04d}",
-                summary=f"[{rel_path}] {summary}",
-                full_text=text[:5000],  # Truncate very large files
-                source="document",
-            )
-            self._index.index_entry(entry)
-            count += 1
-
+        for src in self._source_paths:
+            if src.is_file():
+                count += self._index_file(src, count)
+            elif src.is_dir():
+                for path in sorted(src.rglob("*")):
+                    if path.is_file():
+                        count += self._index_file(path, count)
         return count
+
+    def _index_file(self, path: Path, offset: int) -> int:
+        """Index a single file. Returns 1 on success, 0 on skip."""
+        if path.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+            return 0
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            return 0
+
+        lines = text.strip().splitlines()
+        summary = lines[0][:200] if lines else path.name
+
+        entry = IndexEntry(
+            entry_id=f"doc-{offset:04d}",
+            summary=f"[{path.name}] {summary}",
+            full_text=text[:5000],
+            source="document",
+        )
+        self._index.index_entry(entry)
+        return 1
 
     def generate_plan(self) -> Path:
         """Generate a plan.md from indexed documents.

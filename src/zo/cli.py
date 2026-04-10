@@ -108,8 +108,13 @@ def _show_phase_review(phase, decomp, plan, gate_mode: str) -> None:  # noqa: AN
     console.print(Rule(style=_DIM))
 
 
-def _ask_additional_instructions() -> str:
-    """Prompt the user for additional instructions before launch."""
+def _ask_additional_instructions(gate_mode: str) -> str:
+    """Prompt the user for additional instructions before launch.
+
+    Skipped in full-auto mode (no human interaction).
+    """
+    if gate_mode == "full-auto":
+        return ""
     console.print(
         f"  [{_AMBER}]Additional instructions?[/]"
         f" [{_DIM}](press Enter to skip, or type your request)[/]"
@@ -119,6 +124,135 @@ def _ask_additional_instructions() -> str:
     if user_input:
         console.print(f"  [{_DIM}]Added to lead prompt.[/]")
     return user_input
+
+
+def _launch_and_monitor(
+    *,
+    wrapper,  # noqa: ANN001
+    prompt: str,
+    team_name: str,
+    zo_root: Path,
+    orchestrator,  # noqa: ANN001
+    semantic,  # noqa: ANN001
+    no_tmux: bool,
+) -> None:
+    """Shared launch → monitor → end-session flow for all modes."""
+    use_tmux = not no_tmux
+    console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
+    process = wrapper.launch_lead_session(
+        prompt, cwd=str(zo_root), team_name=team_name, use_tmux=use_tmux,
+    )
+
+    if process.tmux_pane_id:
+        console.print(f"[{_AMBER}]Agent session running in tmux.[/]")
+        console.print(
+            f"[{_DIM}]Ctrl-b n → agent window  |  Ctrl-b p → back here[/]"
+        )
+        console.print(
+            f"[{_DIM}]Ctrl-b q N → jump to pane N  |  Ctrl-b z → zoom pane[/]"
+        )
+    else:
+        console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
+        console.print(
+            f"[{_DIM}]Headless mode — logs at: logs/wrapper/{team_name}-stdout.log[/]"
+        )
+    console.print()
+
+    _seen_events: set[str] = set()
+
+    def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
+        from datetime import UTC, datetime
+
+        elapsed = ""
+        if process.started_at:
+            secs = int((datetime.now(UTC) - process.started_at).total_seconds())
+            mins, sec = divmod(secs, 60)
+            elapsed = f"{mins}m{sec:02d}s"
+
+        header_parts = []
+        if elapsed:
+            header_parts.append(f"[{_DIM}][{elapsed}][/]")
+        if team_status.members:
+            names = ", ".join(m.name for m in team_status.members)
+            header_parts.append(f"[{_AMBER}]Team:[/] {names}")
+        if team_status.tasks_total > 0:
+            header_parts.append(
+                f"Tasks: [{_AMBER}]{team_status.tasks_completed}[/]"
+                f"/{team_status.tasks_total} done, "
+                f"{team_status.tasks_in_progress} active"
+            )
+        if header_parts:
+            console.print("  " + "  ".join(header_parts))
+
+        tasks = wrapper.read_task_list(process.team_name)
+        for task in tasks:
+            st = task.get("status", "")
+            content = task.get("content", "")[:60]
+            owner = task.get("owner", "")
+            if st == "completed":
+                icon = "[green]✓[/]"
+            elif st == "in_progress":
+                icon = f"[{_AMBER}]▶[/]"
+            else:
+                icon = f"[{_DIM}]○[/]"
+            owner_str = f" [{_DIM}]({owner})[/]" if owner else ""
+            console.print(f"    {icon} {content}{owner_str}")
+
+        comms_dir = zo_root / "logs" / "comms"
+        if comms_dir.is_dir():
+            import json as _json
+            for log_file in sorted(comms_dir.glob("*.jsonl"), reverse=True)[:1]:
+                try:
+                    lines = log_file.read_text(encoding="utf-8").splitlines()
+                except OSError:
+                    continue
+                for line in lines[-10:]:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        evt = _json.loads(line)
+                    except ValueError:
+                        continue
+                    eid = evt.get("event_id", "")
+                    if eid in _seen_events:
+                        continue
+                    _seen_events.add(eid)
+                    etype = evt.get("event_type", "")
+                    agent = evt.get("agent", "")
+                    if etype == "decision":
+                        title = evt.get("title", "")[:70]
+                        console.print(
+                            f"    [{_AMBER}]◆ DECISION[/] [{_DIM}]{agent}:[/] {title}"
+                        )
+                    elif etype == "gate":
+                        result = evt.get("result", "")
+                        gphase = evt.get("phase_id", "")
+                        console.print(
+                            f"    [{_AMBER}]⊘ GATE[/] {gphase}: {result}"
+                        )
+                    elif etype == "checkpoint":
+                        progress = evt.get("progress", "")[:70]
+                        console.print(f"    [{_DIM}]↳ {agent}: {progress}[/]")
+                    elif etype == "error":
+                        desc = evt.get("description", "")[:70]
+                        console.print(
+                            f"    [red]✗ ERROR[/] [{_DIM}]{agent}:[/] {desc}"
+                        )
+
+        if not tasks and not header_parts:
+            console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
+        console.print()
+
+    process = wrapper.wait_for_completion(process, on_status=_print_status)
+
+    if process.status == "completed":
+        console.print("[green bold]Session completed successfully.[/]")
+    else:
+        console.print(f"[red bold]Session ended with status:[/] {process.status}")
+
+    orchestrator.end_session()
+    semantic.close()
 
 
 @cli.command()
@@ -217,12 +351,9 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         console.print("[red bold]No actionable phase found.[/]")
         raise SystemExit(1)
 
-    # 8b. Pre-launch review (supervised mode)
-    if gm == GateMode.SUPERVISED:
-        _show_phase_review(phase, decomp, plan, gate_mode)
-        extra = _ask_additional_instructions()
-    else:
-        extra = ""
+    # 8b. Pre-launch review (all modes) + additional instructions
+    _show_phase_review(phase, decomp, plan, gate_mode)
+    extra = _ask_additional_instructions(gate_mode)
 
     prompt = orchestrator.build_lead_prompt(phase)
     if extra:
@@ -232,139 +363,17 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
             f"{extra}\n"
         )
 
-    # 9. Launch via LifecycleWrapper
+    # 9-10. Launch, monitor, end session
     wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
-    team_name = f"zo-{project_name}"
-
-    use_tmux = not no_tmux
-    console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
-    process = wrapper.launch_lead_session(
-        prompt,
-        cwd=str(zo_root),
-        team_name=team_name,
-        use_tmux=use_tmux,
+    _launch_and_monitor(
+        wrapper=wrapper,
+        prompt=prompt,
+        team_name=f"zo-{project_name}",
+        zo_root=zo_root,
+        orchestrator=orchestrator,
+        semantic=semantic,
+        no_tmux=no_tmux,
     )
-
-    # 10. Monitor and handle gates
-    if process.tmux_pane_id:
-        console.print(f"[{_AMBER}]Agent session running in tmux.[/]")
-        console.print(
-            f"[{_DIM}]Ctrl-b n → agent window  |  Ctrl-b p → back here[/]"
-        )
-        console.print(
-            f"[{_DIM}]Ctrl-b q N → jump to pane N  |  Ctrl-b z → zoom pane[/]"
-        )
-    else:
-        console.print(f"[{_AMBER}]Monitoring session:[/] pid={process.pid}")
-        console.print(
-            f"[{_DIM}]Headless mode — logs at: logs/wrapper/{team_name}-stdout.log[/]"
-        )
-    console.print()
-
-    _seen_events: set[str] = set()
-
-    def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
-        """Print live dashboard: elapsed, team, tasks, recent comms events."""
-        from datetime import UTC, datetime
-
-        # -- Elapsed --
-        elapsed = ""
-        if process.started_at:
-            secs = int((datetime.now(UTC) - process.started_at).total_seconds())
-            mins, sec = divmod(secs, 60)
-            elapsed = f"{mins}m{sec:02d}s"
-
-        # -- Header line: elapsed + team summary --
-        header_parts = []
-        if elapsed:
-            header_parts.append(f"[{_DIM}][{elapsed}][/]")
-        if team_status.members:
-            names = ", ".join(m.name for m in team_status.members)
-            header_parts.append(f"[{_AMBER}]Team:[/] {names}")
-        if team_status.tasks_total > 0:
-            header_parts.append(
-                f"Tasks: [{_AMBER}]{team_status.tasks_completed}[/]"
-                f"/{team_status.tasks_total} done, "
-                f"{team_status.tasks_in_progress} active"
-            )
-        if header_parts:
-            console.print("  " + "  ".join(header_parts))
-
-        # -- Task board --
-        tasks = wrapper.read_task_list(process.team_name)
-        for task in tasks:
-            status = task.get("status", "")
-            content = task.get("content", "")[:60]
-            owner = task.get("owner", "")
-            if status == "completed":
-                icon = "[green]✓[/]"
-            elif status == "in_progress":
-                icon = f"[{_AMBER}]▶[/]"
-            else:
-                icon = f"[{_DIM}]○[/]"
-            owner_str = f" [{_DIM}]({owner})[/]" if owner else ""
-            console.print(f"    {icon} {content}{owner_str}")
-
-        # -- Recent comms events (JSONL log) --
-        comms_dir = zo_root / "logs" / "comms"
-        if comms_dir.is_dir():
-            import json as _json
-            for log_file in sorted(comms_dir.glob("*.jsonl"), reverse=True)[:1]:
-                try:
-                    lines = log_file.read_text(encoding="utf-8").splitlines()
-                except OSError:
-                    continue
-                for line in lines[-10:]:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        evt = _json.loads(line)
-                    except ValueError:
-                        continue
-                    eid = evt.get("event_id", "")
-                    if eid in _seen_events:
-                        continue
-                    _seen_events.add(eid)
-                    etype = evt.get("event_type", "")
-                    agent = evt.get("agent", "")
-                    if etype == "decision":
-                        title = evt.get("title", "")[:70]
-                        console.print(
-                            f"    [{_AMBER}]◆ DECISION[/] [{_DIM}]{agent}:[/] {title}"
-                        )
-                    elif etype == "gate":
-                        result = evt.get("result", "")
-                        phase = evt.get("phase_id", "")
-                        console.print(
-                            f"    [{_AMBER}]⊘ GATE[/] {phase}: {result}"
-                        )
-                    elif etype == "checkpoint":
-                        progress = evt.get("progress", "")[:70]
-                        console.print(
-                            f"    [{_DIM}]↳ {agent}: {progress}[/]"
-                        )
-                    elif etype == "error":
-                        desc = evt.get("description", "")[:70]
-                        console.print(
-                            f"    [red]✗ ERROR[/] [{_DIM}]{agent}:[/] {desc}"
-                        )
-
-        # -- Separator between polls --
-        if not tasks and not header_parts:
-            console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
-        console.print()
-
-    process = wrapper.wait_for_completion(process, on_status=_print_status)
-
-    if process.status == "completed":
-        console.print("[green bold]Session completed successfully.[/]")
-    else:
-        console.print(f"[red bold]Session ended with status:[/] {process.status}")
-
-    # End session
-    orchestrator.end_session()
-    semantic.close()
 
 
 @cli.command("continue")
@@ -374,14 +383,24 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     type=click.Choice(["supervised", "auto", "full-auto"]),
     default="supervised",
 )
-def continue_(project_name: str, gate_mode: str) -> None:
-    """Resume a paused project from STATE.md."""
+@click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
+def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
+    """Resume a paused project from STATE.md.
+
+    Reads the project's memory, finds the plan, resumes from the
+    current phase, and launches an interactive agent session.
+    """
     from zo.comms import CommsLogger
     from zo.memory import MemoryManager
+    from zo.orchestrator import Orchestrator
+    from zo.plan import parse_plan, validate_plan
     from zo.semantic import SemanticIndex
+    from zo.target import parse_target
+    from zo.wrapper import LifecycleWrapper
 
     zo_root = _zo_root()
 
+    # 1. Recover session state
     memory = MemoryManager(project_dir=zo_root, project_name=project_name)
     state = memory.recover_session()
 
@@ -393,38 +412,108 @@ def continue_(project_name: str, gate_mode: str) -> None:
         raise SystemExit(1)
 
     console.print(f"[{_AMBER}]Recovering session:[/] {project_name}")
-    console.print(f"  Mode: {state.mode}")
-    console.print(f"  Phase: {state.phase}")
-    console.print(f"  Blockers: {state.active_blockers or 'none'}")
+    console.print(f"  Mode: {state.mode}  Phase: {state.phase}")
+    if state.active_blockers:
+        console.print(f"  Blockers: {', '.join(state.active_blockers)}")
 
-    session_id = f"s-{uuid.uuid4().hex[:8]}"
-    log_dir = zo_root / "logs" / "comms"
-    CommsLogger(log_dir=log_dir, project=project_name, session_id=session_id)
-
-    db_path = memory.memory_root / "index.db"
-    semantic = SemanticIndex(db_path=db_path)
-
-    # Query for relevant context
+    # Show recent session context
     recent = memory.read_recent_summaries(count=3)
     if recent:
         console.print(f"[{_AMBER}]Recent sessions:[/]")
         for s in recent:
-            console.print(f"  {s.date}: {', '.join(s.accomplished[:2]) or 'no summary'}")
+            console.print(
+                f"  {s.date}: {', '.join(s.accomplished[:2]) or 'no summary'}"
+            )
 
-    console.print(
-        f"\n[{_AMBER}]Continue mode ready.[/] "
-        "Full orchestrator launch requires a plan file — use [bold]zo build[/] "
-        "to re-launch with updated plan."
+    # 2. Find and parse the plan
+    plan_path = zo_root / "plans" / f"{project_name}.md"
+    if not plan_path.exists():
+        console.print(f"[red bold]Plan not found:[/] {plan_path}")
+        raise SystemExit(1)
+    plan = parse_plan(plan_path)
+    report = validate_plan(plan)
+    if not report.valid:
+        console.print("[red bold]Plan validation failed.[/]")
+        raise SystemExit(1)
+
+    # 3. Parse target
+    target_path = zo_root / "targets" / f"{project_name}.target.md"
+    if not target_path.exists():
+        console.print(f"[red bold]Target not found:[/] {target_path}")
+        raise SystemExit(1)
+    target = parse_target(target_path)
+
+    # 4. Set up orchestrator
+    session_id = f"s-{uuid.uuid4().hex[:8]}"
+    comms = CommsLogger(
+        log_dir=zo_root / "logs" / "comms",
+        project=project_name, session_id=session_id,
     )
+    db_path = memory.memory_root / "index.db"
+    semantic = SemanticIndex(db_path=db_path)
 
-    semantic.close()
+    decisions = memory.read_decisions()
+    priors = memory.read_priors()
+    if decisions:
+        semantic.index_decisions(decisions)
+    if priors:
+        semantic.index_priors(priors)
+
+    gm = _gate_mode_from_str(gate_mode)
+    orchestrator = Orchestrator(
+        plan=plan, target=target, memory=memory, comms=comms,
+        semantic=semantic, zo_root=zo_root, gate_mode=gm,
+    )
+    orchestrator.start_session()
+    decomp = orchestrator.decompose_plan()
+
+    # 5. Get current phase
+    phase = orchestrator.get_current_phase()
+    if phase is None:
+        console.print("[green bold]All phases complete. Nothing to continue.[/]")
+        raise SystemExit(0)
+
+    # 6. Review and launch
+    _show_phase_review(phase, decomp, plan, gate_mode)
+    extra = _ask_additional_instructions(gate_mode)
+
+    prompt = orchestrator.build_lead_prompt(phase)
+    if extra:
+        prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
+
+    wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
+    _launch_and_monitor(
+        wrapper=wrapper,
+        prompt=prompt,
+        team_name=f"zo-{project_name}",
+        zo_root=zo_root,
+        orchestrator=orchestrator,
+        semantic=semantic,
+        no_tmux=no_tmux,
+    )
 
 
 @cli.command()
 @click.argument("project_name")
-def maintain(project_name: str) -> None:
-    """Apply updated plan instructions to a running project."""
+@click.option(
+    "--gate-mode",
+    type=click.Choice(["supervised", "auto", "full-auto"]),
+    default="supervised",
+)
+@click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
+def maintain(project_name: str, gate_mode: str, no_tmux: bool) -> None:
+    """Apply updated plan instructions to a running project.
+
+    Reads the plan, detects changes, and launches an interactive
+    agent session focused on targeted updates rather than full rebuild.
+    """
+    from zo.comms import CommsLogger
     from zo.memory import MemoryManager
+    from zo.orchestrator import Orchestrator
+    from zo.plan import parse_plan, validate_plan
+    from zo.semantic import SemanticIndex
+    from zo.target import parse_target
+    from zo.wrapper import LifecycleWrapper
 
     zo_root = _zo_root()
     memory = MemoryManager(project_dir=zo_root, project_name=project_name)
@@ -438,9 +527,66 @@ def maintain(project_name: str) -> None:
 
     console.print(f"[{_AMBER}]Maintain mode:[/] {project_name}")
     console.print(f"  Current phase: {state.phase}")
-    console.print(
-        "  Apply plan edits by running [bold]zo build[/] with the updated plan. "
-        "The orchestrator will detect changes and re-decompose."
+
+    # Parse plan and target
+    plan_path = zo_root / "plans" / f"{project_name}.md"
+    if not plan_path.exists():
+        console.print(f"[red bold]Plan not found:[/] {plan_path}")
+        raise SystemExit(1)
+    plan = parse_plan(plan_path)
+    report = validate_plan(plan)
+    if not report.valid:
+        console.print("[red bold]Plan validation failed.[/]")
+        raise SystemExit(1)
+
+    target_path = zo_root / "targets" / f"{project_name}.target.md"
+    if not target_path.exists():
+        console.print(f"[red bold]Target not found:[/] {target_path}")
+        raise SystemExit(1)
+    target = parse_target(target_path)
+
+    # Set up orchestrator
+    session_id = f"s-{uuid.uuid4().hex[:8]}"
+    comms = CommsLogger(
+        log_dir=zo_root / "logs" / "comms",
+        project=project_name, session_id=session_id,
+    )
+    db_path = memory.memory_root / "index.db"
+    semantic = SemanticIndex(db_path=db_path)
+
+    gm = _gate_mode_from_str(gate_mode)
+    orchestrator = Orchestrator(
+        plan=plan, target=target, memory=memory, comms=comms,
+        semantic=semantic, zo_root=zo_root, gate_mode=gm,
+    )
+    orchestrator.start_session()
+    decomp = orchestrator.decompose_plan()
+
+    # Check for plan edits
+    if orchestrator.check_plan_edited():
+        console.print(f"[{_AMBER}]Plan changed since last run — will re-decompose.[/]")
+
+    phase = orchestrator.get_current_phase()
+    if phase is None:
+        console.print("[green bold]All phases complete.[/]")
+        raise SystemExit(0)
+
+    _show_phase_review(phase, decomp, plan, gate_mode)
+    extra = _ask_additional_instructions(gate_mode)
+
+    prompt = orchestrator.build_lead_prompt(phase)
+    if extra:
+        prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
+
+    wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
+    _launch_and_monitor(
+        wrapper=wrapper,
+        prompt=prompt,
+        team_name=f"zo-{project_name}",
+        zo_root=zo_root,
+        orchestrator=orchestrator,
+        semantic=semantic,
+        no_tmux=no_tmux,
     )
 
 
@@ -543,20 +689,35 @@ def status(project_name: str) -> None:
 
 
 @cli.command()
-@click.argument("source_dir", type=click.Path(exists=True, path_type=Path))
+@click.argument("source_paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option("--project", "-p", required=True, help="Project name for the generated plan")
-def draft(source_dir: Path, project: str) -> None:
+@click.option("--no-tmux", is_flag=True, help="Skip interactive refinement session")
+def draft(source_paths: tuple[Path, ...], project: str, no_tmux: bool) -> None:
     """Generate a plan.md from source documents.
 
-    Indexes source documents, then generates a compliant plan.md
-    following the 8-section schema from specs/plan.md.
+    Accepts multiple file and/or directory paths. Indexes all documents,
+    generates a compliant plan.md, then optionally launches an interactive
+    Claude Code session to refine it with you.
+
+    Usage::
+
+        zo draft ~/docs/requirements.md ~/data/notes/ --project my-project
+        zo draft ./specs --project alpha --no-tmux
     """
     from zo.draft import PlanDrafter
 
-    zo_root = _zo_root()
-    drafter = PlanDrafter(source_dir=source_dir, project_name=project, zo_root=zo_root)
+    if not source_paths:
+        console.print("[red bold]No source paths provided.[/]")
+        raise SystemExit(1)
 
-    console.print(f"[{_AMBER}]Indexing documents:[/] {source_dir}")
+    zo_root = _zo_root()
+    drafter = PlanDrafter(
+        source_paths=list(source_paths), project_name=project, zo_root=zo_root,
+    )
+
+    console.print(f"[{_AMBER}]Indexing documents from {len(source_paths)} path(s):[/]")
+    for sp in source_paths:
+        console.print(f"  [{_DIM}]{sp}[/]")
     count = drafter.index_documents()
     console.print(f"[green]Indexed {count} documents.[/]")
 
@@ -572,6 +733,77 @@ def draft(source_dir: Path, project: str) -> None:
             f"[yellow bold]Plan has validation issues.[/] "
             f"Edit {plan_path} to fix them."
         )
+
+    # Interactive refinement session
+    if not no_tmux:
+        from zo.wrapper import LifecycleWrapper
+
+        console.print(
+            f"\n[{_AMBER}]Opening interactive session to refine the plan...[/]"
+        )
+        from zo.comms import CommsLogger
+
+        session_id = f"s-{uuid.uuid4().hex[:8]}"
+        comms = CommsLogger(
+            log_dir=zo_root / "logs" / "comms",
+            project=project, session_id=session_id,
+        )
+        wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
+
+        refine_prompt = (
+            f"I've drafted a plan.md at {plan_path} for project '{project}'.\n\n"
+            f"The plan was generated from {count} source documents.\n"
+            f"Please review it, suggest improvements, and help me refine the "
+            f"oracle definition, constraints, and agent configuration.\n\n"
+            f"The plan schema is defined in specs/plan.md — ensure compliance."
+        )
+
+        prompt_file = zo_root / "logs" / "wrapper" / f"zo-draft-{project}-prompt.txt"
+        prompt_file.parent.mkdir(parents=True, exist_ok=True)
+        prompt_file.write_text(refine_prompt, encoding="utf-8")
+
+        # Launch interactive claude to refine the plan
+        result = __import__("subprocess").run(
+            ["tmux", "new-window", "-d", "-n", f"draft-{project}",
+             "-P", "-F", "#{pane_id}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        pane_id = result.stdout.strip()
+
+        import shlex
+        claude_abs = wrapper._resolve_claude_bin()
+        cmd = (
+            f'{shlex.quote(claude_abs)}'
+            f' --model sonnet'
+            f' --add-dir {shlex.quote(str(zo_root))}'
+        )
+        __import__("subprocess").run(
+            ["tmux", "send-keys", "-t", pane_id, cmd, "Enter"],
+            capture_output=True, text=True, timeout=10,
+        )
+
+        import time
+        time.sleep(3)
+        __import__("subprocess").run(
+            ["tmux", "load-buffer", str(prompt_file)],
+            capture_output=True, text=True, timeout=10,
+        )
+        __import__("subprocess").run(
+            ["tmux", "paste-buffer", "-t", pane_id],
+            capture_output=True, text=True, timeout=10,
+        )
+        time.sleep(0.5)
+        __import__("subprocess").run(
+            ["tmux", "send-keys", "-t", pane_id, "Enter"],
+            capture_output=True, text=True, timeout=10,
+        )
+
+        console.print(
+            f"[{_AMBER}]Refinement session opened.[/] "
+            f"[{_DIM}]Ctrl-b n to switch to it.[/]"
+        )
+
+    drafter.close()
 
 
 # ---------------------------------------------------------------------------
