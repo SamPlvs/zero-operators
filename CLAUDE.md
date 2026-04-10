@@ -59,8 +59,45 @@ Canonical reference: `design/zero_operators_brand_system.html`
 - **Keep context lean**: read only the spec files relevant to current task
 
 
+## AUTOMATIC Memory & Docs Protocol (NON-NEGOTIABLE)
+
+These rules are AUTOMATIC. Claude executes them without being asked.
+The human should never need to remind Claude to update memory or docs.
+
+### On Every Commit
+
+Before creating ANY git commit, Claude MUST:
+
+1. **Update `memory/zo-platform/STATE.md`** — reflect current phase, completed items, known issues, what's next
+2. **Append to `memory/zo-platform/DECISION_LOG.md`** — every architectural decision, gate passage, or scope change made in this session
+3. **Update `memory/zo-platform/PRIORS.md`** — if any failure, error, or unexpected behaviour occurred, add a new prior with: failure description, root cause category, rules learned, verified solution
+4. **Cascade doc updates** — if the change affects the public interface:
+   - Agent added/removed → update `README.md` badge + roster, `specs/agents.md` counts
+   - Command added/removed → update `README.md`, `PRD.md`, `CLAUDE.md` operating modes
+   - Version changed → update `README.md` badges + footer
+
+### On Session End
+
+Before the session closes, Claude MUST:
+
+1. Write a session summary to `memory/zo-platform/sessions/`
+2. Ensure STATE.md reflects the final state
+3. Ensure DECISION_LOG has all decisions from this session
+
+### On Any Failure or Error
+
+When anything fails (build error, test failure, unexpected behaviour, user reports a bug):
+
+1. **Document** the failure in DECISION_LOG.md (timestamp, type, description)
+2. **Root cause**: classify as `missing_rule` | `incomplete_rule` | `ignored_rule` | `novel_case` | `regression`
+3. **Fix** the immediate problem
+4. **Add a prior** to PRIORS.md with: rules learned, verified solution, failure reference
+5. **Verify** the updated rule would have caught the original failure
+
+This is the self-evolution protocol. The same mistake must never happen twice.
+
+
 ## Operating Modes
 
-- **Build**: input plan → spawn team → produce code from scratch
-- **Continue**: read memory → reason about state → pick up where last session left off
-- **Maintain**: new instruction → diff against existing state → targeted update
+- **Build**: input plan → spawn team → produce code (auto-detects fresh/continue/plan-edited)
+- **Continue**: shorthand for build — finds plan, resumes from current phase

@@ -6,8 +6,8 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ## Team Philosophy
 
-- **Two teams**: Project delivery (10 agents) and platform build (6 agents)
-- **Project delivery team**: 6 launch agents (core loop + code quality) + 4 phase-in agents (validation, optimisation, infrastructure)
+- **Two teams**: Project delivery (11 agents) and platform build (6 agents)
+- **Project delivery team**: 7 launch agents (research + core loop + code quality) + 4 phase-in agents (validation, optimisation, infrastructure)
 - **Platform build team**: 6 agents for building ZO as software (architect, backend, frontend, test, review, docs)
 - **Agent definitions**: Each agent is a `.md` file in `.claude/agents/` with YAML frontmatter (name, model tier, description, tools, team) and markdown instructions
 - **Modularity**: Agents can be added, removed, or swapped per project without architectural changes
