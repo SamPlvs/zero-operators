@@ -116,27 +116,33 @@ class LifecycleWrapper:
         max_turns: int,
     ) -> LeadProcess:
         """Launch Claude Code in a visible tmux pane (interactive TUI)."""
-        # Write prompt to a temp file to avoid shell escaping issues
+        # Write prompt to a file — avoids shell escaping issues entirely
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
-        cmd_parts: list[str] = [
-            self._claude_bin,
-            "--model", model,
-            "--max-turns", str(max_turns),
-            "--add-dir", shlex.quote(cwd),
-            "--dangerously-skip-permissions",
-            "-p", f'"$(cat {shlex.quote(str(prompt_file))})"',
-        ]
-        shell_cmd = " ".join(cmd_parts)
+        # Write a launcher script that reads the prompt and execs claude.
+        # This avoids nested quoting problems with tmux new-window.
+        launcher = self._log_dir / f"{team_name}-launch.sh"
+        launcher.write_text(
+            f'#!/usr/bin/env bash\n'
+            f'exec {shlex.quote(self._claude_bin)}'
+            f' --model {shlex.quote(model)}'
+            f' --max-turns {max_turns}'
+            f' --add-dir {shlex.quote(cwd)}'
+            f' --dangerously-skip-permissions'
+            f' -p "$(cat {shlex.quote(str(prompt_file))})"'
+            f'\n',
+            encoding="utf-8",
+        )
+        launcher.chmod(0o755)
 
-        # Create a new tmux window (full-size, not a split) for the agent
+        # Create a new tmux window running the launcher script
         result = subprocess.run(
             [
                 "tmux", "new-window", "-d",
                 "-n", team_name,
                 "-P", "-F", "#{pane_id}",
-                shell_cmd,
+                str(launcher),
             ],
             capture_output=True, text=True, timeout=10,
         )
