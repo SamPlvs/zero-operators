@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-296_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-295_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-16_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -74,49 +74,46 @@ You stay in the loop at human checkpoints. ZO remembers everything across sessio
 
 **Step by step:**
 
-1. **Feed source docs** — `zo draft source-docs/ --project my-project` indexes your documents and generates a `plan.md` with all 8 required sections (objective, oracle, workflow, data sources, domain priors, agents, constraints)
-2. **Review the plan** — edit `plans/my-project.md` to sharpen the objective, set oracle thresholds, add domain knowledge the agent missed
-3. **Launch** — `zo build plans/my-project.md` spawns the agent team. You watch them work in tmux split panes
-4. **Approve at gates** — in supervised mode (default), every phase transition pauses for your review. You see a summary of what was done, key metrics, and the recommended next action
-5. **Session continuity** — stop anytime. `zo continue my-project` reads STATE.md and picks up exactly where you left off. Semantic search over past decisions provides context
+1. **Feed source docs** — `zo draft ~/docs/req.md ~/data/ --project my-project` indexes your documents and generates a `plan.md`, then opens an interactive Claude session to refine it
+2. **Review the plan** — edit `plans/my-project.md` to sharpen the objective, set oracle thresholds, add domain knowledge
+3. **Launch** — `zo build plans/my-project.md` shows a phase review (subtasks, agents, oracle criteria), prompts for additional instructions, then spawns the agent team in tmux
+4. **Approve at gates** — in supervised mode (default), every phase transition pauses for your review. You can also type directly into the Lead Orchestrator's Claude Code session
+5. **Session continuity** — stop anytime. Run `zo build` again — it auto-detects the current phase and resumes. Or use `zo continue my-project` as shorthand
 6. **Self-evolution** — when something fails, ZO runs a post-mortem: fix the symptom, update the rule that allowed it, verify the rule prevents recurrence
 7. **Clean delivery** — your project repo contains only code, models, reports, and tests. Zero ZO infrastructure
 
 ---
 
-## Operating Modes
+## Commands
 
-### `zo build` — Start from scratch
+### `zo build` — The primary command
 
 ```bash
 zo build plans/my-project.md --gate-mode supervised
 ```
 
-Parses the plan, initializes project memory, decomposes into phases, and launches the agent team. This is how you start a new project.
+Smart mode detection:
+- **Fresh project** (no state) — builds from scratch
+- **Existing state** — continues from the current phase
+- **Plan edited** since last run — re-decomposes and resumes
 
-### `zo continue` — Resume where you left off
+Shows a brand panel, phase review with subtasks/agents/oracle criteria, and prompts for additional instructions before launching.
+
+### `zo continue` — Resume shorthand
 
 ```bash
 zo continue my-project
 ```
 
-Reads `STATE.md` from the last session, queries the semantic index for relevant past decisions, and resumes from the exact phase and subtask where work stopped. No context is lost.
-
-### `zo maintain` — Apply updates
-
-```bash
-zo maintain my-project
-```
-
-Detects changes to `plan.md` since the last session. Computes a diff, identifies which phases need re-execution, and presents the replan for your approval before resuming.
+Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path.
 
 ### `zo draft` — Generate a plan from documents
 
 ```bash
-zo draft source-docs/ --project my-project
+zo draft ~/docs/requirements.md ~/data/notes/ /path/to/specs.txt --project my-project
 ```
 
-Indexes all source documents (PDFs, CSVs, READMEs), then generates a compliant `plan.md` following the 8-section schema. You review and edit before launching.
+Accepts **multiple file and directory paths**. Indexes all source documents, generates a compliant `plan.md`, then opens an interactive Claude Code session to refine it with you. Use `--no-tmux` to skip the interactive session.
 
 ### `zo init` — Scaffold a new project
 
@@ -124,15 +121,7 @@ Indexes all source documents (PDFs, CSVs, READMEs), then generates a compliant `
 zo init my-project
 ```
 
-Creates the project directory structure:
-```
-memory/my-project/STATE.md
-memory/my-project/DECISION_LOG.md
-memory/my-project/PRIORS.md
-memory/my-project/sessions/
-targets/my-project.target.md    (template)
-plans/my-project.md             (template with all 8 sections)
-```
+Creates: `memory/`, `targets/`, `plans/` with template files for the project.
 
 ### `zo status` — Check current state
 
@@ -173,20 +162,28 @@ uv sync --extra dev
 zo init my-project
 
 # 4. Option A: Draft a plan from source documents
-zo draft ~/path/to/source-docs/ --project my-project
+zo draft ~/docs/requirements.md ~/data/ --project my-project
 
 # 4. Option B: Write a plan manually
 #    Edit plans/my-project.md — fill in all 8 sections
 
-# 5. Launch
+# 5. Start tmux (required for agent visibility)
+tmux new -s zo
+
+# 6. Launch — you'll see a phase review, then agents in tmux panes
 zo build plans/my-project.md
 
-# 6. Watch agents work in tmux split panes
-# 7. Approve at human checkpoints
-# 8. Resume if interrupted
+# 7. Navigate tmux panes
+#    Ctrl-b n     → switch to agent window
+#    Ctrl-b p     → back to monitoring window
+#    Ctrl-b q N   → jump to pane N
+#    Ctrl-b z     → zoom current pane
+
+# 8. Approve at human checkpoints (supervised mode)
+# 9. Resume if interrupted
 zo continue my-project
 
-# 9. Check status anytime
+# 10. Check status anytime
 zo status my-project
 ```
 
@@ -334,7 +331,7 @@ Over time, `PRIORS.md` accumulates domain knowledge. The same mistake never happ
 ```
 zero-operators/
 ├── src/zo/                     # Platform code (10 modules)
-│   ├── cli.py                  # CLI: zo build/continue/maintain/init/status/draft
+│   ├── cli.py                  # CLI: zo build/continue/init/status/draft
 │   ├── draft.py                # Agentic plan generation from source docs
 │   ├── plan.py                 # Plan parser and validator (8 sections)
 │   ├── target.py               # Target file parser, isolation enforcer
@@ -401,7 +398,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 4 | Evolution engine, CLI, integration tests | Done |
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
 
-296 platform tests. 92% coverage. ruff clean.
+295 platform tests. 92% coverage. ruff clean.
 
 ---
 
@@ -413,7 +410,7 @@ mnist-delivery/          ← delivery repo (clean)
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v1.0` · `validated` · `99% MNIST accuracy`
+`ZERO OPERATORS` · `v1.0.1` · `validated` · `99% MNIST accuracy`
 
 <br/>
 </div>
