@@ -58,9 +58,26 @@ Canonical reference: `design/zero_operators_brand_system.html`
 - **Phase transitions** (planning → building): fresh context window, load only the artefacts produced by the previous phase
 - **Keep context lean**: read only the spec files relevant to current task
 
+## Self-Evolution Protocol (MANDATORY)
+
+When any failure, error, or unexpected behaviour occurs:
+
+1. **Document** the failure in DECISION_LOG.md
+2. **Root cause**: missing_rule? incomplete_rule? ignored_rule? novel_case? regression?
+3. **Fix** the immediate problem
+4. **Update the rule** in PRIORS.md (or relevant spec/agent definition)
+5. **Verify** the updated rule would have caught the original failure
+
+**After ANY code change**, update these files if affected:
+- `memory/zo-platform/STATE.md` — current state
+- `memory/zo-platform/DECISION_LOG.md` — decisions made
+- `memory/zo-platform/PRIORS.md` — new learnings
+- `README.md` — badges, commands, agent roster
+- `specs/agents.md` — team counts
+- `PRD.md` / `CLAUDE.md` — operating modes
+
 
 ## Operating Modes
 
-- **Build**: input plan → spawn team → produce code from scratch
-- **Continue**: read memory → reason about state → pick up where last session left off
-- **Maintain**: new instruction → diff against existing state → targeted update
+- **Build**: input plan → spawn team → produce code (auto-detects fresh/continue/plan-edited)
+- **Continue**: shorthand for build — finds plan, resumes from current phase
