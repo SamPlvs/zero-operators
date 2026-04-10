@@ -142,11 +142,13 @@ class TestLaunchLeadSession:
         assert "--add-dir" in cmd
         assert "/my/delivery" in cmd
 
+    @mock.patch("zo.wrapper.time.sleep")
     @mock.patch("zo.wrapper.subprocess.run")
     def test_tmux_launch_creates_pane(
-        self, mock_run: mock.MagicMock, wrapper: LifecycleWrapper
+        self, mock_run: mock.MagicMock, mock_sleep: mock.MagicMock,
+        wrapper: LifecycleWrapper,
     ) -> None:
-        """When inside tmux, launches in a visible tmux pane."""
+        """When inside tmux, creates window, starts claude, pastes prompt."""
         mock_run.return_value = mock.MagicMock(
             stdout="%5\n", returncode=0
         )
@@ -161,13 +163,18 @@ class TestLaunchLeadSession:
                 use_tmux=True,
             )
 
-        # Should have called tmux new-window
-        call_args = mock_run.call_args[0][0]
-        assert call_args[0] == "tmux"
-        assert "new-window" in call_args
+        # Calls: which + new-window + send-keys(cmd) + load-buffer +
+        #        paste-buffer + send-keys(Enter)
+        calls = mock_run.call_args_list
+        tmux_calls = [c for c in calls if c[0][0][0] == "tmux"]
+        actions = [c[0][0][1] for c in tmux_calls]
+        assert "new-window" in actions
+        assert "send-keys" in actions
+        assert "load-buffer" in actions
+        assert "paste-buffer" in actions
 
         assert result.tmux_pane_id == "%5"
-        assert result.pid is None  # No subprocess in tmux mode
+        assert result.pid is None
         assert result.status == AgentStatus.SPAWNING
         assert result.team_name == "alpha"
 
