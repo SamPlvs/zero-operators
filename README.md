@@ -189,12 +189,30 @@ zo status my-project
 
 ---
 
-## Commands
+## Session Pickup
 
-ZO provides 23 slash commands for Claude Code. See [docs/COMMANDS.md](docs/COMMANDS.md) for the full reference.
+Starting a new Claude Code session? Use `/zo-dev` to get full context:
+
+```
+/zo-dev
+```
+
+This loads STATE.md, DECISION_LOG, PRIORS, presents a briefing of where you are, and asks what to work on. No need to explain context manually — ZO remembers everything.
+
+Other session commands:
+- `/memory/prime zo-platform` — detailed context briefing with semantic search
+- `/memory/recall "query"` — search past decisions for a specific topic
+- `/memory/session-summary` — wrap up the current session cleanly
+
+---
+
+## Slash Commands
+
+ZO provides 24 slash commands for Claude Code. See [docs/COMMANDS.md](docs/COMMANDS.md) for the full reference.
 
 | Category | Key Commands |
 |----------|-------------|
+| Platform | `/zo-dev` |
 | Project | `/project/import`, `/project/connect`, `/project/plan`, `/project/launch` |
 | Memory | `/memory/recall`, `/memory/prime`, `/memory/priors`, `/memory/session-summary` |
 | Gates | `/gates/approve`, `/gates/reject`, `/gates/gates` |
@@ -262,7 +280,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 │  ├── Agent(name="oracle-qa", team_name="project")           │
 │  └── Agents communicate peer-to-peer via SendMessage        │
 │                                                             │
-│  The Lead knows all 16 agents and creates new ones on the   │
+│  The Lead knows all 17 agents and creates new ones on the   │
 │  fly if the project needs expertise not in the roster.      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -388,18 +406,19 @@ mnist-delivery/          ← delivery repo (clean)
 
 ## Status
 
-**All phases complete. Validated end-to-end.**
+**v1.0.1 — All phases complete. Validated end-to-end. Interactive tmux sessions working.**
 
 | Phase | What | Status |
 |-------|------|--------|
-| 0 | Agent definitions + Claude Code setup | Done |
+| 0 | Agent definitions (17) + Claude Code setup | Done |
 | 1 | Plan parser, target parser, comms logger, setup | Done |
 | 2 | Memory layer, semantic index | Done |
 | 3 | Orchestration engine + lifecycle wrapper | Done |
 | 4 | Evolution engine, CLI, integration tests | Done |
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
+| 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 
-295 platform tests. 92% coverage. ruff clean.
+295 platform tests. ruff clean. 17 agents. 24 slash commands.
 
 ---
 
