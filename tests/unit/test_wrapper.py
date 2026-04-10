@@ -142,11 +142,13 @@ class TestLaunchLeadSession:
         assert "--add-dir" in cmd
         assert "/my/delivery" in cmd
 
+    @mock.patch("zo.wrapper.time.sleep")
     @mock.patch("zo.wrapper.subprocess.run")
     def test_tmux_launch_creates_pane(
-        self, mock_run: mock.MagicMock, wrapper: LifecycleWrapper
+        self, mock_run: mock.MagicMock, mock_sleep: mock.MagicMock,
+        wrapper: LifecycleWrapper,
     ) -> None:
-        """When inside tmux, creates a window and sends the command."""
+        """When inside tmux, creates window, starts claude, pastes prompt."""
         mock_run.return_value = mock.MagicMock(
             stdout="%5\n", returncode=0
         )
@@ -161,19 +163,15 @@ class TestLaunchLeadSession:
                 use_tmux=True,
             )
 
-        # Two tmux calls: new-window then send-keys
-        assert mock_run.call_count == 3  # which + new-window + send-keys
+        # Calls: which + new-window + send-keys(cmd) + load-buffer +
+        #        paste-buffer + send-keys(Enter)
         calls = mock_run.call_args_list
-        # First call: which claude (resolve binary)
-        # Second call: tmux new-window
-        new_window_args = calls[1][0][0]
-        assert new_window_args[0] == "tmux"
-        assert "new-window" in new_window_args
-        # Third call: tmux send-keys
-        send_keys_args = calls[2][0][0]
-        assert send_keys_args[0] == "tmux"
-        assert "send-keys" in send_keys_args
-        assert "Enter" in send_keys_args
+        tmux_calls = [c for c in calls if c[0][0][0] == "tmux"]
+        actions = [c[0][0][1] for c in tmux_calls]
+        assert "new-window" in actions
+        assert "send-keys" in actions
+        assert "load-buffer" in actions
+        assert "paste-buffer" in actions
 
         assert result.tmux_pane_id == "%5"
         assert result.pid is None
