@@ -69,10 +69,19 @@ class DataSource(BaseModel):
     raw_content: str = ""
 
 
+class CustomAgentSpec(BaseModel):
+    """A custom agent declared in the plan's Agent Configuration section."""
+
+    name: str
+    model: str = "claude-sonnet-4-6"
+    role: str = ""
+
+
 class AgentConfig(BaseModel):
     """Agent configuration section."""
 
     active_agents: list[str] = Field(default_factory=list)
+    custom_agents: list[CustomAgentSpec] = Field(default_factory=list)
     raw_content: str = ""
 
 
@@ -327,22 +336,56 @@ _ACTIVE_AGENTS_RE = re.compile(
     re.IGNORECASE,
 )
 
+_CUSTOM_AGENTS_RE = re.compile(
+    r"\*\*Custom agents:?\*\*\s*:?\s*\n((?:\s*-\s*.+\n?)+)",
+    re.IGNORECASE,
+)
+
+_CUSTOM_AGENT_LINE_RE = re.compile(
+    r"-\s*(\S+)\s*:\s*(\S+)\s*[—–-]\s*(.+)",
+)
+
+_MODEL_ALIASES: dict[str, str] = {
+    "opus": "claude-opus-4-6",
+    "sonnet": "claude-sonnet-4-6",
+    "haiku": "claude-haiku-4-5-20251001",
+}
+
 
 def _parse_agents(body: str) -> AgentConfig:
     """Parse the Agents section.
 
-    Args:
-        body: Raw markdown body of the Agents section.
+    Supports both active agents and custom agent declarations::
 
-    Returns:
-        Populated ``AgentConfig``.
+        **Active agents:** data-engineer, model-builder, oracle-qa
+
+        **Custom agents:**
+        - signal-analyst: Sonnet — Signal processing for vibration data
+        - calibration-expert: Sonnet — Sensor calibration specialist
     """
     agents: list[str] = []
     m = _ACTIVE_AGENTS_RE.search(body)
     if m:
         raw = m.group(1)
         agents = [a.strip() for a in raw.split(",") if a.strip()]
-    return AgentConfig(active_agents=agents, raw_content=body)
+
+    custom: list[CustomAgentSpec] = []
+    cm = _CUSTOM_AGENTS_RE.search(body)
+    if cm:
+        for line in cm.group(1).strip().splitlines():
+            lm = _CUSTOM_AGENT_LINE_RE.match(line.strip())
+            if lm:
+                name = lm.group(1).strip()
+                model_raw = lm.group(2).strip().lower()
+                model = _MODEL_ALIASES.get(model_raw, model_raw)
+                role = lm.group(3).strip()
+                custom.append(CustomAgentSpec(
+                    name=name, model=model, role=role,
+                ))
+
+    return AgentConfig(
+        active_agents=agents, custom_agents=custom, raw_content=body,
+    )
 
 
 
