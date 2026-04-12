@@ -114,16 +114,28 @@ class TestInitCommand:
 
         # Directories
         for d in (
+            "configs/data",
+            "configs/model",
+            "configs/training",
+            "configs/experiment",
+            "src/data",
+            "src/model",
+            "src/engineering",
+            "src/inference",
+            "src/utils",
             "data/raw",
             "data/processed",
-            "src/models",
-            "src/pipelines",
-            "src/utils",
-            "experiments",
             "models",
+            "experiments",
             "reports/figures",
-            "notebooks",
+            "notebooks/data",
+            "notebooks/model",
+            "notebooks/analysis",
+            "notebooks/phase",
+            "tests/unit",
+            "tests/ml",
             "tests/fixtures",
+            "docker",
         ):
             assert (delivery / d).is_dir(), f"Missing dir: {d}"
             assert (delivery / d / ".gitkeep").exists()
@@ -131,11 +143,14 @@ class TestInitCommand:
         # Template files
         for f in (
             "README.md",
+            "STRUCTURE.md",
             "pyproject.toml",
             ".gitignore",
-            ".dockerignore",
-            "Dockerfile",
-            "docker-compose.yml",
+            "experiments/README.md",
+            "configs/experiment/base.yaml",
+            "docker/Dockerfile",
+            "docker/docker-compose.yml",
+            "docker/.dockerignore",
         ):
             assert (delivery / f).exists(), f"Missing file: {f}"
 
@@ -190,7 +205,7 @@ class TestScaffoldDelivery:
 
         scaffold_delivery(tmp_path / "repo", "test-proj")
 
-        dockerfile = (tmp_path / "repo" / "Dockerfile").read_text()
+        dockerfile = (tmp_path / "repo" / "docker" / "Dockerfile").read_text()
         assert "FROM ${BASE_IMAGE} AS base" in dockerfile
         assert "uv sync" in dockerfile
 
@@ -199,7 +214,7 @@ class TestScaffoldDelivery:
 
         scaffold_delivery(tmp_path / "repo", "test-proj")
 
-        compose = (tmp_path / "repo" / "docker-compose.yml").read_text()
+        compose = (tmp_path / "repo" / "docker" / "docker-compose.yml").read_text()
         assert "capabilities: [gpu]" in compose
 
     def test_scaffold_idempotent(self, tmp_path: Path) -> None:

@@ -1860,7 +1860,7 @@ zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery</code></pre
 
   <h3>3. Build Docker + Preflight</h3>
   <pre class="code-block"><code># Build delivery container
-cd ~/projects/cifar10-delivery && docker compose build && cd -
+cd ~/projects/cifar10-delivery && docker compose -f docker/docker-compose.yml build && cd -
 
 # Validate everything
 zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</code></pre>
@@ -1874,32 +1874,32 @@ zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</co
     <div class="timeline-item highlight">
       <div class="timeline-phase">Phase 1 -- Data Pipeline</div>
       <div class="timeline-desc">CIFAR-10 auto-download, DataLoaders with train/val/test splits, augmentation. Automated gate.</div>
-      <div class="timeline-commit">artifacts: data_quality_report.md, eda_summary.png, notebooks/phase_1.ipynb</div>
+      <div class="timeline-commit">artifacts: data_quality_report.md, eda_summary.png, notebooks/phase/phase_1.ipynb</div>
     </div>
     <div class="timeline-item">
       <div class="timeline-phase">Phase 2 -- Input Representation</div>
       <div class="timeline-desc">Normalization strategy, augmentation config (random crop, flip, color jitter). Blocking gate -- you review.</div>
-      <div class="timeline-commit">artifacts: feature_selection_report.md, notebooks/phase_2.ipynb</div>
+      <div class="timeline-commit">artifacts: feature_selection_report.md, notebooks/phase/phase_2.ipynb</div>
     </div>
     <div class="timeline-item">
       <div class="timeline-phase">Phase 3 -- Model Design</div>
       <div class="timeline-desc">CNN architecture (ResNet-style or custom), loss function, optimizer + LR schedule. Automated gate.</div>
-      <div class="timeline-commit">artifacts: architecture_rationale.md, notebooks/phase_3.ipynb</div>
+      <div class="timeline-commit">artifacts: architecture_rationale.md, notebooks/phase/phase_3.ipynb</div>
     </div>
     <div class="timeline-item highlight">
       <div class="timeline-phase">Phase 4 -- Training</div>
       <div class="timeline-desc">Training inside Docker container (docker compose run --rm gpu python src/train.py). Iterates until oracle threshold met.</div>
-      <div class="timeline-commit">artifacts: training_report.md, training_curves.png, best_model.pt, notebooks/phase_4.ipynb</div>
+      <div class="timeline-commit">artifacts: training_report.md, training_curves.png, best_model.pt, notebooks/phase/phase_4.ipynb</div>
     </div>
     <div class="timeline-item">
       <div class="timeline-phase">Phase 5 -- Analysis</div>
       <div class="timeline-desc">GradCAM visualizations, confusion matrix, per-class accuracy, ablation study. Blocking gate -- you review.</div>
-      <div class="timeline-commit">artifacts: analysis_report.md, confusion_matrix.png, notebooks/phase_5.ipynb</div>
+      <div class="timeline-commit">artifacts: analysis_report.md, confusion_matrix.png, notebooks/phase/phase_5.ipynb</div>
     </div>
     <div class="timeline-item">
       <div class="timeline-phase">Phase 6 -- Packaging</div>
       <div class="timeline-desc">Inference script, model card, validation report, test suite. Automated gate.</div>
-      <div class="timeline-commit">artifacts: model_card.md, validation_report.md, inference.py, notebooks/phase_6.ipynb</div>
+      <div class="timeline-commit">artifacts: model_card.md, validation_report.md, inference.py, notebooks/phase/phase_6.ipynb</div>
     </div>
   </div>
 
@@ -1940,7 +1940,40 @@ zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</co
     </div>
   </div>
 
-  <p>Full step-by-step guide: <code>docs/SAMPLE_PROJECT.md</code></p>
+  <div class="section-label">Delivery Repo Structure</div>
+
+  <p>Created by <code>zo init --scaffold-delivery</code>. Agents populate during execution. See <a href="DELIVERY_STRUCTURE.md" style="color: var(--amber);">full reference</a>.</p>
+
+  <div class="ba-grid">
+    <div class="ba-panel">
+      <div class="ba-label before">Config &amp; Code</div>
+      <div class="tree-line">configs/</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ model/ training/</div>
+      <div class="tree-line">&nbsp;&nbsp;experiment/base.yaml</div>
+      <div class="tree-line" style="margin-top: 8px;">src/</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ &mdash; datasets, transforms, loaders</div>
+      <div class="tree-line">&nbsp;&nbsp;model/ &mdash; architecture zoo</div>
+      <div class="tree-line">&nbsp;&nbsp;engineering/ &mdash; trainer, DDP, tracking</div>
+      <div class="tree-line">&nbsp;&nbsp;inference/ &mdash; export, serving</div>
+      <div class="tree-line">&nbsp;&nbsp;utils/ &mdash; I/O, plotting, logging</div>
+    </div>
+    <div class="ba-panel">
+      <div class="ba-label after">Artifacts &amp; Context</div>
+      <div class="tree-line">experiments/ &mdash; context trail per run</div>
+      <div class="tree-line">&nbsp;&nbsp;exp-NNN/ config + results + notes</div>
+      <div class="tree-line" style="margin-top: 8px;">reports/ &mdash; agent-generated</div>
+      <div class="tree-line">&nbsp;&nbsp;figures/ + phase reports + model card</div>
+      <div class="tree-line" style="margin-top: 8px;">notebooks/</div>
+      <div class="tree-line">&nbsp;&nbsp;phase/ &mdash; ZO auto-generated</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ model/ analysis/ &mdash; human</div>
+      <div class="tree-line" style="margin-top: 8px;">tests/</div>
+      <div class="tree-line">&nbsp;&nbsp;unit/ &mdash; code correctness</div>
+      <div class="tree-line">&nbsp;&nbsp;ml/ &mdash; oracle thresholds</div>
+      <div class="tree-line" style="margin-top: 8px;">docker/ Dockerfile + compose</div>
+    </div>
+  </div>
+
+  <p>Full step-by-step guide: <code>docs/SAMPLE_PROJECT.md</code> | Structure reference: <code>docs/DELIVERY_STRUCTURE.md</code></p>
 
 </div>
 

@@ -313,3 +313,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **User-provided fields:** data_paths (where raw data lives), docker_mounts (if non-standard paths needed).
 **Alternatives considered:** (1) User manually fills Environment — error-prone, unnecessary. (2) Fully automatic with no review — risky, user should confirm. (3) Auto-detect + user review (chosen) — correct defaults, user can override.
 **Outcome:** Design captured. Implementation during IVL F5 plan setup. Detection logic will extend `zo preflight` (already detects GPU/Docker) into the planning phase.
+
+---
+
+## Decision: 2026-04-12T14:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Delivery repo structure redesign — configs, experiments trail, responsibility-based src
+**Decision:** Redesigned the delivery repo scaffold to separate concerns: configs/ (YAML, never hardcode), src/ by responsibility (data, model, engineering, inference, utils), experiments/ as context trail (README index + per-experiment config/results/notes), notebooks/ split (human exploration + ZO auto-generated), tests/ split (unit for code correctness + ml for oracle thresholds), docker/ subdirectory. Added STRUCTURE.md as in-repo reference that agents read section-by-section to stay context-efficient.
+**Rationale:** Combined user's production ML experience (configs dir, experiment tracking, granular src) with ZO's agent-driven patterns (auto-notebooks, phase reports, artifact contracts). Key insight: experiments/README.md as index + exp-NNN/notes.md for detail follows the same lazy-loading pattern as ZO's own memory (STATE.md as index, drill into DECISION_LOG for detail).
+**Alternatives considered:** (1) Keep original flat structure — too vague for real projects. (2) User's exact past structure — lacked ZO-specific patterns (auto-notebooks, reports). (3) Combined best of both (chosen) — responsibility-based code, YAML configs, experiment trail, context-optimised.
+**Outcome:** scaffold.py updated (20 dirs, 9 template files), STRUCTURE.md template, experiments/README.md template, configs/experiment/base.yaml template. notebooks.py writes to notebooks/phase/. Architecture spec updated. 334 tests passing.
