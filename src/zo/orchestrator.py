@@ -352,11 +352,21 @@ class Orchestrator:
             return ev
 
         if all_done:
+            missing = self._check_artifacts(phase)
+            if missing:
+                ev = GateEvaluation(
+                    phase_id=phase_id, gate_type=GateType.AUTOMATED,
+                    decision=GateDecision.ITERATE,
+                    rationale=f"Subtasks done but artifacts missing: {', '.join(missing)}",
+                )
+                self._log_gate(ev)
+                return ev
             phase.status = PhaseStatus.COMPLETED
+            self._generate_notebook(phase)
             ev = GateEvaluation(
                 phase_id=phase_id, gate_type=GateType.AUTOMATED,
                 decision=GateDecision.PROCEED,
-                rationale="All subtasks complete; automated gate passed.",
+                rationale="All subtasks complete; artifacts verified; automated gate passed.",
             )
         else:
             remaining = set(phase.subtasks) - set(phase.completed_subtasks)
@@ -430,6 +440,7 @@ class Orchestrator:
         phase = self._find_phase(phase_id)
         if decision == GateDecision.PROCEED:
             phase.status = PhaseStatus.COMPLETED
+            self._generate_notebook(phase)
         elif decision == GateDecision.ITERATE:
             phase.status = PhaseStatus.ACTIVE
             phase.completed_subtasks.clear()
@@ -475,6 +486,51 @@ class Orchestrator:
             content = self._plan.objective.encode()
         return hashlib.sha256(content).hexdigest()
 
+    def _check_artifacts(self, phase: PhaseDefinition) -> list[str]:
+        """Return list of required artifacts missing from the delivery repo."""
+        if not phase.required_artifacts:
+            return []
+        target_repo = Path(self._target.target_repo)
+        if not target_repo.is_dir():
+            return []
+        missing: list[str] = []
+        for artifact in phase.required_artifacts:
+            path = target_repo / artifact
+            if artifact.endswith("/"):
+                if not path.is_dir() or not any(path.iterdir()):
+                    missing.append(artifact)
+            elif not path.exists():
+                missing.append(artifact)
+        return missing
+
+    def _generate_notebook(self, phase: PhaseDefinition) -> None:
+        """Generate a Jupyter notebook for a completed phase."""
+        target_repo = Path(self._target.target_repo)
+        if not target_repo.is_dir():
+            return
+        try:
+            from zo.notebooks import generate_phase_notebook
+            phase_num = phase.phase_id.removeprefix("phase_")
+            generate_phase_notebook(
+                phase_id=phase_num,
+                phase_name=phase.name,
+                delivery_repo=target_repo,
+                artifacts=phase.required_artifacts,
+                phase_summary=f"Phase {phase_num} ({phase.name}) completed.",
+            )
+            self._comms.log_checkpoint(
+                agent="orchestrator", phase=phase.phase_id,
+                subtask="notebook_generation",
+                progress=f"Generated notebook for {phase.name}",
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="notebook_generation_failed",
+                message=f"Failed to generate notebook for {phase.phase_id}: {exc}",
+                severity="warning",
+            )
+
     def _log_gate(self, evaluation: GateEvaluation) -> None:
         self._comms.log_decision(
             agent="orchestrator",
@@ -518,6 +574,11 @@ class Orchestrator:
         subtasks = "\n".join(f"- {s}" for s in phase.subtasks)
         agents = ", ".join(phase.assigned_agents) or "none assigned"
         deps = ", ".join(phase.depends_on) or "none"
+        artifacts = (
+            "\n".join(f"- {a}" for a in phase.required_artifacts)
+            if phase.required_artifacts
+            else "- (none specified)"
+        )
         return dedent(f"""\
             # Current Phase: {phase.name} ({phase.phase_id})
 
@@ -525,6 +586,9 @@ class Orchestrator:
 
             **Subtasks:**
             {subtasks}
+
+            **Required artifacts (must exist before gate passes):**
+            {artifacts}
 
             **Assigned agents:** {agents}
             **Gate type:** {phase.gate_type}
@@ -580,7 +644,25 @@ class Orchestrator:
             - Define ALL integration contracts before parallel spawn.
             - Log every decision to DECISION_LOG.md.
             - Update STATE.md at every phase transition.
-            - Escalate to human if blockers persist after one debate round.""")
+            - Escalate to human if blockers persist after one debate round.
+
+            # Delivery Repo
+
+            - Read **STRUCTURE.md** in the delivery repo for directory layout.
+            - Agents read ONLY their relevant section to stay context-efficient.
+            - **configs/** — YAML configuration. Edit configs, not code, to change experiments.
+            - **experiments/** — Context trail. Update experiments/README.md index after each run.
+            - Each experiment gets: frozen config snapshot, results.json, notes.md.
+            - **Required artifacts** must exist before gate advances (see phase section above).
+            - A Jupyter notebook is auto-generated after each phase completes.
+
+            # Docker
+
+            - All compute (training, evaluation, benchmarks) runs inside Docker.
+            - Build: `docker compose -f docker/docker-compose.yml build`
+            - Run: `docker compose -f docker/docker-compose.yml run --rm gpu <command>`
+            - Agents may modify docker/Dockerfile to add project-specific packages.
+            - Never install dependencies outside Docker — use pyproject.toml + uv sync.""")
 
     def _prompt_gate_criteria(self, phase: PhaseDefinition) -> str:
         if not self._plan.oracle:
