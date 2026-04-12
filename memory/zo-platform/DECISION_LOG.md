@@ -323,3 +323,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** Combined user's production ML experience (configs dir, experiment tracking, granular src) with ZO's agent-driven patterns (auto-notebooks, phase reports, artifact contracts). Key insight: experiments/README.md as index + exp-NNN/notes.md for detail follows the same lazy-loading pattern as ZO's own memory (STATE.md as index, drill into DECISION_LOG for detail).
 **Alternatives considered:** (1) Keep original flat structure — too vague for real projects. (2) User's exact past structure — lacked ZO-specific patterns (auto-notebooks, reports). (3) Combined best of both (chosen) — responsibility-based code, YAML configs, experiment trail, context-optimised.
 **Outcome:** scaffold.py updated (20 dirs, 9 template files), STRUCTURE.md template, experiments/README.md template, configs/experiment/base.yaml template. notebooks.py writes to notebooks/phase/. Architecture spec updated. 334 tests passing.
+
+---
+
+## Decision: 2026-04-12T15:00:00Z
+**Type:** FEATURE
+**Title:** Orchestrator pipeline wiring — artifact validation, notebooks, Docker in prompt
+**Decision:** Wire three previously-disconnected modules into the orchestrator's advance_phase() flow: (1) _check_artifacts() verifies required_artifacts exist in delivery repo before gate passes — missing artifacts return ITERATE. (2) _generate_notebook() auto-generates per-phase Jupyter notebook after gate passes (both automated and human-approved). (3) Lead prompt updated with required artifacts list per phase, Docker build/run commands, STRUCTURE.md reference, configs/ workflow, and experiments/ context trail instructions.
+**Rationale:** Modules were built and independently tested but not connected to the orchestrator. Without wiring, a real run would produce no auto-notebooks and no artifact validation — defeating the purpose of building them. Non-negotiable for production use.
+**Alternatives considered:** (1) Leave as independent modules, call manually — defeats automation. (2) Wire only notebooks, skip artifact checks — misses the enforcement value. (3) Wire everything into advance_phase() (chosen) — single enforcement point, both automated and human gates covered.
+**Outcome:** 4 new tests verify: missing artifacts block gate, present artifacts pass + generate notebook, prompt includes artifacts, prompt includes Docker. 338 tests total.
