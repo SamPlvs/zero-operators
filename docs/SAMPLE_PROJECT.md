@@ -38,18 +38,18 @@ zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery
 
 ```
 zero-operators/                          ~/projects/cifar10-delivery/
-  memory/cifar10-demo/                     data/raw/ data/processed/
-    STATE.md                               src/models/ src/pipelines/ src/utils/
-    DECISION_LOG.md                        experiments/
-    PRIORS.md                              models/
+  memory/cifar10-demo/                     configs/ (data, model, training, experiment)
+    STATE.md                               src/ (data, model, engineering, inference, utils)
+    DECISION_LOG.md                        data/raw/  data/processed/
+    PRIORS.md                              models/  experiments/
   targets/cifar10-demo.target.md           reports/figures/
-  plans/cifar10-demo.md (template)         notebooks/
-                                           tests/fixtures/
-                                           Dockerfile
-                                           docker-compose.yml
-                                           pyproject.toml
-                                           .gitignore
+  plans/cifar10-demo.md (template)         notebooks/ (data, model, analysis, phase)
+                                           tests/ (unit, ml, fixtures)
+                                           docker/ (Dockerfile, docker-compose.yml)
+                                           STRUCTURE.md  pyproject.toml  .gitignore
 ```
+
+See `STRUCTURE.md` inside the delivery repo or [Delivery Repo Structure](DELIVERY_STRUCTURE.md) for the full layout reference.
 
 ---
 
@@ -199,7 +199,7 @@ ml = [
 EOF
 
 # Build the container (~2 min first time)
-docker compose build
+docker compose -f docker/docker-compose.yml build
 ```
 
 ---
@@ -314,40 +314,57 @@ tree ~/projects/cifar10-delivery/
 
 # Expected:
 cifar10-delivery/
-  data/
-    raw/                    # CIFAR-10 auto-downloaded
-    processed/              # Preprocessed tensors
+  configs/
+    data/dataset.yaml             # Dataset config
+    model/architecture.yaml       # Model hyperparams
+    training/optimizer.yaml       # Optimizer + LR schedule
+    experiment/base.yaml          # Master experiment config
   src/
-    models/model.py         # CNN architecture
-    pipelines/train.py      # Training script
-    inference.py            # Inference pipeline
+    data/                         # Dataset, transforms, loaders
+    model/cnn.py                  # CNN architecture
+    engineering/trainer.py        # Training loop
+    inference/predict.py          # Production inference
+    utils/plotting.py             # Visualization helpers
+  data/
+    raw/                          # CIFAR-10 auto-downloaded
+    processed/                    # Preprocessed tensors
   models/
-    best_model.pt           # Trained checkpoint
+    best_model.pt                 # Trained checkpoint
+  experiments/
+    README.md                     # Experiment index
+    exp-001/                      # Baseline CNN
+      config.yaml                 # Frozen config snapshot
+      results.json                # Metrics
+      notes.md                    # What, why, outcome
   reports/
-    data_quality_report.md  # Phase 1
-    feature_selection_report.md  # Phase 2
-    architecture_rationale.md    # Phase 3
-    training_report.md      # Phase 4
-    analysis_report.md      # Phase 5
-    model_card.md           # Phase 6
-    validation_report.md    # Phase 6
+    data_quality_report.md        # Phase 1
+    training_report.md            # Phase 4
+    analysis_report.md            # Phase 5
+    model_card.md                 # Phase 6
+    validation_report.md          # Phase 6
     figures/
       eda_summary.png
-      feature_importance.png
       training_curves.png
       confusion_matrix.png
   notebooks/
-    phase_1_data_review.ipynb
-    phase_2_features.ipynb
-    phase_3_model_design.ipynb
-    phase_4_training.ipynb
-    phase_5_analysis.ipynb
-    phase_6_packaging.ipynb
+    phase/                        # ZO auto-generated
+      phase_1_data_review.ipynb
+      phase_2_features.ipynb
+      phase_3_model_design.ipynb
+      phase_4_training.ipynb
+      phase_5_analysis.ipynb
+      phase_6_packaging.ipynb
+    data/                         # Human exploration
+    model/                        # Architecture experiments
   tests/
-    test_model.py
-    test_inference.py
-  Dockerfile
-  docker-compose.yml
+    unit/test_data.py             # Code correctness
+    unit/test_model.py
+    ml/test_metrics.py            # Oracle threshold checks
+    ml/test_benchmark.py          # Latency benchmarks
+  docker/
+    Dockerfile
+    docker-compose.yml
+  STRUCTURE.md                    # Directory reference
   pyproject.toml
 ```
 

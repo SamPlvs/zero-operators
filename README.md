@@ -122,7 +122,7 @@ zo init my-project
 zo init my-project --scaffold-delivery /path/to/delivery-repo
 ```
 
-Creates: `memory/`, `targets/`, `plans/` with template files for the project. With `--scaffold-delivery`, also creates the delivery repo layout with standard ML directory structure, multi-stage Dockerfile, and docker-compose.yml for GPU compute.
+Creates: `memory/`, `targets/`, `plans/` with template files for the project. With `--scaffold-delivery`, also creates the delivery repo layout with standard ML directory structure, multi-stage Dockerfile, and docker-compose.yml for GPU compute. See [Delivery Repo Structure](docs/DELIVERY_STRUCTURE.md) for the full layout reference.
 
 ### `zo preflight` — Validate before launch
 

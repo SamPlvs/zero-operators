@@ -156,35 +156,44 @@ Delivery repositories contain only project artifacts. They follow a standard str
 
 ```
 {project}/
-├── README.md                     ← project overview
-├── pyproject.toml                ← Python package metadata
-├── data/                         ← datasets and data artifacts
-│   ├── raw/
-│   ├── processed/
-│   └── metadata.json
-├── src/                          ← source code
-│   ├── __init__.py
-│   ├── models/
-│   ├── pipelines/
-│   └── utils/
-├── experiments/                  ← experimental outputs
-│   ├── exp-001/
-│   ├── exp-002/
-│   └── results.json
-├── models/                       ← trained model artifacts
-│   ├── v1.pkl
-│   ├── v2.pkl
-│   └── metrics.csv
-├── reports/                      ← analysis and reports
-│   ├── evaluation.md
+├── configs/                      ← YAML configuration (data, model, training)
+│   ├── data/
+│   ├── model/
+│   ├── training/
+│   └── experiment/base.yaml
+├── src/                          ← source code by responsibility
+│   ├── data/                     ← Dataset, transforms, DataLoader, splits
+│   ├── model/                    ← Model zoo (architectures, heads)
+│   ├── engineering/              ← Training loop, DDP, tracking, checkpointing
+│   ├── inference/                ← Production inference, export, serving
+│   └── utils/                    ← File I/O, plotting, logging, reproducibility
+├── data/
+│   ├── raw/                      ← original data (gitignored)
+│   └── processed/                ← cleaned, split, versioned
+├── models/                       ← trained checkpoints (*.pt, *.onnx)
+├── experiments/                  ← context trail per experiment
+│   ├── README.md                 ← index and current direction
+│   └── exp-NNN/                  ← config snapshot, results, notes
+├── reports/                      ← agent-generated analysis
 │   ├── figures/
-│   └── summary.html
-├── tests/                        ← test suite
-│   ├── test_models.py
-│   ├── test_pipelines.py
+│   └── *.md
+├── notebooks/                    ← exploration + auto-generated
+│   ├── data/                     ← human data exploration
+│   ├── model/                    ← human architecture experiments
+│   ├── analysis/                 ← human explainability work
+│   └── phase/                    ← ZO auto-generated per-phase
+├── tests/
+│   ├── unit/                     ← code correctness
+│   ├── ml/                       ← oracle threshold checks, benchmarks
 │   └── fixtures/
+├── docker/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── .dockerignore
+├── STRUCTURE.md                  ← directory reference (agents read this)
+├── pyproject.toml
 ├── .gitignore
-└── .git/
+└── README.md
 ```
 
 No ZO-specific files appear in delivery repositories.

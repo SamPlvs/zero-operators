@@ -232,3 +232,30 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
 
 5. **Keep base template bare minimum.** Only git, curl, tmux, sudo in template.
    Agents add project-specific packages based on plan.md requirements.
+
+---
+
+## PR-008: Context Efficiency Through Modular References
+**Source:** Session 010 (2026-04-12), delivery structure redesign
+**Root cause category:** novel_case
+**Failure:** No failure — proactive design based on user requirement to avoid context bloat.
+
+### Rules
+
+1. **Use index files that point to detail files, not monolithic docs.**
+   experiments/README.md is a scannable index. Each exp-NNN/ has its own notes.
+   Agents read the index first, then drill into relevant experiments only.
+
+2. **STRUCTURE.md is the in-repo map that agents read section-by-section.**
+   Each section describes one directory. Agents load only their section
+   (Data Engineer reads ## src/ and ## data/, not the whole file).
+
+3. **Configs separate from code enables fast experiment iteration.**
+   Agents change YAML config files to alter experiments. Frozen config
+   snapshots in experiments/exp-NNN/config.yaml provide reproducibility
+   without touching source code.
+
+4. **Split tests by concern, not just by module.**
+   tests/unit/ = code correctness (Test Engineer). tests/ml/ = oracle
+   thresholds and benchmarks (Oracle/QA Agent). Different agents, different
+   pass/fail criteria, different run frequencies.
