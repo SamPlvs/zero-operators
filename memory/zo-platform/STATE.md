@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir, plan-defined + mid-build), draft scout team, live training dashboard, auto test reports, structured phase report templates. 19 core agents + custom library, 398 tests, ruff clean, validate-docs 10/10. PRs #22-#28.
+ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir, plan-defined + mid-build), draft scout team, live training dashboard, auto test reports, structured phase report templates. 19 core agents + custom library, 407 tests, ruff clean, validate-docs 10/10. PRs #22-#28.
 
 ## Completed
 
@@ -101,7 +101,7 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir
 last_checkpoint: 2026-04-13T01:00:00Z
 last_session: session-012
 branch: claude/charming-lovelace (worktree)
-test_count: 398 passed, 7 skipped
+test_count: 407 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents)
