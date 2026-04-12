@@ -177,9 +177,10 @@ class Orchestrator:
         return state
 
     def end_session(self, summary: SessionSummary | None = None) -> None:
-        """End the current session."""
+        """End the current session, persisting phase states."""
         if self._session_state is not None:
             self._session_state.timestamp = datetime.now(UTC)
+            self._capture_phase_states()
             self._memory.write_state(self._session_state)
         if summary is not None:
             self._memory.write_session_summary(summary)
@@ -187,6 +188,18 @@ class Orchestrator:
             agent="orchestrator", title="Session ended",
             rationale="Normal session termination.", outcome="ended",
         )
+
+    def _capture_phase_states(self) -> None:
+        """Capture current workflow phase states into session_state for persistence."""
+        if self._workflow is None or self._session_state is None:
+            return
+        states: dict[str, str] = {}
+        subtasks: dict[str, list[str]] = {}
+        for phase in self._workflow.phases:
+            states[phase.phase_id] = phase.status
+            subtasks[phase.phase_id] = list(phase.completed_subtasks)
+        self._session_state.phase_states = states
+        self._session_state.completed_subtasks_by_phase = subtasks
 
     # -- Workflow decomposition -----------------------------------------------
 
@@ -213,14 +226,30 @@ class Orchestrator:
         self._workflow = WorkflowDecomposition(
             mode=mode, phases=phases, agent_contracts=contracts,
         )
+        self._restore_phase_states()
         self._comms.log_decision(
             agent="orchestrator",
             title=f"Plan decomposed into {len(phases)} phases ({mode})",
             rationale=f"Agents: {active}", outcome="decomposed", confidence="high",
         )
-        if self._session_state is not None:
+        if self._session_state is not None and not self._session_state.phase_states:
             self._session_state.phase = phases[0].phase_id
         return self._workflow
+
+    def _restore_phase_states(self) -> None:
+        """Restore persisted phase states from session_state into workflow phases."""
+        if self._workflow is None or self._session_state is None:
+            return
+        saved_states = self._session_state.phase_states
+        saved_subtasks = self._session_state.completed_subtasks_by_phase
+        if not saved_states:
+            return
+        for phase in self._workflow.phases:
+            if phase.phase_id in saved_states:
+                phase.status = PhaseStatus(saved_states[phase.phase_id])
+                phase.completed_subtasks = list(
+                    saved_subtasks.get(phase.phase_id, [])
+                )
 
     def generate_agent_contract(
         self, agent_name: str, phase: PhaseDefinition,
@@ -262,9 +291,17 @@ class Orchestrator:
     # -- Phase management -----------------------------------------------------
 
     def get_current_phase(self) -> PhaseDefinition | None:
-        """Return the first PENDING phase with all dependencies met."""
+        """Return the first actionable phase (GATED or PENDING with deps met).
+
+        GATED phases are returned first so the CLI can prompt for human
+        approval before re-launching a session.
+        """
         if self._workflow is None:
             return None
+        # Return a GATED phase first — it needs human decision
+        for phase in self._workflow.phases:
+            if phase.status == PhaseStatus.GATED:
+                return phase
         completed = {
             p.phase_id for p in self._workflow.phases
             if p.status == PhaseStatus.COMPLETED

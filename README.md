@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-298_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-334_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -366,7 +366,7 @@ zero-operators/
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
 ├── logs/                       # JSONL audit trails
 ├── targets/                    # Delivery repo configuration
-├── tests/                      # 298 tests (unit + integration)
+├── tests/                      # 334 tests (unit + integration)
 ├── setup.sh                    # Environment validation (10 checks)
 └── pyproject.toml              # Python package config
 ```
@@ -418,7 +418,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 
-298 platform tests. ruff clean. 17 agents. 24 slash commands.
+334 platform tests. ruff clean. 17 agents. 24 slash commands.
 
 ---
 

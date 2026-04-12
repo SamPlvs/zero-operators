@@ -39,6 +39,8 @@ class SessionState(BaseModel):
     active_agents: list[str] = Field(default_factory=list)
     git_head: str | None = None
     context_window_usage: str = "not tracked in v1"
+    phase_states: dict[str, str] = Field(default_factory=dict)
+    completed_subtasks_by_phase: dict[str, list[str]] = Field(default_factory=dict)
 
     model_config = {"use_enum_values": True}
 

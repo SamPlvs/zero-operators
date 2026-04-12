@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import click.testing
 import pytest
@@ -25,7 +25,7 @@ class TestCliGroup:
     """Tests for the CLI group and its registered commands."""
 
     def test_cli_group_has_all_commands(self) -> None:
-        expected = {"build", "continue", "init", "status", "draft"}
+        expected = {"build", "continue", "init", "status", "draft", "preflight"}
         actual = set(cli.commands.keys())
         assert expected == actual
 
@@ -97,6 +97,122 @@ class TestInitCommand:
         assert result1.exit_code == 0
         assert result2.exit_code == 0
         assert "already exists" in result2.output
+
+    def test_init_scaffold_delivery_creates_layout(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        zo_root = tmp_path / "zo"
+        delivery = tmp_path / "delivery"
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli,
+                ["init", "my-ml", "--scaffold-delivery", str(delivery)],
+            )
+
+        assert result.exit_code == 0
+
+        # Directories
+        for d in (
+            "data/raw",
+            "data/processed",
+            "src/models",
+            "src/pipelines",
+            "src/utils",
+            "experiments",
+            "models",
+            "reports/figures",
+            "notebooks",
+            "tests/fixtures",
+        ):
+            assert (delivery / d).is_dir(), f"Missing dir: {d}"
+            assert (delivery / d / ".gitkeep").exists()
+
+        # Template files
+        for f in (
+            "README.md",
+            "pyproject.toml",
+            ".gitignore",
+            ".dockerignore",
+            "Dockerfile",
+            "docker-compose.yml",
+        ):
+            assert (delivery / f).exists(), f"Missing file: {f}"
+
+        # Content interpolation
+        readme = (delivery / "README.md").read_text()
+        assert "my-ml" in readme
+
+        pyproject = (delivery / "pyproject.toml").read_text()
+        assert 'name = "my-ml"' in pyproject
+
+    def test_init_scaffold_delivery_no_overwrite(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        zo_root = tmp_path / "zo"
+        delivery = tmp_path / "delivery"
+        delivery.mkdir(parents=True)
+
+        # Pre-create a file that should NOT be overwritten
+        (delivery / "README.md").write_text("custom content", encoding="utf-8")
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli,
+                ["init", "my-ml", "--scaffold-delivery", str(delivery)],
+            )
+
+        assert result.exit_code == 0
+        assert (delivery / "README.md").read_text() == "custom content"
+        assert "Already exists" in result.output
+
+    def test_init_without_scaffold_still_works(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Ensure the flag is optional and init works without it."""
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(cli, ["init", "plain-project"])
+
+        assert result.exit_code == 0
+        assert (tmp_path / "plans" / "plain-project.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# scaffold module (direct)
+# ---------------------------------------------------------------------------
+
+
+class TestScaffoldDelivery:
+    """Tests for the scaffold_delivery function directly."""
+
+    def test_scaffold_creates_dockerfile(self, tmp_path: Path) -> None:
+        from zo.scaffold import scaffold_delivery
+
+        scaffold_delivery(tmp_path / "repo", "test-proj")
+
+        dockerfile = (tmp_path / "repo" / "Dockerfile").read_text()
+        assert "FROM ${BASE_IMAGE} AS base" in dockerfile
+        assert "uv sync" in dockerfile
+
+    def test_scaffold_creates_compose(self, tmp_path: Path) -> None:
+        from zo.scaffold import scaffold_delivery
+
+        scaffold_delivery(tmp_path / "repo", "test-proj")
+
+        compose = (tmp_path / "repo" / "docker-compose.yml").read_text()
+        assert "capabilities: [gpu]" in compose
+
+    def test_scaffold_idempotent(self, tmp_path: Path) -> None:
+        from zo.scaffold import scaffold_delivery
+
+        repo = tmp_path / "repo"
+        scaffold_delivery(repo, "proj")
+        # Write custom content into an existing file
+        (repo / "README.md").write_text("do not touch", encoding="utf-8")
+
+        # Second run should not overwrite
+        scaffold_delivery(repo, "proj")
+        assert (repo / "README.md").read_text() == "do not touch"
 
 
 # ---------------------------------------------------------------------------
