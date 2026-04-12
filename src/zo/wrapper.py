@@ -308,6 +308,8 @@ class LifecycleWrapper:
         timeout: float | None = None,
         on_status: Any | None = None,
         gate_mode_file: Path | None = None,
+        project_name: str = "",
+        delivery_repo: Path | None = None,
     ) -> LeadProcess:
         """Poll until the lead session completes.
 
@@ -320,14 +322,74 @@ class LifecycleWrapper:
                 When provided, the wrapper re-reads the file each poll
                 cycle and logs when the mode changes (set via
                 ``zo gates set`` from another terminal).
+            project_name: Project name for ``zo watch-training`` command.
+            delivery_repo: Delivery repo path. When provided (with
+                *project_name*), the wrapper auto-splits a training
+                dashboard pane when training metrics appear.
         """
         self._gate_mode_file = gate_mode_file
         self._last_gate_mode: str | None = None
-        if process.tmux_pane_id:
-            return self._wait_tmux(process, poll_interval=poll_interval,
-                                   timeout=timeout, on_status=on_status)
-        return self._wait_headless(process, poll_interval=poll_interval,
-                                   timeout=timeout, on_status=on_status)
+        self._training_pane_id: str | None = None
+        self._project_name = project_name
+        self._delivery_repo = delivery_repo
+        try:
+            if process.tmux_pane_id:
+                return self._wait_tmux(process, poll_interval=poll_interval,
+                                       timeout=timeout, on_status=on_status)
+            return self._wait_headless(process, poll_interval=poll_interval,
+                                       timeout=timeout, on_status=on_status)
+        finally:
+            self._close_training_pane()
+
+    def _maybe_open_training_pane(self) -> None:
+        """Open a training dashboard split-pane if metrics file appears.
+
+        Only fires once.  Requires tmux and both *project_name* and
+        *delivery_repo* to be set on the wrapper instance.
+        """
+        if self._training_pane_id is not None:
+            return  # already open (or attempted)
+        if not self._project_name or not self._delivery_repo:
+            return
+        if not self._is_in_tmux():
+            return
+        metrics_file = Path(self._delivery_repo) / "logs" / "training" / "training_status.json"
+        if not metrics_file.exists():
+            return
+
+        # Split the current pane vertically — 40% for training dashboard
+        try:
+            result = subprocess.run(
+                ["tmux", "split-window", "-v", "-p", "40", "-d",
+                 "-P", "-F", "#{pane_id}",
+                 "zo", "watch-training", "-p", self._project_name],
+                capture_output=True, text=True, timeout=10,
+            )
+            pane_id = result.stdout.strip()
+            if result.returncode == 0 and pane_id:
+                self._training_pane_id = pane_id
+                self._comms.log_checkpoint(
+                    agent="wrapper", phase="training",
+                    subtask="dashboard-open",
+                    progress=f"Training dashboard opened in pane={pane_id}",
+                )
+            else:
+                # Mark as attempted so we don't retry
+                self._training_pane_id = ""
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            self._training_pane_id = ""
+
+    def _close_training_pane(self) -> None:
+        """Kill the training dashboard pane if it exists."""
+        pane_id = getattr(self, "_training_pane_id", None)
+        if not pane_id:
+            return
+        with contextlib.suppress(FileNotFoundError, subprocess.TimeoutExpired):
+            subprocess.run(
+                ["tmux", "kill-pane", "-t", pane_id],
+                capture_output=True, timeout=5,
+            )
+        self._training_pane_id = None
 
     def _check_gate_mode_change(self) -> None:
         """Re-read the gate_mode file and log if the mode changed."""
@@ -364,6 +426,7 @@ class LifecycleWrapper:
 
         while True:
             self._check_gate_mode_change()
+            self._maybe_open_training_pane()
 
             if not self._tmux_pane_alive(process.tmux_pane_id or ""):
                 process = process.model_copy(update={

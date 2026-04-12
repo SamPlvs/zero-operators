@@ -142,6 +142,14 @@ zo status my-project
 
 Displays the current `STATE.md`: active phase, blockers, next steps, agent statuses.
 
+### `zo watch-training` — Live training dashboard
+
+```bash
+zo watch-training --project my-project
+```
+
+Persistent Rich panel showing epoch progress, metrics table (current/best/target), loss sparkline, and checkpoint history. Auto-launched by `zo build` during Phase 4 via tmux split-pane — no window switching needed. Training scripts emit metrics via `ZOTrainingCallback` from `zo.training_metrics`.
+
 ---
 
 ## Gate Modes
