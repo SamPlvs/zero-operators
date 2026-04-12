@@ -162,6 +162,129 @@ class PlanDrafter:
         plan_path.write_text("\n".join(sections), encoding="utf-8")
         return plan_path
 
+    def generate_plan_from_description(self, description: str) -> Path:
+        """Generate a plan.md from a free-text project description.
+
+        Produces a structurally valid skeleton with the description seeded
+        into appropriate sections. Designed to be fleshed out by the
+        interactive Claude session.
+
+        Args:
+            description: Free-text project description from the user.
+
+        Returns:
+            Path to generated plan file.
+        """
+        plans_dir = self._zo_root / "plans"
+        plans_dir.mkdir(parents=True, exist_ok=True)
+        plan_path = plans_dir / f"{self._project_name}.md"
+
+        now = datetime.now(UTC).strftime("%Y-%m-%d")
+        desc_lower = description.lower()
+
+        # Infer workflow mode from description keywords
+        dl_keywords = ("cnn", "neural", "deep learning", "transformer",
+                       "lstm", "resnet", "pytorch", "tensorflow", "vit",
+                       "diffusion", "gan", "autoencoder", "bert", "gpt")
+        research_keywords = ("research", "experiment", "explore", "survey",
+                             "literature", "hypothesis")
+        if any(kw in desc_lower for kw in dl_keywords):
+            workflow_mode = "deep_learning"
+        elif any(kw in desc_lower for kw in research_keywords):
+            workflow_mode = "research"
+        else:
+            workflow_mode = "classical_ml"
+
+        # Extract metric hint if mentioned
+        metric_hint = "TODO"
+        for kw in ("accuracy", "rmse", "mae", "f1", "auc", "loss",
+                    "precision", "recall", "bleu", "rouge", "mse",
+                    "r2", "perplexity", "iou"):
+            if kw in desc_lower:
+                metric_hint = kw.upper() if len(kw) <= 4 else kw.capitalize()
+                break
+
+        sections = [
+            "---",
+            f"project_name: {self._project_name}",
+            'version: "0.1.0"',
+            f'created: "{now}"',
+            f'last_modified: "{now}"',
+            "status: active",
+            'owner: "TODO"',
+            "---",
+            "",
+            "## Objective",
+            "",
+            description,
+            "",
+            "TODO: Expand into full objective with concrete deliverables.",
+            "",
+            "## Oracle Definition",
+            "",
+            f"**Primary metric:** {metric_hint}",
+            "**Ground truth source:** TODO",
+            "**Evaluation method:** TODO",
+            "**Target threshold:** TODO",
+            "**Evaluation frequency:** TODO",
+            "",
+            "## Workflow Configuration",
+            "",
+            f"**Mode:** {workflow_mode}",
+            "",
+            "## Data Sources",
+            "",
+            "### Primary",
+            "",
+            "TODO: Describe your primary data source.",
+            "",
+            "## Domain Context and Priors",
+            "",
+            f"- Project context: {description}",
+            "",
+            "TODO: Add domain knowledge and assumptions.",
+            "",
+            "## Agent Configuration",
+            "",
+            "**Active agents:** data-engineer, model-builder, oracle-qa, test-engineer",
+            "",
+            "## Constraints",
+            "",
+            "TODO: Define constraints (time, compute, data, regulatory).",
+            "",
+            "## Milestones and Timeline",
+            "",
+            "TODO: Define milestones.",
+            "",
+        ]
+
+        plan_path.write_text("\n".join(sections), encoding="utf-8")
+        return plan_path
+
+    def get_document_summaries(self, max_entries: int = 10) -> str:
+        """Return formatted summaries of indexed documents.
+
+        Used to inject document context into the Claude session prompt.
+
+        Args:
+            max_entries: Maximum number of summaries to return.
+
+        Returns:
+            Formatted string of document summaries, or empty string.
+        """
+        hits = self._index.query("project objective data domain", top_k=max_entries)
+        if not hits:
+            return ""
+        lines = ["Indexed document summaries:"]
+        for hit in hits:
+            summary = hit.entry.summary
+            if summary.startswith("["):
+                idx = summary.find("]")
+                if idx != -1:
+                    summary = summary[idx + 2:]
+            lines.append(f"  - {summary}")
+        return "\n".join(lines)
+
     def validate_draft(self, plan_path: Path) -> bool:
         """Validate the generated plan against the schema.
 

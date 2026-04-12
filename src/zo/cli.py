@@ -589,57 +589,96 @@ def preflight(plan_file: Path, target_repo: Path | None) -> None:
 
 
 @cli.command()
-@click.argument("source_paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.argument("source_paths", nargs=-1, type=click.Path(path_type=Path))
 @click.option("--project", "-p", required=True, help="Project name for the generated plan")
-@click.option("--no-tmux", is_flag=True, help="Skip interactive refinement session")
-def draft(source_paths: tuple[Path, ...], project: str, no_tmux: bool) -> None:
-    """Generate a plan.md from source documents.
+@click.option("--description", "-d", default=None, help="Project description (when no source docs)")
+@click.option("--no-tmux", is_flag=True, help="Skip interactive drafting session")
+def draft(
+    source_paths: tuple[Path, ...], project: str,
+    description: str | None, no_tmux: bool,
+) -> None:
+    """Generate a plan.md conversationally or from source documents.
 
-    Accepts multiple file and/or directory paths. Indexes all documents,
-    generates a compliant plan.md, then optionally launches an interactive
-    Claude Code session to refine it with you.
+    When source paths are provided, indexes documents and generates a
+    plan template seeded with their content. When no source paths are
+    given, prompts for a project description (or uses --description).
+
+    In both cases, launches an interactive Claude Code session that
+    drafts the plan conversationally — asking about objectives, data,
+    oracle metrics, and constraints.
 
     Usage::
 
-        zo draft ~/docs/requirements.md ~/data/notes/ --project my-project
-        zo draft ./specs --project alpha --no-tmux
+        zo draft ~/docs/spec.md --project my-project
+        zo draft --project cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+ accuracy"
+        zo draft --project my-project
     """
     from zo.draft import PlanDrafter
 
-    if not source_paths:
-        console.print("[red bold]No source paths provided.[/]")
-        raise SystemExit(1)
-
     zo_root = _zo_root()
-    drafter = PlanDrafter(
-        source_paths=list(source_paths), project_name=project, zo_root=zo_root,
-    )
+    desc = description or ""
+    doc_context = ""
 
-    console.print(f"[{_AMBER}]Indexing documents from {len(source_paths)} path(s):[/]")
-    for sp in source_paths:
-        console.print(f"  [{_DIM}]{sp}[/]")
-    count = drafter.index_documents()
-    console.print(f"[green]Indexed {count} documents.[/]")
+    if source_paths:
+        # --- Branch A: source documents provided ---
+        for sp in source_paths:
+            if not sp.exists():
+                console.print(f"[red bold]Path not found: {sp}[/]")
+                raise SystemExit(1)
 
-    console.print(f"[{_AMBER}]Generating plan...[/]")
-    plan_path = drafter.generate_plan()
+        drafter = PlanDrafter(
+            source_paths=list(source_paths), project_name=project, zo_root=zo_root,
+        )
+
+        console.print(f"[{_AMBER}]Indexing documents from {len(source_paths)} path(s):[/]")
+        for sp in source_paths:
+            console.print(f"  [{_DIM}]{sp}[/]")
+        count = drafter.index_documents()
+        console.print(f"[green]Indexed {count} documents.[/]")
+
+        console.print(f"[{_AMBER}]Generating plan from documents...[/]")
+        plan_path = drafter.generate_plan()
+        doc_context = drafter.get_document_summaries()
+
+    else:
+        # --- Branch B: no source documents ---
+        if not desc:
+            console.print(
+                f"[{_AMBER}]No source documents provided.[/]\n"
+                f"  [{_DIM}]Describe your project briefly "
+                f"(goal, domain, method, target metric):[/]"
+            )
+            console.print()
+            desc = console.input(f"  [{_AMBER}]>[/] ").strip()
+            if not desc:
+                console.print("[red bold]No description provided. Aborting.[/]")
+                raise SystemExit(1)
+
+        drafter = PlanDrafter(project_name=project, zo_root=zo_root)
+
+        console.print(f"\n[{_AMBER}]Drafting plan for:[/] {project}")
+        console.print(f"  [{_DIM}]Description:[/] {desc}")
+
+        console.print(f"[{_AMBER}]Generating plan skeleton...[/]")
+        plan_path = drafter.generate_plan_from_description(desc)
+
     console.print(f"[green]Plan generated:[/] {plan_path}")
 
     valid = drafter.validate_draft(plan_path)
     if valid:
-        console.print("[green bold]Plan passes validation.[/]")
+        console.print("[green bold]Plan passes schema validation.[/]")
     else:
         console.print(
-            f"[yellow bold]Plan has validation issues.[/] "
-            f"Edit {plan_path} to fix them."
+            "[yellow bold]Plan has validation issues.[/] "
+            "The drafting session will address them."
         )
 
-    # Interactive refinement session
+    # Interactive drafting session
     if not no_tmux:
         from zo.wrapper import LifecycleWrapper
 
         console.print(
-            f"\n[{_AMBER}]Opening interactive session to refine the plan...[/]"
+            f"\n[{_AMBER}]Opening interactive drafting session...[/]"
         )
         from zo.comms import CommsLogger
 
@@ -650,19 +689,36 @@ def draft(source_paths: tuple[Path, ...], project: str, no_tmux: bool) -> None:
         )
         wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
 
-        refine_prompt = (
-            f"I've drafted a plan.md at {plan_path} for project '{project}'.\n\n"
-            f"The plan was generated from {count} source documents.\n"
-            f"Please review it, suggest improvements, and help me refine the "
-            f"oracle definition, constraints, and agent configuration.\n\n"
-            f"The plan schema is defined in specs/plan.md — ensure compliance."
+        # Build context-aware prompt
+        context_block = ""
+        if doc_context:
+            context_block = f"\n\n{doc_context}\n"
+        elif desc:
+            context_block = f"\n\nUser's project description: {desc}\n"
+
+        draft_prompt = (
+            f"You are drafting a plan.md for project '{project}' at {plan_path}.\n"
+            f"{context_block}\n"
+            f"A skeleton plan already exists at that path. Read it, then work with "
+            f"the user conversationally to complete it:\n\n"
+            f"1. Review what's there and summarise what you understand\n"
+            f"2. Ask about the objective — what exactly are we building?\n"
+            f"3. Ask about data sources — where does the data come from?\n"
+            f"4. Ask about oracle metrics — how do we measure success?\n"
+            f"5. Ask about constraints — time, compute, regulatory limits?\n"
+            f"6. Fill in each section as you get answers\n"
+            f"7. Validate the final plan against specs/plan.md schema\n\n"
+            f"Write the completed plan to {plan_path}. "
+            f"The plan schema is defined in specs/plan.md — ensure compliance.\n"
+            f"After the plan is complete, tell the user to run: "
+            f"zo build {plan_path}"
         )
 
         prompt_file = zo_root / "logs" / "wrapper" / f"zo-draft-{project}-prompt.txt"
         prompt_file.parent.mkdir(parents=True, exist_ok=True)
-        prompt_file.write_text(refine_prompt, encoding="utf-8")
+        prompt_file.write_text(draft_prompt, encoding="utf-8")
 
-        # Launch interactive claude to refine the plan
+        # Launch interactive claude session
         result = __import__("subprocess").run(
             ["tmux", "new-window", "-d", "-n", f"draft-{project}",
              "-P", "-F", "#{pane_id}"],
@@ -699,7 +755,7 @@ def draft(source_paths: tuple[Path, ...], project: str, no_tmux: bool) -> None:
         )
 
         console.print(
-            f"[{_AMBER}]Refinement session opened.[/] "
+            f"[{_AMBER}]Drafting session opened.[/] "
             f"[{_DIM}]Ctrl-b n to switch to it.[/]"
         )
 
