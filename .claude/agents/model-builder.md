@@ -130,10 +130,52 @@ Format: Python script with latency benchmarks.
 
 See `specs/agents.md` for full contract template and edge cases.
 
+## Training Metrics Protocol (REQUIRED)
+
+All training scripts **must** use the ZO training callback to emit structured metrics. This powers the live training dashboard visible during `zo build`.
+
+```python
+import sys
+sys.path.insert(0, "<ZO_REPO_ROOT>/src")  # if not already on PYTHONPATH
+from zo.training_metrics import ZOTrainingCallback
+
+cb = ZOTrainingCallback(
+    log_dir="logs/training",
+    experiment_id="exp-001",
+    experiment_name="<Architecture> / <Dataset>",
+)
+cb.on_training_start(total_epochs=100, config={"lr": 3e-4, "architecture": "ResNet-18"})
+
+for epoch in range(total_epochs):
+    train_loss = train_one_epoch(model, train_loader, optimizer, criterion)
+    val_metrics = validate(model, val_loader, criterion)
+    cb.on_epoch_end(
+        epoch=epoch, total_epochs=total_epochs,
+        metrics={"train_loss": train_loss, "val_loss": val_metrics["loss"],
+                 "val_acc": val_metrics["accuracy"]},
+        learning_rate=optimizer.param_groups[0]["lr"],
+    )
+    if should_checkpoint(epoch, val_metrics):
+        path = f"models/checkpoints/model_v1/epoch_{epoch}.pt"
+        torch.save(checkpoint, path)
+        cb.on_checkpoint_saved(path=path, epoch=epoch,
+                               metrics={"val_acc": val_metrics["accuracy"]})
+
+cb.on_training_end(final_metrics={"val_acc": best_acc})
+```
+
+**Callbacks to call:**
+- `on_training_start()` — before the training loop (total epochs, config/hyperparams)
+- `on_epoch_end()` — after every epoch (all tracked metrics, learning rate)
+- `on_checkpoint_saved()` — whenever a checkpoint is written to disk (path, epoch, key metrics)
+- `on_training_end()` — after training completes (final metrics)
+
+The callback writes to `logs/training/metrics.jsonl` (append-only history) and `logs/training/training_status.json` (current snapshot). The `zo watch-training` dashboard tails these files.
+
 ## Coordination Rules
 
 - **Before training**: Verify DataLoader contract by loading one batch and checking shape, dtype, and value ranges. If contract violated, message Data Engineer and Orchestrator.
-- **During training**: Log all hyperparameters and architecture choices. If training produces NaN loss, stop immediately and log the failure with full context.
+- **During training**: Log all hyperparameters and architecture choices. Use `ZOTrainingCallback` for per-epoch metrics. If training produces NaN loss, stop immediately and log the failure with full context.
 - **After training**: Submit checkpoint to Oracle for evaluation. Do not self-evaluate on test data — that is Oracle's exclusive responsibility.
 - **On Oracle feedback**: Act on per-sample failure analysis. Prioritize failure modes by frequency and severity. Log iteration rationale.
 - **Iteration plateau**: If val loss does not improve for 2 consecutive iterations with different approaches, escalate to Orchestrator with a summary of all attempts.

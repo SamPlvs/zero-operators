@@ -197,6 +197,8 @@ def _launch_and_monitor(
     semantic,  # noqa: ANN001
     no_tmux: bool,
     gate_mode_file: Path | None = None,
+    project_name: str = "",
+    delivery_repo: Path | None = None,
 ) -> None:
     """Shared launch → monitor → end-session flow for all modes."""
     use_tmux = not no_tmux
@@ -348,6 +350,7 @@ def _launch_and_monitor(
 
     process = wrapper.wait_for_completion(
         process, on_status=_print_status, gate_mode_file=gate_mode_file,
+        project_name=project_name, delivery_repo=delivery_repo,
     )
 
     if process.status == "completed":
@@ -478,6 +481,8 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         semantic=semantic,
         no_tmux=no_tmux,
         gate_mode_file=memory.memory_root / "gate_mode",
+        project_name=project_name,
+        delivery_repo=Path(target.target_repo),
     )
 
 
@@ -694,6 +699,59 @@ def gates_set(mode: str, project: str) -> None:
 
     _show_banner(project=project, mode="gates", gate_mode=gm.value)
     console.print(f"  Gate mode set to: [{_AMBER}]{gm.value}[/]")
+
+
+@cli.command("watch-training")
+@click.option("--project", "-p", required=True, help="Project name")
+@click.option("--interval", "-i", default=2.0, help="Refresh interval in seconds")
+def watch_training(project: str, interval: float) -> None:
+    """Live training metrics dashboard.
+
+    Tails the training metrics JSONL in the delivery repo and displays
+    a persistent Rich panel with epoch progress, loss/metrics, checkpoints,
+    and a sparkline.  Refreshes every INTERVAL seconds.
+
+    Auto-launched by zo build during Phase 4 (training) via tmux split-pane.
+    Can also be run standalone::
+
+        zo watch-training --project my-project
+    """
+    from zo.plan import parse_plan
+    from zo.target import parse_target
+    from zo.training_display import run_live_display
+
+    zo_root = _zo_root()
+
+    # Resolve delivery repo path from target file
+    target_path = zo_root / "targets" / f"{project}.target.md"
+    if not target_path.exists():
+        console.print(f"[red bold]Target file not found:[/] {target_path}")
+        raise SystemExit(1)
+    target = parse_target(target_path)
+    delivery_repo = Path(target.target_repo)
+
+    # Try to get oracle target from plan
+    target_metric: float | None = None
+    target_metric_name = ""
+    plan_path = zo_root / "plans" / f"{project}.md"
+    if plan_path.exists():
+        try:
+            plan = parse_plan(plan_path)
+            if plan.oracle:
+                target_metric = plan.oracle.target_threshold
+                target_metric_name = plan.oracle.primary_metric or ""
+        except Exception:
+            pass
+
+    log_dir = delivery_repo / "logs" / "training"
+    _show_banner(project=project, mode="watch-training")
+
+    run_live_display(
+        log_dir,
+        interval=interval,
+        target_metric=target_metric,
+        target_metric_name=target_metric_name,
+    )
 
 
 @cli.command()
