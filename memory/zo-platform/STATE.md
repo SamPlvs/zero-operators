@@ -83,7 +83,7 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 last_checkpoint: 2026-04-12T22:00:00Z
 last_session: session-011
 branch: claude/eloquent-poincare (worktree)
-test_count: 347 passed, 7 skipped
+test_count: 382 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
 prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft)

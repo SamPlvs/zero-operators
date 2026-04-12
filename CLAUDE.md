@@ -27,6 +27,7 @@ The human edits the plan; agents execute the plan; the oracle verifies the work.
 | specs/plan.md | Plan file schema, required sections, update protocol, validation rules | Read when creating a new project or reviewing plan.md structure |
 | specs/comms.md | JSONL logging schema, reporting standards, explainability output levels | Read when writing agent messages or producing reports |
 | specs/evolution.md | Self-evolving rules, post-mortem protocol, rule update mechanism | Read after any error or failure, and during retrospectives |
+| specs/report_templates.md | Structured report templates for Phase 1 (Data Quality) and Phase 5 (Analysis) | Read when producing phase output reports |
 
 
 ## Design System
