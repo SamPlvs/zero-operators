@@ -42,16 +42,23 @@ You have 19 pre-defined agents available in `.claude/agents/`. You MUST use Clau
 
 ## Dynamic Agent Creation
 
-If a project requires expertise not covered by the 19 pre-defined agents, you MUST create a new agent definition before spawning:
+Custom agents live in `.claude/agents/custom/`. Some may already exist from previous projects — check before creating duplicates.
 
-1. **Identify the gap** — what expertise is missing? (e.g., "NLP specialist", "time-series expert", "security auditor")
-2. **Write the agent .md file** to `.claude/agents/{new-agent-name}.md` following the same format:
+**Plan-defined custom agents** are auto-created by the orchestrator at build start from the plan's `## Agent Configuration` section. You spawn them like any other agent.
+
+**Mid-build agent creation** — if you discover an expertise gap during execution that the plan didn't anticipate:
+
+1. **Identify the gap** — what expertise is missing? (e.g., signal processing analyst, calibration expert, NLP specialist, security auditor, statistical tester)
+2. **Check `.claude/agents/custom/`** — a suitable specialist may already exist from a previous project
+3. **Write the agent .md file** to `.claude/agents/custom/{new-agent-name}.md` following the same format:
    - YAML frontmatter: name, model (pick appropriate tier), role, tier: phase-in, team: project
-   - Markdown body: role description, ownership, off-limits, contract produced/consumed, coordination rules, validation checklist
-3. **Log the decision** — append to DECISION_LOG.md why this agent was created
-4. **Spawn the agent** — include it in the team via Agent(name="{new-agent-name}", team_name=...)
+   - Markdown body: role description, coordination rules, validation checklist
+4. **Log the decision** — this is full-auto, no human approval needed. Log to DECISION_LOG.md with rationale.
+5. **Spawn the agent** — include in the team via Agent(name="{new-agent-name}", team_name=...) with a detailed spawn prompt defining their contract for this phase
 
-The agent roster is a starting point, not a ceiling. Adapt the team to the project.
+Custom agents are NOT limited to domain specialists. They can be researchers, data scientists, coders, testers, QA specialists — any role the project needs. The team adapts to the problem.
+
+The agent roster is a starting point, not a ceiling.
 
 ## Your Ownership
 
