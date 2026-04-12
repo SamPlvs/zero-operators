@@ -54,7 +54,8 @@ class TestInitCommand:
     def test_init_creates_directory_structure(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(cli, ["init", "test-project"])
 
         assert result.exit_code == 0
@@ -90,7 +91,8 @@ class TestInitCommand:
     def test_init_idempotent(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result1 = runner.invoke(cli, ["init", "test-project"])
             result2 = runner.invoke(cli, ["init", "test-project"])
 
@@ -104,7 +106,8 @@ class TestInitCommand:
         zo_root = tmp_path / "zo"
         delivery = tmp_path / "delivery"
 
-        with patch("zo.cli._zo_root", return_value=zo_root):
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
                 ["init", "my-ml", "--scaffold-delivery", str(delivery)],
@@ -171,7 +174,8 @@ class TestInitCommand:
         # Pre-create a file that should NOT be overwritten
         (delivery / "README.md").write_text("custom content", encoding="utf-8")
 
-        with patch("zo.cli._zo_root", return_value=zo_root):
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
                 ["init", "my-ml", "--scaffold-delivery", str(delivery)],
@@ -179,13 +183,14 @@ class TestInitCommand:
 
         assert result.exit_code == 0
         assert (delivery / "README.md").read_text() == "custom content"
-        assert "Already exists" in result.output
+        assert "already exists" in result.output.lower()
 
     def test_init_without_scaffold_still_works(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
         """Ensure the flag is optional and init works without it."""
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(cli, ["init", "plain-project"])
 
         assert result.exit_code == 0

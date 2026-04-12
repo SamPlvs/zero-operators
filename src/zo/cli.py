@@ -487,7 +487,13 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     """
     _show_banner(project=project_name, mode="init")
 
-    zo_root = _zo_root()
+    zo_root = _main_repo_root()
+
+    # Resolve delivery repo path — absolute, deterministic
+    if scaffold_delivery is not None:
+        delivery_path = Path(scaffold_delivery).resolve()
+    else:
+        delivery_path = (zo_root.parent / f"{project_name}-delivery").resolve()
 
     # Initialize memory
     from zo.memory import MemoryManager
@@ -496,16 +502,22 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     memory.initialize_project()
     console.print(f"[green]Memory initialized:[/] {memory.memory_root}")
 
-    # Create target template
+    # Create target file with absolute delivery path
     targets_dir = zo_root / "targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
     target_path = targets_dir / f"{project_name}.target.md"
     if not target_path.exists():
         target_path.write_text(
-            _TARGET_TEMPLATE.format(project_name=project_name),
+            _TARGET_TEMPLATE.format(
+                project_name=project_name,
+                target_repo=str(delivery_path),
+            ),
             encoding="utf-8",
         )
-        console.print(f"[green]Target template created:[/] {target_path}")
+        console.print(f"[green]Target created:[/] {target_path}")
+        console.print(
+            f"  [{_DIM}]Delivery repo:[/] {delivery_path}"
+        )
     else:
         console.print(f"[{_DIM}]Target already exists:[/] {target_path}")
 
@@ -522,17 +534,29 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     else:
         console.print(f"[{_DIM}]Plan already exists:[/] {plan_path}")
 
-    # Optional delivery repo scaffold
-    if scaffold_delivery is not None:
-        from zo.scaffold import scaffold_delivery as _scaffold
+    # Scaffold delivery repo
+    from zo.scaffold import scaffold_delivery as _scaffold
 
-        _scaffold(Path(scaffold_delivery), project_name)
+    if not delivery_path.exists():
+        _scaffold(delivery_path, project_name)
+        console.print(
+            f"[green]Delivery repo scaffolded:[/] {delivery_path}"
+        )
+    else:
+        console.print(
+            f"[{_DIM}]Delivery repo already exists:[/] "
+            f"{delivery_path}"
+        )
 
-    console.print(f"\n[{_AMBER}]Project '{project_name}' scaffolded.[/]")
+    console.print(f"\n[{_AMBER}]Project '{project_name}' ready.[/]")
     console.print("Next steps:")
-    console.print(f"  1. Edit [bold]{plan_path}[/]")
-    console.print(f"  2. Edit [bold]{target_path}[/]")
-    console.print(f"  3. Run [bold]zo build plans/{project_name}.md[/]")
+    console.print(
+        f"  1. Draft plan: [bold]zo draft --project "
+        f"{project_name}[/]"
+    )
+    console.print(
+        f"  2. Build: [bold]zo build plans/{project_name}.md[/]"
+    )
 
 
 @cli.command()
@@ -836,7 +860,7 @@ def draft(
 _TARGET_TEMPLATE = """\
 ---
 project: {project_name}
-target_repo: ../target-{project_name}
+target_repo: {target_repo}
 target_branch: main
 worktree_base: .worktrees
 git_author_name: ZO Agent
