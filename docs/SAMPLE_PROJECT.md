@@ -6,6 +6,28 @@ A step-by-step guide to running Zero Operators on a CIFAR-10 image classifier. U
 
 ---
 
+## Quick Start Flow
+
+```bash
+# 1. Setup (auto-fixes missing deps interactively)
+cd /path/to/zero-operators
+./setup.sh
+
+# 2. Initialize (auto-scaffolds delivery repo)
+zo init cifar10-demo
+zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery
+
+# 3. Draft a plan (or write one manually — see Step 2 below)
+zo draft --project cifar10-demo              # interactive prompt
+zo draft --project cifar10-demo -d "CIFAR-10 CNN, PyTorch, 85%+ accuracy"
+
+# 4. Launch
+tmux new -s zo
+zo build plans/cifar10-demo.md
+```
+
+---
+
 ## Prerequisites
 
 ```bash
@@ -13,12 +35,12 @@ A step-by-step guide to running Zero Operators on a CIFAR-10 image classifier. U
 ssh your-server
 tmux new -s zo
 
-# Verify ZO environment
+# Verify ZO environment — auto-fixes missing dependencies
 cd /path/to/zero-operators
-bash setup.sh
+./setup.sh
 ```
 
-All 10 checks should pass.
+All 10 checks should pass. `setup.sh` will offer to install missing tools (uv, Claude CLI, etc.) interactively.
 
 ---
 
@@ -55,7 +77,7 @@ See `STRUCTURE.md` inside the delivery repo or [Delivery Repo Structure](DELIVER
 
 ## Step 2: Write the Plan
 
-Edit `plans/cifar10-demo.md`:
+Use `zo draft --project cifar10-demo` to generate a plan conversationally, or edit `plans/cifar10-demo.md` manually:
 
 ```markdown
 ---
@@ -237,6 +259,13 @@ Expected output:
 # Supervised mode -- approve every gate (recommended for first run)
 zo build plans/cifar10-demo.md --gate-mode supervised
 ```
+
+> **Tip:** You can switch gate modes mid-session without restarting:
+> ```bash
+> zo gates set auto --project cifar10-demo
+> zo gates set full-auto -p cifar10-demo
+> ```
+> The running orchestrator picks up the change on the next poll cycle.
 
 **What happens:**
 

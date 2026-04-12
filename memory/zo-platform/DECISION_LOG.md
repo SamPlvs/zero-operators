@@ -423,3 +423,33 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** User ran `zo init --scaffold-delivery ~/projects/cifar10-delivery`, then `zo build` looked for `/code/target-cifar10-demo` — a completely different path. The target template hardcoded a relative path that never matched the scaffold. The init → draft → build pipeline must carry its own context autonomously through the target file.
 **Alternatives considered:** (1) Ask user to pass path at every step — breaks autonomous promise. (2) Store path in STATE.md — wrong abstraction, target file already exists for this. (3) Target file as single source of truth with absolute paths (chosen) — deterministic, no user input between commands.
 **Outcome:** PR #25. Target file always has absolute paths. init auto-scaffolds. build reads target file. Full pipeline works without user passing paths.
+
+---
+
+## Decision: 2026-04-12T23:30:00Z
+**Type:** FEATURE
+**Title:** Haiku headline summaries in live build status feed
+**Decision:** Buffer comms events (decisions, gates, checkpoints, errors) during `zo build` status polling. Every 60 seconds, send the last 15 buffered events to Claude Haiku with a prompt to generate a 1-line headline (80 chars max). Print with `▸` prefix in amber. Non-blocking — fails silently if Haiku unavailable.
+**Rationale:** The raw event feed (decisions, checkpoints, errors) is useful but verbose. A periodic natural language summary gives the user a quick "what's happening" without reading every line. Like a news ticker for their build.
+**Alternatives considered:** (1) No summaries — raw events only. (2) Python-based summariser — brittle, can't handle diverse events. (3) Haiku API call (chosen) — fast, cheap, high quality, graceful degradation.
+**Outcome:** PR #25. 60s interval, 15-event batch, 80-char headline.
+
+---
+
+## Decision: 2026-04-12T23:30:00Z
+**Type:** FEATURE
+**Title:** zo gates set — toggle gate mode mid-session
+**Decision:** New CLI command `zo gates set MODE --project NAME` writes the mode to `memory/{project}/gate_mode`. The orchestrator calls `_refresh_gate_mode()` at the top of `advance_phase()` to re-read the file before each gate decision. The wrapper calls `_check_gate_mode_change()` each poll cycle. Changes take effect within 10 seconds — no restart needed.
+**Rationale:** In supervised mode, every agent tool call needs approval. User wants to start supervised (to verify things work), then switch to auto once confident. Previously required killing the session and restarting with a different flag.
+**Alternatives considered:** (1) Restart with different flag — loses session context. (2) Signal-based (SIGUSR1) — fragile, platform-specific. (3) File-based with polling (chosen) — simple, reliable, works from any terminal.
+**Outcome:** PR #25. 6 new tests, 347 total. MemoryManager.read_gate_mode() / write_gate_mode().
+
+---
+
+## Decision: 2026-04-13T00:00:00Z
+**Type:** DOCUMENTATION
+**Title:** Full documentation audit and consistency sweep
+**Decision:** Audited README, COMMANDS.md, SAMPLE_PROJECT.md, workflow.md, DELIVERY_STRUCTURE.md for consistency with session 011 features. Found: (1) COMMANDS.md missing all CLI commands (only had slash commands). (2) specs/workflow.md Phase 1 still had 7 subtasks (should be 13). (3) README agent table showed Research Scout as "Phase 0" (should be "All phases"). (4) Test counts stale (338 → 347). (5) New features (Haiku headlines, zo gates set, tmux orphan prevention) not documented. Fixed all issues.
+**Rationale:** PR-005 prior: aspirational docs without enforcement degrade. This session added 10+ features but only partially updated docs. Full sweep ensures any user reading any doc gets consistent, current information.
+**Alternatives considered:** None — mandatory per CLAUDE.md protocol.
+**Outcome:** All user-facing docs updated and cross-referenced.

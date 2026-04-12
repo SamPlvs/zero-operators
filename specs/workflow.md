@@ -98,8 +98,11 @@ Orchestrator confirms: Is the problem well-defined? Are baselines identified? Is
 **Gate:** Gate 1 (Orchestrator review)
 **Input:** Raw data sources, data source documentation
 **Output:** Data quality report, versioned data pipeline, correlation artifact
+**Agents:** data-engineer, test-engineer, research-scout, code-reviewer, domain-evaluator
 
 This phase validates and understands raw data. Each subtask feeds the next. Do not parallelize.
+
+> **Cross-cutting agents:** `code-reviewer` and `research-scout` are cross-cutting agents present in ALL phases. `code-reviewer` validates code quality, test coverage, and adherence to standards in every phase that produces code. `research-scout` monitors for relevant prior art, methodology updates, and domain-specific best practices throughout the project lifecycle.
 
 ### Subtask 1.1: Raw Data Audit
 
@@ -188,6 +191,63 @@ Build the training data pipeline:
 - Benchmark DataLoader throughput (samples/sec) to ensure it won't bottleneck training
 
 **Artifact:** `dataset.py`, `data_loader.py`, `transforms.py`, `loader_benchmark.md`.
+
+### Subtask 1.8: Data Schema Validation
+
+Enforce expected schema on the cleaned dataset:
+- Validate column names, data types, and value ranges against a schema definition
+- Flag columns with unexpected types (e.g., numeric stored as string) or out-of-range values
+- Produce a schema compliance report with pass/fail per column
+
+**Artifact:** `data_schema.yaml`, `schema_validation_report.md`.
+
+### Subtask 1.9: Missing Value Analysis and Strategy
+
+Analyze and document a strategy for handling missing data:
+- Quantify missingness per feature (MCAR, MAR, MNAR classification where feasible)
+- Evaluate imputation strategies (mean/median, forward-fill, model-based, drop) with impact analysis
+- Document chosen strategy per feature with justification
+
+**Artifact:** `missing_value_report.md`, `imputation_config.yaml`.
+
+### Subtask 1.10: Outlier Detection
+
+Identify outliers using statistical and domain-aware methods:
+- Statistical detection: z-score, IQR, isolation forest, or DBSCAN as appropriate
+- Domain-aware detection: flag values that violate physical or business constraints from `PRIORS.md`
+- Document each outlier category with count, severity, and recommended action (keep, cap, remove)
+
+**Artifact:** `outlier_report.md`, `outlier_flags.csv`.
+
+### Subtask 1.11: Class Imbalance Analysis
+
+Assess target variable distribution and plan mitigation:
+- Compute class frequencies and imbalance ratio
+- For regression: identify thin-tail regions with low sample density
+- Recommend mitigation strategy (oversampling, undersampling, class weights, focal loss, SMOTE) with rationale
+- If no imbalance detected, document confirmation
+
+**Artifact:** `imbalance_report.md`, `sampling_config.yaml` (if mitigation needed).
+
+### Subtask 1.12: Train/Val/Test Split Strategy
+
+Define and validate the data splitting approach:
+- Choose split method based on data type (temporal, stratified, grouped, domain-specific)
+- Validate no data leakage across splits (especially for time series and grouped data)
+- Document split ratios, boundaries, stratification keys, and purge gaps
+- Produce split statistics (class distributions, feature distributions per split)
+
+**Artifact:** `split_strategy.md`, `split_statistics.csv`.
+
+### Subtask 1.13: Data Drift Baseline
+
+Establish reference distributions for ongoing monitoring:
+- Compute reference statistics (mean, std, quantiles, histograms) for all features on the training set
+- Store reference distributions in a serializable format for future drift detection
+- Define drift thresholds (PSI, KS-test, or domain-specific) per feature
+- Document baseline assumptions and recommended monitoring cadence
+
+**Artifact:** `drift_baseline.yaml`, `reference_distributions.pkl`, `drift_monitoring_config.yaml`.
 
 ### Gate 1: Data Quality Review
 
