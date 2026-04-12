@@ -25,7 +25,7 @@ class TestCliGroup:
     """Tests for the CLI group and its registered commands."""
 
     def test_cli_group_has_all_commands(self) -> None:
-        expected = {"build", "continue", "init", "status", "draft", "preflight"}
+        expected = {"build", "continue", "init", "status", "draft", "preflight", "gates"}
         actual = set(cli.commands.keys())
         assert expected == actual
 
@@ -54,7 +54,8 @@ class TestInitCommand:
     def test_init_creates_directory_structure(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(cli, ["init", "test-project"])
 
         assert result.exit_code == 0
@@ -90,7 +91,8 @@ class TestInitCommand:
     def test_init_idempotent(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result1 = runner.invoke(cli, ["init", "test-project"])
             result2 = runner.invoke(cli, ["init", "test-project"])
 
@@ -104,7 +106,8 @@ class TestInitCommand:
         zo_root = tmp_path / "zo"
         delivery = tmp_path / "delivery"
 
-        with patch("zo.cli._zo_root", return_value=zo_root):
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
                 ["init", "my-ml", "--scaffold-delivery", str(delivery)],
@@ -171,7 +174,8 @@ class TestInitCommand:
         # Pre-create a file that should NOT be overwritten
         (delivery / "README.md").write_text("custom content", encoding="utf-8")
 
-        with patch("zo.cli._zo_root", return_value=zo_root):
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
                 ["init", "my-ml", "--scaffold-delivery", str(delivery)],
@@ -179,13 +183,14 @@ class TestInitCommand:
 
         assert result.exit_code == 0
         assert (delivery / "README.md").read_text() == "custom content"
-        assert "Already exists" in result.output
+        assert "already exists" in result.output.lower()
 
     def test_init_without_scaffold_still_works(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
         """Ensure the flag is optional and init works without it."""
-        with patch("zo.cli._zo_root", return_value=tmp_path):
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(cli, ["init", "plain-project"])
 
         assert result.exit_code == 0
@@ -394,7 +399,8 @@ class TestDraftCommand:
 
         with patch("zo.cli._zo_root", return_value=zo_root):
             result = runner.invoke(
-                cli, ["draft", str(source_dir), "--project", "test-draft"]
+                cli, ["draft", str(source_dir), "--project", "test-draft",
+                      "--no-tmux"]
             )
 
         assert result.exit_code == 0
@@ -412,7 +418,8 @@ class TestDraftCommand:
             result = runner.invoke(
                 cli,
                 ["draft", "--project", "test-desc", "-d",
-                 "CIFAR-10 image classification with PyTorch CNN, target 90% accuracy"],
+                 "CIFAR-10 image classification with PyTorch CNN, target 90% accuracy",
+                 "--no-tmux"],
             )
 
         assert result.exit_code == 0
@@ -482,3 +489,87 @@ class TestGateModeMapping:
 
         with pytest.raises(KeyError):
             _gate_mode_from_str("invalid")
+
+
+# ---------------------------------------------------------------------------
+# gates set command
+# ---------------------------------------------------------------------------
+
+
+class TestGatesSetCommand:
+    """Tests for the ``zo gates set`` command."""
+
+    def test_gates_set_writes_mode_file(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        # Set up minimal memory directory
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "auto", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        assert "Gate mode set to" in result.output
+
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.exists()
+        assert gate_file.read_text().strip() == "auto"
+
+    def test_gates_set_full_auto(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "full-auto", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.read_text().strip() == "full_auto"
+
+    def test_gates_set_supervised(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "supervised", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.read_text().strip() == "supervised"
+
+    def test_gates_set_invalid_mode(
+        self, runner: click.testing.CliRunner
+    ) -> None:
+        result = runner.invoke(
+            cli, ["gates", "set", "yolo", "--project", "test-project"]
+        )
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output
+
+    def test_gates_set_missing_project(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "auto", "--project", "nonexistent"]
+            )
+
+        assert result.exit_code == 1
+        assert "No memory found" in result.output
+
+    def test_gates_set_requires_project_option(
+        self, runner: click.testing.CliRunner
+    ) -> None:
+        result = runner.invoke(cli, ["gates", "set", "auto"])
+        assert result.exit_code != 0

@@ -313,6 +313,29 @@ class Orchestrator:
                 return phase
         return None
 
+    def _refresh_gate_mode(self) -> None:
+        """Re-read the gate mode from the file system if it exists.
+
+        This allows ``zo gates set`` to change the mode mid-session
+        from a separate terminal.  Falls back to the configured mode
+        if the file is missing or contains an invalid value.
+        """
+        raw = self._memory.read_gate_mode()
+        if raw is None:
+            return
+        try:
+            new_mode = GateMode(raw)
+        except ValueError:
+            return
+        if new_mode != self._gate_mode:
+            self._comms.log_decision(
+                agent="orchestrator",
+                title=f"Gate mode changed: {self._gate_mode} -> {new_mode}",
+                rationale="Detected gate_mode file update (zo gates set).",
+                outcome=new_mode,
+            )
+            self._gate_mode = new_mode
+
     def advance_phase(self, phase_id: str) -> GateEvaluation:
         """Evaluate the gate for a phase and advance if criteria are met.
 
@@ -325,6 +348,7 @@ class Orchestrator:
         * **full_auto** — no human gates at all; all gates are treated as
           automated and ZO runs to completion autonomously.
         """
+        self._refresh_gate_mode()
         phase = self._find_phase(phase_id)
         all_done = set(phase.subtasks) == set(phase.completed_subtasks)
 

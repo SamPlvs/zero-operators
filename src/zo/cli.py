@@ -37,6 +37,31 @@ def _zo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+def _main_repo_root() -> Path:
+    """Return the main git repo root, even if running from a worktree.
+
+    ZO artifacts (plans, memory, state) should always live in the main
+    repo, not in worktrees. Worktrees are for ZO development.
+    """
+    import subprocess
+
+    zo_root = _zo_root()
+    try:
+        # git worktree list --porcelain: first line is the main repo
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, timeout=5, cwd=str(zo_root),
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if line.startswith("worktree "):
+                    # First worktree entry is always the main repo
+                    return Path(line.split(" ", 1)[1])
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return zo_root
+
+
 def _gate_mode_from_str(value: str) -> GateMode:
     """Map CLI gate-mode string to GateMode enum."""
     mapping = {
@@ -171,6 +196,7 @@ def _launch_and_monitor(
     orchestrator,  # noqa: ANN001
     semantic,  # noqa: ANN001
     no_tmux: bool,
+    gate_mode_file: Path | None = None,
 ) -> None:
     """Shared launch → monitor → end-session flow for all modes."""
     use_tmux = not no_tmux
@@ -195,6 +221,40 @@ def _launch_and_monitor(
     console.print()
 
     _seen_events: set[str] = set()
+    _headline_buffer: list[str] = []
+    _last_headline_time: float = 0.0
+    _headline_interval = 60  # seconds between Haiku summaries
+
+    def _maybe_print_headline() -> None:
+        """Send buffered events to Haiku for a 1-line summary."""
+        import time as _time
+
+        nonlocal _last_headline_time
+        now = _time.monotonic()
+        if not _headline_buffer:
+            return
+        if now - _last_headline_time < _headline_interval:
+            return
+
+        events_text = "\n".join(_headline_buffer[-15:])
+        _headline_buffer.clear()
+        _last_headline_time = now
+
+        try:
+            result = __import__("subprocess").run(
+                ["claude", "-p", "--model", "haiku",
+                 f"Summarise these agent events in ONE short "
+                 f"headline (max 80 chars). No preamble, just "
+                 f"the headline:\n\n{events_text}"],
+                capture_output=True, text=True, timeout=15,
+            )
+            headline = result.stdout.strip().split("\n")[0][:80]
+            if headline:
+                console.print(
+                    f"  [{_AMBER}]▸ {headline}[/]"
+                )
+        except Exception:
+            pass  # Non-critical — skip if Haiku unavailable
 
     def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
         from datetime import UTC, datetime
@@ -261,26 +321,34 @@ def _launch_and_monitor(
                         console.print(
                             f"    [{_AMBER}]◆ DECISION[/] [{_DIM}]{agent}:[/] {title}"
                         )
+                        _headline_buffer.append(f"{agent} decided: {title}")
                     elif etype == "gate":
                         result = evt.get("result", "")
                         gphase = evt.get("phase_id", "")
                         console.print(
                             f"    [{_AMBER}]⊘ GATE[/] {gphase}: {result}"
                         )
+                        _headline_buffer.append(f"Gate {gphase}: {result}")
                     elif etype == "checkpoint":
                         progress = evt.get("progress", "")[:70]
                         console.print(f"    [{_DIM}]↳ {agent}: {progress}[/]")
+                        _headline_buffer.append(f"{agent}: {progress}")
                     elif etype == "error":
                         desc = evt.get("description", "")[:70]
                         console.print(
                             f"    [red]✗ ERROR[/] [{_DIM}]{agent}:[/] {desc}"
                         )
+                        _headline_buffer.append(f"ERROR {agent}: {desc}")
 
         if not tasks and not header_parts:
             console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
+
+        _maybe_print_headline()
         console.print()
 
-    process = wrapper.wait_for_completion(process, on_status=_print_status)
+    process = wrapper.wait_for_completion(
+        process, on_status=_print_status, gate_mode_file=gate_mode_file,
+    )
 
     if process.status == "completed":
         console.print("[green bold]Session completed successfully.[/]")
@@ -368,6 +436,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 
     # 6. Create Orchestrator
     gm = _gate_mode_from_str(gate_mode)
+    memory.write_gate_mode(gm.value)
     orchestrator = Orchestrator(
         plan=plan, target=target, memory=memory, comms=comms,
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
@@ -408,6 +477,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         orchestrator=orchestrator,
         semantic=semantic,
         no_tmux=no_tmux,
+        gate_mode_file=memory.memory_root / "gate_mode",
     )
 
 
@@ -424,6 +494,8 @@ def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
 
     Finds plans/{project_name}.md and runs zo build on it.
     """
+    _show_banner(project=project_name, mode="continue")
+
     zo_root = _zo_root()
     plan_path = zo_root / "plans" / f"{project_name}.md"
     if not plan_path.exists():
@@ -458,7 +530,15 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     With --scaffold-delivery PATH, also creates a delivery repo layout
     with data/, src/, Docker files, and a bare pyproject.toml.
     """
-    zo_root = _zo_root()
+    _show_banner(project=project_name, mode="init")
+
+    zo_root = _main_repo_root()
+
+    # Resolve delivery repo path — absolute, deterministic
+    if scaffold_delivery is not None:
+        delivery_path = Path(scaffold_delivery).resolve()
+    else:
+        delivery_path = (zo_root.parent / f"{project_name}-delivery").resolve()
 
     # Initialize memory
     from zo.memory import MemoryManager
@@ -467,16 +547,22 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     memory.initialize_project()
     console.print(f"[green]Memory initialized:[/] {memory.memory_root}")
 
-    # Create target template
+    # Create target file with absolute delivery path
     targets_dir = zo_root / "targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
     target_path = targets_dir / f"{project_name}.target.md"
     if not target_path.exists():
         target_path.write_text(
-            _TARGET_TEMPLATE.format(project_name=project_name),
+            _TARGET_TEMPLATE.format(
+                project_name=project_name,
+                target_repo=str(delivery_path),
+            ),
             encoding="utf-8",
         )
-        console.print(f"[green]Target template created:[/] {target_path}")
+        console.print(f"[green]Target created:[/] {target_path}")
+        console.print(
+            f"  [{_DIM}]Delivery repo:[/] {delivery_path}"
+        )
     else:
         console.print(f"[{_DIM}]Target already exists:[/] {target_path}")
 
@@ -493,23 +579,37 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     else:
         console.print(f"[{_DIM}]Plan already exists:[/] {plan_path}")
 
-    # Optional delivery repo scaffold
-    if scaffold_delivery is not None:
-        from zo.scaffold import scaffold_delivery as _scaffold
+    # Scaffold delivery repo
+    from zo.scaffold import scaffold_delivery as _scaffold
 
-        _scaffold(Path(scaffold_delivery), project_name)
+    if not delivery_path.exists():
+        _scaffold(delivery_path, project_name)
+        console.print(
+            f"[green]Delivery repo scaffolded:[/] {delivery_path}"
+        )
+    else:
+        console.print(
+            f"[{_DIM}]Delivery repo already exists:[/] "
+            f"{delivery_path}"
+        )
 
-    console.print(f"\n[{_AMBER}]Project '{project_name}' scaffolded.[/]")
+    console.print(f"\n[{_AMBER}]Project '{project_name}' ready.[/]")
     console.print("Next steps:")
-    console.print(f"  1. Edit [bold]{plan_path}[/]")
-    console.print(f"  2. Edit [bold]{target_path}[/]")
-    console.print(f"  3. Run [bold]zo build plans/{project_name}.md[/]")
+    console.print(
+        f"  1. Draft plan: [bold]zo draft --project "
+        f"{project_name}[/]"
+    )
+    console.print(
+        f"  2. Build: [bold]zo build plans/{project_name}.md[/]"
+    )
 
 
 @cli.command()
 @click.argument("project_name")
 def status(project_name: str) -> None:
     """Show current project status from STATE.md."""
+    _show_banner(project=project_name, mode="status")
+
     from zo.memory import MemoryManager
 
     zo_root = _zo_root()
@@ -549,6 +649,53 @@ def status(project_name: str) -> None:
             console.print(f"  {s.date} ({s.mode}): {accomplished}")
 
 
+@cli.group()
+def gates() -> None:
+    """Inspect and control gate modes for running projects."""
+
+
+@gates.command("set")
+@click.argument(
+    "mode",
+    type=click.Choice(["supervised", "auto", "full-auto"]),
+)
+@click.option(
+    "--project", "-p", required=True,
+    help="Project name whose gate mode to change.",
+)
+def gates_set(mode: str, project: str) -> None:
+    """Set the gate mode for a project mid-session.
+
+    Writes the mode to memory/{project}/gate_mode so that
+    the running orchestrator and wrapper pick it up dynamically.
+
+    Valid modes: supervised, auto, full-auto.
+
+    Usage::
+
+        zo gates set auto --project my-project
+        zo gates set full-auto -p my-project
+    """
+    from zo.memory import MemoryManager
+
+    zo_root = _zo_root()
+    memory = MemoryManager(project_dir=zo_root, project_name=project)
+
+    if not memory.memory_root.exists():
+        console.print(
+            f"[red bold]No memory found for '{project}'.[/] "
+            "Run [bold]zo init[/] or [bold]zo build[/] first."
+        )
+        raise SystemExit(1)
+
+    # Normalise CLI string to the GateMode enum value
+    gm = _gate_mode_from_str(mode)
+    memory.write_gate_mode(gm.value)
+
+    _show_banner(project=project, mode="gates", gate_mode=gm.value)
+    console.print(f"  Gate mode set to: [{_AMBER}]{gm.value}[/]")
+
+
 @cli.command()
 @click.argument("plan_file", type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -561,6 +708,8 @@ def preflight(plan_file: Path, target_repo: Path | None) -> None:
     Runs local-only checks: CLI availability, plan validation, agent
     definitions, memory round-trip, Docker, and GPU availability.
     """
+    _show_banner(mode="preflight")
+
     from zo.preflight import run_preflight
 
     zo_root = _zo_root()
@@ -615,9 +764,15 @@ def draft(
     """
     from zo.draft import PlanDrafter
 
+    _show_banner(project=project, mode="draft")
+
     zo_root = _zo_root()
+    main_root = _main_repo_root()
     desc = description or ""
     doc_context = ""
+
+    # Always write plans to main repo, not worktrees
+    plan_root = main_root if main_root != zo_root else zo_root
 
     if source_paths:
         # --- Branch A: source documents provided ---
@@ -627,10 +782,14 @@ def draft(
                 raise SystemExit(1)
 
         drafter = PlanDrafter(
-            source_paths=list(source_paths), project_name=project, zo_root=zo_root,
+            source_paths=list(source_paths), project_name=project,
+            zo_root=plan_root,
         )
 
-        console.print(f"[{_AMBER}]Indexing documents from {len(source_paths)} path(s):[/]")
+        console.print(
+            f"[{_AMBER}]Indexing documents from "
+            f"{len(source_paths)} path(s):[/]"
+        )
         for sp in source_paths:
             console.print(f"  [{_DIM}]{sp}[/]")
         count = drafter.index_documents()
@@ -651,10 +810,14 @@ def draft(
             console.print()
             desc = console.input(f"  [{_AMBER}]>[/] ").strip()
             if not desc:
-                console.print("[red bold]No description provided. Aborting.[/]")
+                console.print(
+                    "[red bold]No description provided. Aborting.[/]"
+                )
                 raise SystemExit(1)
 
-        drafter = PlanDrafter(project_name=project, zo_root=zo_root)
+        drafter = PlanDrafter(
+            project_name=project, zo_root=plan_root,
+        )
 
         console.print(f"\n[{_AMBER}]Drafting plan for:[/] {project}")
         console.print(f"  [{_DIM}]Description:[/] {desc}")
@@ -663,6 +826,10 @@ def draft(
         plan_path = drafter.generate_plan_from_description(desc)
 
     console.print(f"[green]Plan generated:[/] {plan_path}")
+    if plan_root != zo_root:
+        console.print(
+            f"  [{_DIM}]Written to main repo (not worktree)[/]"
+        )
 
     valid = drafter.validate_draft(plan_path)
     if valid:
@@ -696,31 +863,54 @@ def draft(
         elif desc:
             context_block = f"\n\nUser's project description: {desc}\n"
 
+        # Build path always references main repo for zo build
+        build_cmd = f"zo build plans/{project}.md"
+
         draft_prompt = (
-            f"You are drafting a plan.md for project '{project}' at {plan_path}.\n"
+            f"You are drafting a plan.md for project '{project}' "
+            f"at {plan_path}.\n"
             f"{context_block}\n"
-            f"A skeleton plan already exists at that path. Read it, then work with "
-            f"the user conversationally to complete it:\n\n"
-            f"1. Review what's there and summarise what you understand\n"
-            f"2. Ask about the objective — what exactly are we building?\n"
-            f"3. Ask about data sources — where does the data come from?\n"
-            f"4. Ask about oracle metrics — how do we measure success?\n"
-            f"5. Ask about constraints — time, compute, regulatory limits?\n"
+            f"A skeleton plan already exists at that path. Read it, "
+            f"then work with the user conversationally to complete "
+            f"it:\n\n"
+            f"1. Review what's there and summarise what you "
+            f"understand\n"
+            f"2. Ask about the objective — what exactly are we "
+            f"building?\n"
+            f"3. Ask about data sources — where does the data come "
+            f"from?\n"
+            f"4. Ask about oracle metrics — how do we measure "
+            f"success?\n"
+            f"5. Ask about constraints — time, compute, regulatory "
+            f"limits?\n"
             f"6. Fill in each section as you get answers\n"
-            f"7. Validate the final plan against specs/plan.md schema\n\n"
+            f"7. Validate the final plan against specs/plan.md "
+            f"schema\n\n"
             f"Write the completed plan to {plan_path}. "
-            f"The plan schema is defined in specs/plan.md — ensure compliance.\n"
-            f"After the plan is complete, tell the user to run: "
-            f"zo build {plan_path}"
+            f"The plan schema is defined in specs/plan.md — ensure "
+            f"compliance.\n\n"
+            f"When the plan is complete:\n"
+            f"- Ask the user: 'Is there anything else you'd like to "
+            f"adjust? If not, this session is done — run "
+            f"`{build_cmd}` to start building.'\n"
+            f"- Once confirmed, say goodbye and tell them to type "
+            f"/exit to close this session.\n"
         )
 
         prompt_file = zo_root / "logs" / "wrapper" / f"zo-draft-{project}-prompt.txt"
         prompt_file.parent.mkdir(parents=True, exist_ok=True)
         prompt_file.write_text(draft_prompt, encoding="utf-8")
 
+        # Kill any existing draft window for this project (prevent orphans)
+        window_name = f"draft-{project}"
+        __import__("subprocess").run(
+            ["tmux", "kill-window", "-t", window_name],
+            capture_output=True, text=True, timeout=5,
+        )
+
         # Launch interactive claude session
         result = __import__("subprocess").run(
-            ["tmux", "new-window", "-d", "-n", f"draft-{project}",
+            ["tmux", "new-window", "-d", "-n", window_name,
              "-P", "-F", "#{pane_id}"],
             capture_output=True, text=True, timeout=10,
         )
@@ -769,7 +959,7 @@ def draft(
 _TARGET_TEMPLATE = """\
 ---
 project: {project_name}
-target_repo: ../target-{project_name}
+target_repo: {target_repo}
 target_branch: main
 worktree_base: .worktrees
 git_author_name: ZO Agent

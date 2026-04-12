@@ -25,11 +25,14 @@ AGENT_PHASE_MAP: dict[str, list[str]] = {
     "code-reviewer": [
         "phase_1", "phase_2", "phase_3", "phase_4", "phase_5", "phase_6",
     ],
+    "research-scout": [
+        "phase_1", "phase_2", "phase_3", "phase_4", "phase_5", "phase_6",
+    ],
     "test-engineer": [
         "phase_1", "phase_2", "phase_3", "phase_4", "phase_5", "phase_6",
     ],
     "xai-agent": ["phase_5"],
-    "domain-evaluator": ["phase_5"],
+    "domain-evaluator": ["phase_1", "phase_5"],
     "ml-engineer": ["phase_4", "phase_5", "phase_6"],
     "infra-engineer": ["phase_1", "phase_6"],
     "lead-orchestrator": [],
@@ -51,6 +54,13 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             subtasks=[
                 "Raw data audit", "Data hygiene", "Exclusion filters",
                 "Data alignment", "EDA", "Data versioning", "Data loader",
+                "Data schema validation", "Missing value analysis",
+                "Outlier detection", "Class imbalance analysis",
+                "Train/val/test split strategy", "Data drift baseline",
+            ],
+            assigned_agents=[
+                "data-engineer", "test-engineer", "research-scout",
+                "code-reviewer", "domain-evaluator",
             ],
             gate_type=GateType.AUTOMATED,
             depends_on=[],
@@ -68,6 +78,7 @@ def classical_ml_phases() -> list[PhaseDefinition]:
                 "Feature engineering", "Section filter", "Statistical filter",
                 "Multicollinearity pruning", "Domain validation", "Feature ranking",
             ],
+            assigned_agents=["code-reviewer", "research-scout"],
             gate_type=GateType.BLOCKING,
             depends_on=["phase_1"],
             required_artifacts=[
@@ -87,6 +98,7 @@ def classical_ml_phases() -> list[PhaseDefinition]:
                 "Training strategy", "Regime segmentation",
                 "Oracle setup", "Experiment tracking",
             ],
+            assigned_agents=["code-reviewer", "research-scout"],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_2"],
             required_artifacts=[
@@ -101,6 +113,7 @@ def classical_ml_phases() -> list[PhaseDefinition]:
                 "Baseline training", "Iteration protocol",
                 "Cross-validation", "Ensemble exploration",
             ],
+            assigned_agents=["code-reviewer", "research-scout"],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_3"],
             required_artifacts=[
@@ -123,6 +136,7 @@ def classical_ml_phases() -> list[PhaseDefinition]:
                 "Significance testing", "Reproducibility",
                 "Report assembly",
             ],
+            assigned_agents=["code-reviewer", "research-scout"],
             gate_type=GateType.BLOCKING,
             depends_on=["phase_4"],
             required_artifacts=[
@@ -138,6 +152,7 @@ def classical_ml_phases() -> list[PhaseDefinition]:
                 "Inference pipeline", "Model card",
                 "Validation report", "Drift detection", "Test suite",
             ],
+            assigned_agents=["code-reviewer", "research-scout"],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_5"],
             required_artifacts=[
@@ -164,6 +179,7 @@ def deep_learning_phases() -> list[PhaseDefinition]:
             "Input representation design", "Transfer learning assessment",
             "Augmentation strategy",
         ],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.BLOCKING,
         depends_on=["phase_1"],
     )
@@ -180,6 +196,7 @@ def deep_learning_phases() -> list[PhaseDefinition]:
             "Training strategy", "Gradient diagnostics plan",
             "Regime segmentation", "Oracle setup", "Experiment tracking",
         ],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.AUTOMATED,
         depends_on=["phase_2"],
     )
@@ -192,6 +209,7 @@ def deep_learning_phases() -> list[PhaseDefinition]:
             "Baseline training", "Training diagnostics",
             "Iteration protocol", "Cross-validation", "Ensemble exploration",
         ],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.AUTOMATED,
         depends_on=["phase_3"],
     )
@@ -205,6 +223,7 @@ def research_phases() -> list[PhaseDefinition]:
         name="Literature Review and Prior Art",
         description="Survey prior art, define baselines and evaluation protocol.",
         subtasks=["Prior art survey", "Baseline definition"],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.AUTOMATED,
         depends_on=[],
     )
@@ -226,6 +245,7 @@ def research_phases() -> list[PhaseDefinition]:
             "Significance testing", "Reproducibility",
             "Report assembly",
         ],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.BLOCKING,
         depends_on=["phase_4"],
     )
@@ -241,6 +261,7 @@ def research_phases() -> list[PhaseDefinition]:
             "Inference pipeline", "Model card", "Validation report",
             "Drift detection", "Test suite", "Research artifacts",
         ],
+        assigned_agents=["code-reviewer", "research-scout"],
         gate_type=GateType.AUTOMATED,
         depends_on=["phase_5"],
     )
