@@ -483,3 +483,23 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** User noted existing data quality reports were too thin for production data (IVL F5). CIFAR-10 is clean and simple; IVL F5 has messy, complex, domain-specific data requiring comprehensive quality assessment. Templates ensure agents produce production-grade reports with statistical tests, per-feature breakdowns, and actionable recommendations.
 **Alternatives considered:** (1) Inline templates in agent contracts — bloats agent definitions. (2) Separate spec file (chosen) — reusable, single source of truth, agents reference it. (3) Auto-generated reports from code — too rigid, can't capture domain-specific analysis.
 **Outcome:** PR #26. specs/report_templates.md, 3 agent contracts updated.
+
+---
+
+## Decision: 2026-04-13T02:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Draft scout team — multi-agent plan drafting with data and research intelligence
+**Decision:** Upgraded `zo draft` from a single Sonnet session to a 3-agent scout team: Plan Architect (Opus, lead), Data Scout (Sonnet), Research Scout (existing, Opus). The Plan Architect converses with the human in tmux while scouts gather intelligence in the background. Data Scout inspects raw data (schema, distributions, quality flags). Research Scout finds prior art and baselines. Findings arrive via Claude Code native peer messaging and are woven into the plan.
+**Rationale:** Single-session draft works for toy datasets (CIFAR-10) but not for production data (IVL F5). Plans written without data inspection or research are uninformed — the plan.md quality directly determines build quality. The scout team grounds the plan in data reality and domain knowledge. User wanted to keep the conversational UX — the architect chats, scouts work in background. Same monitoring UX as zo build (team status feed in terminal).
+**Alternatives considered:** (1) Full preliminary analysis (mini Phase 1) — too expensive, risk of doing Phase 1 twice. (2) Keep single session, evolve plan after Phase 1 — plan starts uninformed. (3) Lightweight scout team (chosen) — quick (10-15 min), grounded, conversational.
+**Outcome:** PR #27. 2 new agents (plan-architect, data-scout), CLI redesigned (--docs, --data, -d all optional), _launch_and_monitor shared between build and draft.
+
+---
+
+## Decision: 2026-04-13T02:00:00Z
+**Type:** ARCHITECTURE
+**Title:** zo draft CLI — explicit --docs and --data flags, all optional
+**Decision:** Changed `zo draft` CLI from positional `SOURCE_PATHS` to explicit `--docs PATH` and `--data PATH` flags. Both are optional and repeatable. If neither provided, the Plan Architect asks conversationally. `--docs` feeds source documents to PlanDrafter for indexing. `--data` passes paths to Data Scout for raw data inspection.
+**Rationale:** The old positional arg was overloaded — no way to distinguish docs from data. For the scout team, Data Scout needs to know which paths are actual data files to inspect. Explicit flags are clear. Making everything optional preserves the conversational fallback — the architect asks the human for anything not provided on the command line.
+**Alternatives considered:** (1) Single positional arg, heuristic separation — fragile, confusing. (2) Explicit flags (chosen) — clear intent, both optional. (3) Config file — over-engineered for this.
+**Outcome:** PR #27. CLI: `zo draft -p NAME [--docs PATH...] [--data PATH...] [-d DESC]`.

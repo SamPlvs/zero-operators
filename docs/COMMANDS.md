@@ -30,11 +30,15 @@ zo continue project-name [--gate-mode supervised|auto|full-auto]
 
 ### zo draft
 
-Draft a plan conversationally. Accepts source documents, a description, or launches an interactive prompt. Starts a Claude session to refine the plan collaboratively.
+Draft a plan with a scout team. Launches a Plan Architect (Opus) that converses with you while Data Scout and Research Scout gather intelligence in the background. All args are optional — if nothing provided, the architect asks conversationally.
 
 ```
-zo draft [SOURCE_PATHS...] --project NAME [-d DESC] [--no-tmux]
+zo draft --project NAME [--docs PATH...] [--data PATH...] [-d DESC] [--no-tmux]
 ```
+
+- `--docs` — source documents (requirements, scope of work) for plan context
+- `--data` — data files/dirs for the Data Scout to inspect (schema, distributions, quality)
+- `-d` — free-text project description
 
 ### zo init
 
