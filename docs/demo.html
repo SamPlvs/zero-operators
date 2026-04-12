@@ -1940,7 +1940,40 @@ zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</co
     </div>
   </div>
 
-  <p>Full step-by-step guide: <code>docs/SAMPLE_PROJECT.md</code></p>
+  <div class="section-label">Delivery Repo Structure</div>
+
+  <p>Created by <code>zo init --scaffold-delivery</code>. Agents populate during execution. See <a href="DELIVERY_STRUCTURE.md" style="color: var(--amber);">full reference</a>.</p>
+
+  <div class="ba-grid">
+    <div class="ba-panel">
+      <div class="ba-label before">Config &amp; Code</div>
+      <div class="tree-line">configs/</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ model/ training/</div>
+      <div class="tree-line">&nbsp;&nbsp;experiment/base.yaml</div>
+      <div class="tree-line" style="margin-top: 8px;">src/</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ &mdash; datasets, transforms, loaders</div>
+      <div class="tree-line">&nbsp;&nbsp;model/ &mdash; architecture zoo</div>
+      <div class="tree-line">&nbsp;&nbsp;engineering/ &mdash; trainer, DDP, tracking</div>
+      <div class="tree-line">&nbsp;&nbsp;inference/ &mdash; export, serving</div>
+      <div class="tree-line">&nbsp;&nbsp;utils/ &mdash; I/O, plotting, logging</div>
+    </div>
+    <div class="ba-panel">
+      <div class="ba-label after">Artifacts &amp; Context</div>
+      <div class="tree-line">experiments/ &mdash; context trail per run</div>
+      <div class="tree-line">&nbsp;&nbsp;exp-NNN/ config + results + notes</div>
+      <div class="tree-line" style="margin-top: 8px;">reports/ &mdash; agent-generated</div>
+      <div class="tree-line">&nbsp;&nbsp;figures/ + phase reports + model card</div>
+      <div class="tree-line" style="margin-top: 8px;">notebooks/</div>
+      <div class="tree-line">&nbsp;&nbsp;phase/ &mdash; ZO auto-generated</div>
+      <div class="tree-line">&nbsp;&nbsp;data/ model/ analysis/ &mdash; human</div>
+      <div class="tree-line" style="margin-top: 8px;">tests/</div>
+      <div class="tree-line">&nbsp;&nbsp;unit/ &mdash; code correctness</div>
+      <div class="tree-line">&nbsp;&nbsp;ml/ &mdash; oracle thresholds</div>
+      <div class="tree-line" style="margin-top: 8px;">docker/ Dockerfile + compose</div>
+    </div>
+  </div>
+
+  <p>Full step-by-step guide: <code>docs/SAMPLE_PROJECT.md</code> | Structure reference: <code>docs/DELIVERY_STRUCTURE.md</code></p>
 
 </div>
 

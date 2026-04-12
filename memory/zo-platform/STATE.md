@@ -39,6 +39,7 @@ ZO v1.0.2-pre — **pre-prod-001 hardening complete**. Phase persistence fixed, 
 - [x] v1.0.2-pre: Auto-generated Jupyter notebooks per phase (notebooks.py)
 - [x] v1.0.2-pre: Delivery repo scaffold with Docker (scaffold.py, Dockerfile, docker-compose.yml)
 - [x] v1.0.2-pre: zo preflight command (10 validation checks, GPU/Docker detection)
+- [x] v1.0.2-pre: Delivery repo structure redesign (configs/, src/ by responsibility, experiments context trail, tests unit/ml split, docker/ subdir, STRUCTURE.md)
 
 ## Known Issues
 

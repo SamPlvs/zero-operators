@@ -49,7 +49,7 @@ zero-operators/                          ~/projects/cifar10-delivery/
                                            STRUCTURE.md  pyproject.toml  .gitignore
 ```
 
-See `STRUCTURE.md` inside the delivery repo for the full directory reference.
+See `STRUCTURE.md` inside the delivery repo or [Delivery Repo Structure](DELIVERY_STRUCTURE.md) for the full layout reference.
 
 ---
 
