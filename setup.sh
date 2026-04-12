@@ -132,19 +132,28 @@ else
     warn "ruff not found — install: uv tool install ruff"
 fi
 
-# 9. Dependencies synced
+# 9. Dependencies synced + zo CLI available
 echo -e "${DIM}Checking dependencies...${RESET}"
 if [[ -f "pyproject.toml" ]]; then
     pass "pyproject.toml exists"
     if command -v uv &>/dev/null; then
-        if uv sync --dry-run &>/dev/null 2>&1; then
-            pass "Dependencies resolvable"
+        if uv sync --quiet 2>/dev/null; then
+            pass "Dependencies installed"
         else
-            warn "uv sync --dry-run failed — run: uv sync"
+            warn "uv sync failed — run: uv sync"
         fi
     fi
 else
     fail "pyproject.toml missing"
+fi
+
+echo -e "${DIM}Checking zo CLI...${RESET}"
+if command -v zo &>/dev/null; then
+    ZO_VERSION=$(zo --version 2>/dev/null || echo "available")
+    pass "zo CLI ($ZO_VERSION)"
+else
+    fail "zo CLI not found on PATH"
+    fixable "zo-cli"
 fi
 
 # 10. Directory structure
@@ -205,6 +214,35 @@ fix_item() {
 SETTINGS_EOF
             echo -e "  ${GREEN}✓${RESET} Global settings created with agent teams enabled"
             return 0
+            ;;
+        zo-cli)
+            echo -e "  ${AMBER}→${RESET} Installing zo CLI..."
+            if command -v uv &>/dev/null; then
+                # Ensure .venv exists with deps
+                uv sync 2>/dev/null
+                # Find the zo binary in the project venv
+                ZO_VENV_BIN="$(pwd)/.venv/bin/zo"
+                if [[ ! -f "$ZO_VENV_BIN" ]]; then
+                    # Fallback: check main repo .venv (worktree case)
+                    REPO_ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null)
+                    if [[ -n "$REPO_ROOT" ]]; then
+                        uv sync --project "$REPO_ROOT" 2>/dev/null
+                        ZO_VENV_BIN="$REPO_ROOT/.venv/bin/zo"
+                    fi
+                fi
+                if [[ -f "$ZO_VENV_BIN" ]]; then
+                    # Symlink into ~/.local/bin (already on PATH from uv install)
+                    mkdir -p "$HOME/.local/bin"
+                    ln -sf "$ZO_VENV_BIN" "$HOME/.local/bin/zo"
+                    export PATH="$HOME/.local/bin:$PATH"
+                    if command -v zo &>/dev/null; then
+                        echo -e "  ${GREEN}✓${RESET} zo CLI installed (symlinked to ~/.local/bin/zo)"
+                        return 0
+                    fi
+                fi
+            fi
+            echo -e "  ${RED}✗${RESET} zo install failed — try: uv sync && source .venv/bin/activate"
+            return 1
             ;;
         agent-teams-env)
             echo -e "  ${AMBER}→${RESET} Adding agent teams env to $SETTINGS_FILE..."
