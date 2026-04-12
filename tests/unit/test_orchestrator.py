@@ -803,3 +803,125 @@ class TestPhasePersistence:
         decomp2 = orch2.decompose_plan()
         restored_p1 = decomp2.phases[0]
         assert first_sub in restored_p1.completed_subtasks
+
+
+# ---------------------------------------------------------------------------
+# Artifact validation and notebook generation wiring
+# ---------------------------------------------------------------------------
+
+
+class TestArtifactAndNotebookWiring:
+    """Verify orchestrator checks artifacts and generates notebooks."""
+
+    def test_missing_artifacts_blocks_gate(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Gate returns ITERATE when required artifacts are missing."""
+        # Create a target with a real delivery repo directory
+        delivery = tmp_path / "delivery"
+        delivery.mkdir()
+        target = TargetConfig(
+            project="test-project",
+            target_repo=str(delivery),
+            target_branch="main",
+            worktree_base="/tmp/worktrees",
+            git_author_name="ZO", git_author_email="zo@test.dev",
+            agent_working_dirs={}, zo_only_paths=[], enforce_isolation=False,
+        )
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+
+        orch = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.FULL_AUTO,
+        )
+        orch.start_session()
+        decomp = orch.decompose_plan()
+        phase_1 = decomp.phases[0]
+
+        # Complete all subtasks but DON'T create required artifacts
+        for sub in phase_1.subtasks:
+            orch.mark_subtask_complete(phase_1.phase_id, sub)
+
+        ev = orch.advance_phase(phase_1.phase_id)
+        # Should ITERATE because artifacts are missing
+        assert ev.decision == GateDecision.ITERATE
+        assert "artifacts missing" in ev.rationale
+
+    def test_artifacts_present_allows_gate(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Gate proceeds when required artifacts exist."""
+        delivery = tmp_path / "delivery"
+        delivery.mkdir()
+        target = TargetConfig(
+            project="test-project",
+            target_repo=str(delivery),
+            target_branch="main",
+            worktree_base="/tmp/worktrees",
+            git_author_name="ZO", git_author_email="zo@test.dev",
+            agent_working_dirs={}, zo_only_paths=[], enforce_isolation=False,
+        )
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+
+        orch = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.FULL_AUTO,
+        )
+        orch.start_session()
+        decomp = orch.decompose_plan()
+        phase_1 = decomp.phases[0]
+
+        # Create all required artifacts
+        for artifact in phase_1.required_artifacts:
+            path = delivery / artifact
+            if artifact.endswith("/"):
+                path.mkdir(parents=True, exist_ok=True)
+                (path / "data.csv").touch()  # non-empty dir
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("artifact content")
+
+        for sub in phase_1.subtasks:
+            orch.mark_subtask_complete(phase_1.phase_id, sub)
+
+        ev = orch.advance_phase(phase_1.phase_id)
+        assert ev.decision == GateDecision.PROCEED
+        assert phase_1.status == PhaseStatus.COMPLETED
+
+        # Notebook should have been generated
+        nb_dir = delivery / "notebooks" / "phase"
+        assert nb_dir.exists()
+        notebooks = list(nb_dir.glob("*.ipynb"))
+        assert len(notebooks) == 1
+
+    def test_lead_prompt_includes_artifacts(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """Lead prompt mentions required artifacts for the phase."""
+        decomp = orchestrator.decompose_plan()
+        phase = decomp.phases[0]
+        prompt = orchestrator.build_lead_prompt(phase)
+        assert "Required artifacts" in prompt
+        for artifact in phase.required_artifacts:
+            assert artifact in prompt
+
+    def test_lead_prompt_includes_docker(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """Lead prompt includes Docker instructions."""
+        decomp = orchestrator.decompose_plan()
+        prompt = orchestrator.build_lead_prompt(decomp.phases[0])
+        assert "docker compose" in prompt.lower()
+        assert "STRUCTURE.md" in prompt
