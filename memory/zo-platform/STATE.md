@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo running**. Live training dashboard (auto split-pane in tmux), auto test reports at gates, structured Phase 1/5 report templates for production data. 382 tests, ruff clean, validate-docs 9/9. PRs #22-#26.
+ZO v1.0.2-pre — **CIFAR-10 demo running**. Draft scout team (Plan Architect + Data Scout + Research Scout), live training dashboard, auto test reports at gates, structured Phase 1/5 report templates. 19 agents, 382 tests, ruff clean, validate-docs 9/9. PRs #22-#27.
 
 ## Completed
 
@@ -68,6 +68,10 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Live training dashboard (auto split
 - [x] v1.0.2-pre: Phase 1 report template (10 sections: schema, completeness, distributions, outliers, class, temporal, correlations, drift, splits, recommendations)
 - [x] v1.0.2-pre: Phase 5 report template (7 sections: explainability, error analysis, bias, ablation, significance, reproducibility, verdict)
 - [x] v1.0.2-pre: Agent contracts reference specs/report_templates.md for structured reports
+- [x] v1.0.2-pre: Draft scout team — Plan Architect (Opus lead) + Data Scout (Sonnet) + Research Scout
+- [x] v1.0.2-pre: zo draft CLI redesigned — --docs, --data, -d flags (all optional, conversational fallback)
+- [x] v1.0.2-pre: _launch_and_monitor refactored — shared by build and draft, model/max_turns params
+- [x] v1.0.2-pre: Agent count 17 → 19 (plan-architect, data-scout added)
 
 ## Known Issues
 
