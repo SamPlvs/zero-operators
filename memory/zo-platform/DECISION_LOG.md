@@ -306,8 +306,10 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 
 ## Decision: 2026-04-12T12:45:00Z
 **Type:** ARCHITECTURE
-**Title:** Device detection and directory paths — plan.md Environment section
-**Decision:** Add optional `## Environment` section to plan.md schema for platform detection, base image, data paths, and Docker mount mappings. `zo preflight` detects platform (Linux/Mac) and warns on incompatible GPU+platform combinations. Directory paths (data source, home, mounts) are declared in plan.md so agents and Docker know where things are.
-**Rationale:** Docker GPU passthrough only works on Linux (NVIDIA Container Toolkit). Mac has no NVIDIA GPU. Data paths on remote servers vary. Users need to declare paths at planning time so agents can configure Docker volume mounts correctly.
-**Alternatives considered:** (1) Auto-detect everything — unreliable across environments. (2) Target file paths only — doesn't capture Docker mount semantics. (3) Plan.md Environment section (chosen) — single source of truth, project-specific, agents read at build time.
-**Outcome:** Design captured. Implementation deferred to IVL F5 plan setup — exact schema TBD when real paths are known.
+**Title:** Auto-detected Environment section in plan.md
+**Decision:** During planning phase (`zo draft` / `zo build`), the agent auto-detects platform, GPU, CUDA version, Docker availability, and Python version, then populates the `## Environment` section in plan.md. User reviews and can override. Only data paths require manual input (project-specific, can't be guessed).
+**Rationale:** User should never manually specify CUDA version or platform — these are machine properties, not project decisions. Auto-detection during planning ensures correctness and reduces friction. User confirms or overrides (e.g., pin a specific CUDA version for reproducibility).
+**Auto-detected fields:** platform (uname), gpu_available (nvidia-smi), cuda_version, gpu_count, gpu_memory, python_version, docker_available, docker_compose_available.
+**User-provided fields:** data_paths (where raw data lives), docker_mounts (if non-standard paths needed).
+**Alternatives considered:** (1) User manually fills Environment — error-prone, unnecessary. (2) Fully automatic with no review — risky, user should confirm. (3) Auto-detect + user review (chosen) — correct defaults, user can override.
+**Outcome:** Design captured. Implementation during IVL F5 plan setup. Detection logic will extend `zo preflight` (already detects GPU/Docker) into the planning phase.
