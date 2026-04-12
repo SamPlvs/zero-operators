@@ -1550,7 +1550,7 @@
 <div class="panel" id="panel-commands">
 
   <h1>COMMANDS</h1>
-  <div class="subtitle">24 slash commands for Claude Code</div>
+  <div class="subtitle">7 CLI commands + 24 slash commands for Claude Code</div>
 
   <input type="text" class="cmd-search" id="cmd-search" placeholder="Type to filter commands..." oninput="filterCommands()">
 
@@ -1832,13 +1832,14 @@
 
   <div class="section-label">Quick Start</div>
 
-  <h3>1. Initialize</h3>
-  <pre class="code-block"><code>zo init cifar10-demo
-mkdir -p ~/projects/cifar10-delivery && cd ~/projects/cifar10-delivery && git init && cd -
-zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery</code></pre>
+  <h3>1. Setup &amp; Initialize</h3>
+  <pre class="code-block"><code>./setup.sh                    # auto-fixes missing deps (uv, Claude CLI, zo)
+zo init cifar10-demo          # scaffolds memory, targets, plans, delivery repo</code></pre>
 
-  <h3>2. Write Plan</h3>
-  <p>Edit <code>plans/cifar10-demo.md</code> with CIFAR-10 config. Key fields:</p>
+  <h3>2. Draft Plan</h3>
+  <pre class="code-block"><code>zo draft --project cifar10-demo -d "CIFAR-10 image classification, PyTorch CNN, 90%+ accuracy"
+# Or interactively: zo draft --project cifar10-demo</code></pre>
+  <p>Claude drafts the plan conversationally. Key fields:</p>
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 24px;">
     <div class="stat-item scanlines" style="padding: 12px 16px;">
       <div style="color: var(--amber); font-size: 13px; margin-bottom: 4px;">Oracle</div>
@@ -1858,15 +1859,14 @@ zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery</code></pre
     </div>
   </div>
 
-  <h3>3. Build Docker + Preflight</h3>
-  <pre class="code-block"><code># Build delivery container
-cd ~/projects/cifar10-delivery && docker compose -f docker/docker-compose.yml build && cd -
+  <h3>3. Preflight + Launch</h3>
+  <pre class="code-block"><code>zo preflight plans/cifar10-demo.md    # validate environment
+zo build plans/cifar10-demo.md        # launch agent team</code></pre>
 
-# Validate everything
-zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</code></pre>
-
-  <h3>4. Launch</h3>
-  <pre class="code-block"><code>zo build plans/cifar10-demo.md --gate-mode supervised</code></pre>
+  <h3>4. Toggle Gates Mid-Session</h3>
+  <pre class="code-block"><code># Start supervised, then switch once confident:
+zo gates set auto --project cifar10-demo
+zo gates set full-auto --project cifar10-demo   # full autonomy</code></pre>
 
   <div class="section-label">What Happens</div>
 
@@ -2056,17 +2056,16 @@ function toggleStep(el) {
 // ── Agent cards ──
 const agentData = {
   'lead-orchestrator': { model: 'Opus', team: 'Project Delivery', role: 'Creates the agent team, decomposes the plan into phases, manages gate transitions, coordinates all agent communication. The central hub.', owns: 'Orchestration, phase management, gate coordination', when: 'Always active -- present in every phase' },
-  'research-scout': { model: 'Opus', team: 'Project Delivery', role: 'Surveys literature for relevant approaches, identifies SOTA and analogous benchmarks, catalogs open-source implementations, designs experiment plans with baselines. Handles customer projects with no published benchmarks.', owns: 'research/', when: 'Phase 0 (Literature Review) and Phase 3 (Model Design)' },
+  'research-scout': { model: 'Opus', team: 'Project Delivery', role: 'Surveys literature for relevant approaches, identifies SOTA and analogous benchmarks, catalogs open-source implementations, designs experiment plans with baselines. Cross-cutting agent present in all phases.', owns: 'research/', when: 'All phases (cross-cutting -- domain context informs every phase)' },
   'data-engineer': { model: 'Sonnet', team: 'Project Delivery', role: 'Builds and validates the data pipeline. Handles data cleaning, EDA, profiling, DataLoader construction, train/val/test splits, and data versioning.', owns: 'data/, DataLoaders, data tests', when: 'Phases 1-2 (Data Review, Feature Engineering)' },
   'model-builder': { model: 'Opus', team: 'Project Delivery', role: 'Designs model architecture, writes training loops, runs the iteration protocol (train, evaluate, adjust). Handles architecture selection, loss function design, and hyperparameter strategy.', owns: 'src/model.py, src/train.py, models/', when: 'Phases 3-5 (Model Design through Validation)' },
   'oracle-qa': { model: 'Sonnet', team: 'Project Delivery', role: 'The hard evaluator. Runs tiered metric evaluation (Tier 1 core, Tier 2 operational, Tier 3 robustness). Enforces pass/fail gating with no negotiation on thresholds.', owns: 'oracle/, reports/validation_report.md', when: 'Phases 3-5 (every evaluation cycle)' },
   'code-reviewer': { model: 'Sonnet', team: 'Project Delivery', role: 'Reviews all code changes for PEP8 compliance, security issues, convention enforcement, and overall quality. Acts as the code quality gate.', owns: 'Code review reports', when: 'All phases -- reviews every code change' },
   'test-engineer': { model: 'Sonnet', team: 'Project Delivery', role: 'Writes and maintains unit, integration, and regression test suites. Ensures test coverage meets targets and all tests pass before gate transitions.', owns: 'tests/', when: 'All phases -- tests accompany every deliverable' },
   'xai-agent': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Produces explainability analysis: SHAP values, feature importance rankings, GradCAM visualizations, and interpretability reports.', owns: 'xai/, experiments/explainability/', when: 'Phase 5 (Analysis & Validation)' },
-  'domain-evaluator': { model: 'Opus', team: 'Project Delivery (Phase-in)', role: 'Validates model outputs against domain knowledge. Checks plausibility, extracts domain priors, and flags results that are statistically valid but domain-implausible.', owns: 'PRIORS.md updates, domain validation reports', when: 'Phase 5 (domain-specific validation)' },
+  'domain-evaluator': { model: 'Opus', team: 'Project Delivery', role: 'Validates data and model outputs against domain knowledge. Checks plausibility, extracts domain priors, and flags results that are statistically valid but domain-implausible.', owns: 'PRIORS.md updates, domain validation reports', when: 'Phases 1, 5 (data validation and final domain review)' },
   'ml-engineer': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Optimizes the inference pipeline, manages experiment tracking, handles model serving configuration, and ensures production readiness.', owns: 'src/inference.py, experiments/', when: 'Phases 4-6 (Training through Packaging)' },
-  'infra-engineer': { model: 'Haiku', team: 'Project Delivery (Phase-in)', role: 'Handles environment setup, dependency management, packaging (pyproject.toml), deployment configs, and CI/CD pipeline setup.', owns: 'pyproject.toml, setup.sh, CI configs', when: 'Phases 1, 6 (initial setup, final packaging)' },
-  'research-scout': { model: 'Opus', team: 'Project Delivery', role: 'Surveys literature, finds state-of-the-art methods, designs experiment plans. Owns the Phase 0 literature review and baseline definition.', owns: 'Literature surveys, experiment design docs, PRIORS.md contributions', when: 'Phase 0 (Literature Review)' }
+  'infra-engineer': { model: 'Haiku', team: 'Project Delivery (Phase-in)', role: 'Handles environment setup, dependency management, packaging (pyproject.toml), deployment configs, and CI/CD pipeline setup.', owns: 'pyproject.toml, setup.sh, CI configs', when: 'Phases 1, 6 (initial setup, final packaging)' }
 };
 
 function selectAgent(el, name) {
