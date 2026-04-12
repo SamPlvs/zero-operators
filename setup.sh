@@ -142,17 +142,23 @@ if [[ -f "pyproject.toml" ]]; then
         else
             warn "uv sync failed — run: uv sync"
         fi
+    else
+        warn "uv not available yet — dependencies not synced"
     fi
 else
     fail "pyproject.toml missing"
 fi
 
 echo -e "${DIM}Checking zo CLI...${RESET}"
-if command -v zo &>/dev/null; then
+if command -v zo &>/dev/null && zo --version &>/dev/null 2>&1; then
     ZO_VERSION=$(zo --version 2>/dev/null || echo "available")
     pass "zo CLI ($ZO_VERSION)"
 else
-    fail "zo CLI not found on PATH"
+    if command -v zo &>/dev/null; then
+        fail "zo CLI found but broken (stale symlink?) — will reinstall"
+    else
+        fail "zo CLI not found on PATH"
+    fi
     fixable "zo-cli"
 fi
 
@@ -217,31 +223,28 @@ SETTINGS_EOF
             ;;
         zo-cli)
             echo -e "  ${AMBER}→${RESET} Installing zo CLI..."
-            if command -v uv &>/dev/null; then
-                # Ensure .venv exists with deps
-                uv sync 2>/dev/null
-                # Find the zo binary in the project venv
-                ZO_VENV_BIN="$(pwd)/.venv/bin/zo"
-                if [[ ! -f "$ZO_VENV_BIN" ]]; then
-                    # Fallback: check main repo .venv (worktree case)
-                    REPO_ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null)
-                    if [[ -n "$REPO_ROOT" ]]; then
-                        uv sync --project "$REPO_ROOT" 2>/dev/null
-                        ZO_VENV_BIN="$REPO_ROOT/.venv/bin/zo"
-                    fi
-                fi
-                if [[ -f "$ZO_VENV_BIN" ]]; then
-                    # Symlink into ~/.local/bin (already on PATH from uv install)
-                    mkdir -p "$HOME/.local/bin"
-                    ln -sf "$ZO_VENV_BIN" "$HOME/.local/bin/zo"
-                    export PATH="$HOME/.local/bin:$PATH"
-                    if command -v zo &>/dev/null; then
-                        echo -e "  ${GREEN}✓${RESET} zo CLI installed (symlinked to ~/.local/bin/zo)"
-                        return 0
-                    fi
-                fi
+            if ! command -v uv &>/dev/null; then
+                echo -e "  ${RED}✗${RESET} uv required to install zo — fix uv first"
+                return 1
             fi
-            echo -e "  ${RED}✗${RESET} zo install failed — try: uv sync && source .venv/bin/activate"
+            # Sync deps — uv finds the project root automatically
+            # (handles worktrees, nested dirs, any cwd)
+            uv sync --quiet 2>/dev/null
+            # Ask uv where the venv actually is (don't guess paths)
+            ZO_VENV_BIN=$(uv run python3 -c "import sys, os; print(os.path.join(sys.prefix, 'bin', 'zo'))" 2>/dev/null)
+            if [[ -z "$ZO_VENV_BIN" || ! -f "$ZO_VENV_BIN" ]]; then
+                echo -e "  ${RED}✗${RESET} zo binary not found after uv sync — try: uv sync && source .venv/bin/activate"
+                return 1
+            fi
+            # Symlink into ~/.local/bin (already on PATH from uv install)
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "$ZO_VENV_BIN" "$HOME/.local/bin/zo"
+            export PATH="$HOME/.local/bin:$PATH"
+            if command -v zo &>/dev/null && zo --version &>/dev/null 2>&1; then
+                echo -e "  ${GREEN}✓${RESET} zo CLI installed (symlinked to ~/.local/bin/zo)"
+                return 0
+            fi
+            echo -e "  ${RED}✗${RESET} zo symlink created but not working — check PATH includes ~/.local/bin"
             return 1
             ;;
         agent-teams-env)
