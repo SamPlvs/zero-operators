@@ -156,6 +156,15 @@ Control how much autonomy ZO has at phase transitions.
 
 You can switch modes at runtime — start supervised, watch the first few phases, then switch to auto once you trust the flow.
 
+### `zo gates set` — Change gate mode mid-session
+
+```bash
+zo gates set auto --project my-project
+zo gates set full-auto -p my-project
+```
+
+Writes the new mode to `memory/{project}/gate_mode`. The running orchestrator and wrapper pick it up on the next poll cycle — no restart needed.
+
 ---
 
 ## Quick Start
@@ -361,7 +370,7 @@ Over time, `PRIORS.md` accumulates domain knowledge. The same mistake never happ
 ```
 zero-operators/
 ├── src/zo/                     # Platform code (10 modules)
-│   ├── cli.py                  # CLI: zo build/continue/init/status/draft
+│   ├── cli.py                  # CLI: zo build/continue/init/status/draft/gates
 │   ├── draft.py                # Conversational plan generation (with or without source docs)
 │   ├── plan.py                 # Plan parser and validator (8 sections)
 │   ├── target.py               # Target file parser, isolation enforcer
