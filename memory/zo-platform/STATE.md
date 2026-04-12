@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fixes deps, zo draft works without source docs (conversational), brand banner on all commands, production-grade phase definitions with cross-cutting agents. 341 tests, ruff clean, validate-docs 9/9. PRs #22-#25.
+ZO v1.0.2-pre — **CIFAR-10 demo running**. Live training dashboard (auto split-pane in tmux), auto test reports at gates, structured Phase 1/5 report templates for production data. 382 tests, ruff clean, validate-docs 9/9. PRs #22-#26.
 
 ## Completed
 
@@ -59,6 +59,15 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 - [x] v1.0.2-pre: Draft tests fixed — all use --no-tmux (was spawning real tmux windows)
 - [x] v1.0.2-pre: zo gates set — toggle gate mode mid-session (supervised/auto/full-auto)
 - [x] v1.0.2-pre: Full doc audit — COMMANDS.md, workflow.md, README, SAMPLE_PROJECT updated for consistency
+- [x] v1.0.2-pre: Training metrics protocol (ZOTrainingCallback) — JSONL + status JSON for live dashboards
+- [x] v1.0.2-pre: zo watch-training — Rich Live dashboard (progress bar, metrics table, sparkline, checkpoints)
+- [x] v1.0.2-pre: Auto split-pane — wrapper detects training_status.json, splits tmux pane for dashboard
+- [x] v1.0.2-pre: Model-builder contract updated with required ZOTrainingCallback usage
+- [x] v1.0.2-pre: Phase 4 notebook reads from metrics.jsonl (with legacy fallback)
+- [x] v1.0.2-pre: Auto test reports at gates — pytest JUnit XML → structured markdown test_report.md
+- [x] v1.0.2-pre: Phase 1 report template (10 sections: schema, completeness, distributions, outliers, class, temporal, correlations, drift, splits, recommendations)
+- [x] v1.0.2-pre: Phase 5 report template (7 sections: explainability, error analysis, bias, ablation, significance, reproducibility, verdict)
+- [x] v1.0.2-pre: Agent contracts reference specs/report_templates.md for structured reports
 
 ## Known Issues
 
@@ -73,17 +82,17 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 
 1. **CIFAR-10 demo** — running, plan drafted, zo build in progress
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
-3. Phase summary reports (B3) — markdown reports per phase with embedded plots
-4. Domain evaluator refactor — make project-specific via plan.md domain priors
-5. XAI + Domain Evaluator activation for IVL F5 Phase 5
-6. Device detection and user directory paths in plan schema
+3. Domain evaluator refactor — make project-specific via plan.md domain priors
+4. XAI + Domain Evaluator activation for IVL F5 Phase 5
+5. Device detection and user directory paths in plan schema
+6. IVL F5 project — first production deployment
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-12T22:00:00Z
-last_session: session-011
-branch: claude/eloquent-poincare (worktree)
+last_checkpoint: 2026-04-13T01:00:00Z
+last_session: session-012
+branch: claude/charming-lovelace (worktree)
 test_count: 382 passed, 7 skipped
 lint: ruff clean (src/zo/)
-validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
-prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft)
+validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge grep heuristic)
+prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft), #26 (training dashboard + test reports + phase templates)

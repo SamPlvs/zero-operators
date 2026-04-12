@@ -453,3 +453,33 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** PR-005 prior: aspirational docs without enforcement degrade. This session added 10+ features but only partially updated docs. Full sweep ensures any user reading any doc gets consistent, current information.
 **Alternatives considered:** None — mandatory per CLAUDE.md protocol.
 **Outcome:** All user-facing docs updated and cross-referenced.
+
+---
+
+## Decision: 2026-04-13T01:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Training visualisation — infrastructure, not an agent
+**Decision:** Implemented live training dashboard as infrastructure (callback + Rich display + tmux split-pane), not as a new agent. Training scripts use `ZOTrainingCallback` to write JSONL metrics. `zo watch-training` tails the file and renders a Rich Live panel. Wrapper auto-splits the tmux pane when `training_status.json` appears during Phase 4.
+**Rationale:** User wanted PyTorch Lightning-like visibility into training (epoch progress, loss, checkpoints) without switching tmux windows. A "visualiser agent" was considered and rejected — formatting numbers doesn't need LLM reasoning. Infrastructure is cheaper, faster, and more reliable. Auto split-pane puts the dashboard in the same window (40% bottom).
+**Alternatives considered:** (1) Visualiser agent — wastes LLM tokens on formatting. (2) Rich Live replaces entire monitoring — bigger refactor, loses task/event view. (3) Standalone `zo watch-training` only — requires manual pane setup. (4) Auto split-pane (chosen) — best UX, zero manual setup.
+**Outcome:** PR #26. 17 new tests, 2 new modules (training_metrics.py, training_display.py), wrapper + CLI wiring.
+
+---
+
+## Decision: 2026-04-13T01:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Auto test reports at phase gates via JUnit XML
+**Decision:** Orchestrator generates `reports/test_report.md` at every phase gate by running pytest with `--junitxml`, parsing the XML, and rendering a structured markdown report. Triggered in both `advance_phase()` (automated gates) and `apply_human_decision()` (human gates). Handles missing tests/pytest gracefully with a placeholder report.
+**Rationale:** User found no test report artifact during CIFAR-10 build. For production projects (IVL F5), every gate needs a test report showing pass/fail, per-module breakdown, failures with tracebacks. Auto-generation means the test-engineer writes tests, the infra produces the report — separation of concerns.
+**Alternatives considered:** (1) Manual `zo test-report` command — requires user to remember. (2) Auto at gates only (chosen) — always current, zero manual steps. (3) Both — unnecessary complexity.
+**Outcome:** PR #26. 18 new tests, CaseResult/SuiteResult models, JUnit XML parser, markdown renderer.
+
+---
+
+## Decision: 2026-04-13T01:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Structured phase report templates — specs/report_templates.md
+**Decision:** Created comprehensive report templates for Phase 1 (Data Quality, 10 sections) and Phase 5 (Analysis, 7 sections) in `specs/report_templates.md`. Agent contracts (data-engineer, oracle-qa, test-engineer) reference these templates. Reports are the primary artifacts reviewed at gate checkpoints.
+**Rationale:** User noted existing data quality reports were too thin for production data (IVL F5). CIFAR-10 is clean and simple; IVL F5 has messy, complex, domain-specific data requiring comprehensive quality assessment. Templates ensure agents produce production-grade reports with statistical tests, per-feature breakdowns, and actionable recommendations.
+**Alternatives considered:** (1) Inline templates in agent contracts — bloats agent definitions. (2) Separate spec file (chosen) — reusable, single source of truth, agents reference it. (3) Auto-generated reports from code — too rigid, can't capture domain-specific analysis.
+**Outcome:** PR #26. specs/report_templates.md, 3 agent contracts updated.
