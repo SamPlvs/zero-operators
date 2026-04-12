@@ -37,7 +37,7 @@ You stay in the loop at human checkpoints. ZO remembers everything across sessio
   You                          ZO                           Delivery Repo
   ───                          ──                           ─────────────
 
-  1. Provide source docs ────► zo draft ──► plan.md
+  1. Draft a plan ───────────► zo draft ──► plan.md
                                               │
   2. Review & edit plan  ◄─────────────────────┘
                                               │
@@ -74,7 +74,7 @@ You stay in the loop at human checkpoints. ZO remembers everything across sessio
 
 **Step by step:**
 
-1. **Feed source docs** — `zo draft ~/docs/req.md ~/data/ --project my-project` indexes your documents and generates a `plan.md`, then opens an interactive Claude session to refine it
+1. **Draft a plan** — `zo draft --project my-project` opens an interactive Claude session that drafts a `plan.md` conversationally. Optionally provide source docs or a description (`-d`)
 2. **Review the plan** — edit `plans/my-project.md` to sharpen the objective, set oracle thresholds, add domain knowledge
 3. **Launch** — `zo build plans/my-project.md` shows a phase review (subtasks, agents, oracle criteria), prompts for additional instructions, then spawns the agent team in tmux
 4. **Approve at gates** — in supervised mode (default), every phase transition pauses for your review. You can also type directly into the Lead Orchestrator's Claude Code session
@@ -107,13 +107,15 @@ zo continue my-project
 
 Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path.
 
-### `zo draft` — Generate a plan from documents
+### `zo draft` — Generate a plan conversationally
 
 ```bash
-zo draft ~/docs/requirements.md ~/data/notes/ /path/to/specs.txt --project my-project
+zo draft ~/docs/requirements.md ~/data/notes/ --project my-project   # from source docs
+zo draft --project cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+ accuracy" # from description
+zo draft --project my-project                                         # interactive prompt
 ```
 
-Accepts **multiple file and directory paths**. Indexes all source documents, generates a compliant `plan.md`, then opens an interactive Claude Code session to refine it with you. Use `--no-tmux` to skip the interactive session.
+Launches an interactive Claude Code session that drafts a `plan.md` conversationally — asking about objectives, data, oracle metrics, and constraints. Optionally accepts **source document paths** (indexed and fed as context) or a **description** (`-d`). When called with no arguments, prompts for a brief project description. Use `--no-tmux` to skip the interactive session and generate a skeleton only.
 
 ### `zo init` — Scaffold a new project
 
@@ -360,7 +362,7 @@ Over time, `PRIORS.md` accumulates domain knowledge. The same mistake never happ
 zero-operators/
 ├── src/zo/                     # Platform code (10 modules)
 │   ├── cli.py                  # CLI: zo build/continue/init/status/draft
-│   ├── draft.py                # Agentic plan generation from source docs
+│   ├── draft.py                # Conversational plan generation (with or without source docs)
 │   ├── plan.py                 # Plan parser and validator (8 sections)
 │   ├── target.py               # Target file parser, isolation enforcer
 │   ├── orchestrator.py         # Phase decomposition, gate management, lead prompt
