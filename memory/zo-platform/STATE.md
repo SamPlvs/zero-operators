@@ -52,6 +52,8 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 - [x] v1.0.2-pre: Phase 1 enriched — 13 subtasks (was 7), 5 agents (was 2) for production data workflows
 - [x] v1.0.2-pre: Cross-cutting agents — code-reviewer + research-scout default on ALL phases, all workflow modes
 - [x] v1.0.2-pre: README updated — zo draft docs reflect conversational flow + new usage patterns
+- [x] v1.0.2-pre: Autonomous path handoff — zo init writes absolute delivery path to target file, auto-scaffolds delivery repo
+- [x] v1.0.2-pre: init → draft → build pipeline carries context via target file (no user path passing)
 
 ## Known Issues
 

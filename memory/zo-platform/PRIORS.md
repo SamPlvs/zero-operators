@@ -418,3 +418,33 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
    Schema validation, missing values, outliers, class imbalance,
    split strategy, drift baselines — all essential before training.
    Missing any one can silently corrupt downstream results.
+
+---
+
+## PR-016: Pipeline Commands Must Carry Context Autonomously
+**Source:** Session 011 (2026-04-12), CIFAR-10 init → build path mismatch
+**Root cause category:** missing_rule
+**Failure:** User ran `zo init --scaffold-delivery ~/projects/cifar10-delivery`, then `zo build` looked for `/code/target-cifar10-demo`. Target template hardcoded `../target-{project}` — a relative path that never matched the scaffold location. User had to manually create the directory and re-init.
+
+### Rules
+
+1. **The user is not a message bus between commands.**
+   init → draft → build must carry context through artifacts (target
+   file, plan, STATE.md). If a path is set in init, every downstream
+   command must read it from the same source — never guess or compute
+   independently.
+
+2. **Always write absolute paths to config files.**
+   Relative paths resolve differently depending on cwd, worktree,
+   tmux session, or agent working directory. Absolute paths are
+   deterministic. Resolve at write time, not read time.
+
+3. **The target file is the single source of truth for delivery repo.**
+   `target_repo` in `targets/{project}.target.md` is THE path. init
+   writes it, build reads it, preflight validates it. No other source.
+
+4. **Default behavior should be autonomous — flags are for overrides.**
+   `zo init project` should scaffold everything (including delivery
+   repo at a default location) without flags. `--scaffold-delivery`
+   is an override for non-default paths, not the only way to get a
+   delivery repo.
