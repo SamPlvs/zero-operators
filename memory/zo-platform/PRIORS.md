@@ -259,3 +259,27 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
    tests/unit/ = code correctness (Test Engineer). tests/ml/ = oracle
    thresholds and benchmarks (Oracle/QA Agent). Different agents, different
    pass/fail criteria, different run frequencies.
+
+---
+
+## PR-009: Built Modules Must Be Wired Before Declaring Ready
+**Source:** Session 010 (2026-04-12), orchestrator wiring gap discovery
+**Root cause category:** missing_rule
+**Failure:** notebooks.py, scaffold.py, and preflight.py were built and independently tested, but not connected to the orchestrator pipeline. A real run would have produced no auto-notebooks and no artifact validation.
+
+### Rules
+
+1. **"Built and tested" is not "wired and enforced."**
+   A module that passes unit tests but is never called from the pipeline
+   provides zero value in production. After building any new capability,
+   verify it is called from the orchestrator/CLI flow.
+
+2. **Add an integration test that traces the full call path.**
+   test_artifacts_present_allows_gate verifies: subtasks complete →
+   artifacts checked → gate passes → notebook generated. This catches
+   wiring gaps that unit tests miss.
+
+3. **The advance_phase() method is the single enforcement point.**
+   All phase-exit logic (artifact checks, notebook generation, comms logging)
+   routes through advance_phase() for automated gates and apply_human_decision()
+   for human gates. New phase-exit behaviors must be wired into both paths.

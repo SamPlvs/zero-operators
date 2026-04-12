@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, delivery scaffold with Docker added, auto-notebook generation built, preflight validation added. 334 tests, ruff clean, validate-docs 9/9. Ready for IVL F5.
+ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, delivery scaffold with Docker added, auto-notebook generation built, preflight validation added, orchestrator pipeline wired. 338 tests, ruff clean, validate-docs 9/9. Ready for CIFAR-10 demo.
 
 ## Completed
 
@@ -40,6 +40,7 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 - [x] v1.0.2-pre: Delivery repo scaffold with Docker (scaffold.py, Dockerfile, docker-compose.yml)
 - [x] v1.0.2-pre: zo preflight command (10 validation checks, GPU/Docker detection)
 - [x] v1.0.2-pre: Delivery repo structure redesign (configs/, src/ by responsibility, experiments context trail, tests unit/ml split, docker/ subdir, STRUCTURE.md)
+- [x] v1.0.2-pre: Orchestrator pipeline wiring (artifact validation at gates, auto-notebook generation, Docker/STRUCTURE.md in lead prompt)
 
 ## Known Issues
 
@@ -52,7 +53,7 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 
 ## What's Next
 
-1. **IVL F5** — first real production project (oil & gas refinery optimization)
+1. **CIFAR-10 demo** — smoke test full pipeline on new machine, then IVL F5
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Phase summary reports (B3) — markdown reports per phase with embedded plots
 4. Domain evaluator refactor — make project-specific via plan.md domain priors
@@ -64,6 +65,6 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 last_checkpoint: 2026-04-12T12:30:00Z
 last_session: session-010
 branch: claude/mystifying-chatterjee (worktree)
-test_count: 334 passed, 7 skipped
+test_count: 338 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
