@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-338_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-347_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -156,6 +156,19 @@ Control how much autonomy ZO has at phase transitions.
 
 You can switch modes at runtime — start supervised, watch the first few phases, then switch to auto once you trust the flow.
 
+### `zo gates set` — Change gate mode mid-session
+
+```bash
+zo gates set auto --project my-project
+zo gates set full-auto -p my-project
+```
+
+Writes the new mode to `memory/{project}/gate_mode`. The running orchestrator and wrapper pick it up on the next poll cycle — no restart needed.
+
+### Live Status & Haiku Headlines
+
+During `zo build`, the main terminal shows a live activity feed: tasks, agent progress, comms events. Every 60 seconds, Claude Haiku generates a 1-line headline summarising recent activity — like news ticker for your build.
+
 ---
 
 ## Quick Start
@@ -164,7 +177,7 @@ You can switch modes at runtime — start supervised, watch the first few phases
 # 1. Clone and setup
 git clone https://github.com/SamPlvs/zero-operators.git
 cd zero-operators
-./setup.sh                    # validates Python 3.11+, uv, Claude CLI, agent teams
+./setup.sh                    # validates deps, auto-fixes missing ones interactively
 
 # 2. Install
 uv sync --extra dev
@@ -242,7 +255,7 @@ ZO follows a structured pipeline defined in `specs/workflow.md`. Three modes ava
 
 ```
 Phase 1: Data Review & Pipeline     → Gate (automated)
-  Data audit, hygiene, EDA, versioning, DataLoader
+  13 subtasks covering schema validation, outlier detection, class imbalance, split strategy, and more
 
 Phase 2: Feature Engineering        → Gate (BLOCKING — human approves features)
   Feature creation, statistical filtering, multicollinearity pruning
@@ -322,7 +335,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | Agent | Model | When Active | What They Do |
 |-------|-------|-------------|-------------|
 | Lead Orchestrator | Opus | Always | Creates team, decomposes phases, manages gates, coordinates |
-| Research Scout | Opus | Phase 0 | Literature survey, SOTA, open-source code, experiment plan |
+| Research Scout | Opus | All phases | Literature survey, SOTA, open-source code, experiment plan |
 | Data Engineer | Sonnet | Phases 1-2 | Data pipeline, cleaning, EDA, DataLoaders |
 | Model Builder | Opus | Phases 3-5 | Architecture selection, training, iteration |
 | Oracle / QA | Sonnet | Phases 3-5 | Hard metric evaluation, pass/fail gating |
@@ -332,6 +345,8 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | Domain Evaluator | Opus | Phase 5 | Domain validation, plausibility checks |
 | ML Engineer | Sonnet | Phases 4-6 | Inference optimization, experiment tracking |
 | Infra Engineer | Haiku | Phases 1, 6 | Environment setup, packaging, deployment |
+
+Code Reviewer and Research Scout are cross-cutting agents present in all phases by default.
 
 **Dynamic agents** — if your project needs expertise not covered (NLP, time-series, security), the Lead Orchestrator creates a new agent definition on the fly.
 
@@ -361,7 +376,7 @@ Over time, `PRIORS.md` accumulates domain knowledge. The same mistake never happ
 ```
 zero-operators/
 ├── src/zo/                     # Platform code (10 modules)
-│   ├── cli.py                  # CLI: zo build/continue/init/status/draft
+│   ├── cli.py                  # CLI: zo build/continue/init/status/draft/gates
 │   ├── draft.py                # Conversational plan generation (with or without source docs)
 │   ├── plan.py                 # Plan parser and validator (8 sections)
 │   ├── target.py               # Target file parser, isolation enforcer
@@ -377,7 +392,7 @@ zero-operators/
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
 ├── logs/                       # JSONL audit trails
 ├── targets/                    # Delivery repo configuration
-├── tests/                      # 338 tests (unit + integration)
+├── tests/                      # 347 tests (unit + integration)
 ├── setup.sh                    # Environment validation (10 checks)
 └── pyproject.toml              # Python package config
 ```
@@ -430,7 +445,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
 
-338 platform tests. ruff clean. 17 agents. 24 slash commands.
+347 platform tests. ruff clean. 17 agents. 24 slash commands.
 
 ---
 

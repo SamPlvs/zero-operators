@@ -373,3 +373,83 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** User ran `uv sync` then `zo init` → "command not found". `uv sync` installs into `.venv/bin/` which isn't on PATH when conda/pyenv/system Python is active. setup.sh only checked deps *resolve* (dry-run), never verified the CLI was *callable*. This is the difference between "package manager happy" and "user can type the command".
 **Alternatives considered:** (1) Tell user to `source .venv/bin/activate` — adds manual step, breaks "just run setup.sh" promise. (2) `uv pip install -e .` into active env — fragile with conda, pollutes base env. (3) Symlink to `~/.local/bin/` (chosen) — clean, already on PATH, works with any Python env manager.
 **Outcome:** setup.sh now passes 12/12 checks. `zo, version 1.0.1` callable after setup. PR-012 prior added.
+
+---
+
+## Decision: 2026-04-12T21:00:00Z
+**Type:** FEATURE
+**Title:** Conversational zo draft — source documents optional
+**Decision:** Reworked `zo draft` so source paths are optional. Three usage modes: (1) source docs → index + template + tmux session, (2) `-d "description"` → skeleton from keywords + tmux session, (3) no args → interactive prompt for description + tmux session. All paths converge at a Claude session that drafts the plan conversationally. Added `generate_plan_from_description()` with workflow mode inference (CNN/PyTorch → deep_learning) and metric hint extraction.
+**Rationale:** User ran `zo draft plans/cifar10-demo.md` expecting it to work — but the command required source document paths. CIFAR-10 is a well-known domain with no source docs needed. The rigid template-filling approach produced plans full of TODOs. Making the tmux Claude session the primary drafter (not a refinement afterthought) gives much better results.
+**Alternatives considered:** (1) Require source docs always — breaks well-known-domain use case. (2) Generate smarter template without Claude — still static, can't ask questions. (3) Conversational agent-driven (chosen) — Claude asks about objectives, data, metrics, constraints.
+**Outcome:** PR #24. 3 new tests, 341 total. zo draft works in all three modes.
+
+---
+
+## Decision: 2026-04-12T21:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Plans write to main repo, not worktrees — _main_repo_root() helper
+**Decision:** Added `_main_repo_root()` to cli.py that detects git worktrees via `git worktree list --porcelain` and returns the main repo path. `zo draft` uses this to write plans to the main repo's `plans/` directory. Draft session prompt references `zo build plans/{project}.md` with main-repo relative path.
+**Rationale:** User ran `zo draft` from a worktree. Plan landed in worktree's `plans/` dir. Then `zo build` from main repo couldn't find it. ZO artifacts (plans, memory, state) should always live in the main repo — worktrees are for ZO development, not ZO usage.
+**Alternatives considered:** (1) Tell user to copy manually — bad UX. (2) Always run from main repo — doesn't help when you're already in a worktree. (3) Auto-detect and write to main repo (chosen) — transparent, no user action needed.
+**Outcome:** PR #25. Plans always land in main repo regardless of cwd.
+
+---
+
+## Decision: 2026-04-12T22:00:00Z
+**Type:** UX
+**Title:** Brand banner on all CLI commands via shared _show_banner()
+**Decision:** Extracted the ZO brand panel (orbital mark, version, project/mode/phase/gates) into a shared `_show_banner()` function. Called at the top of all 6 CLI commands: build, draft, init, status, preflight, continue. Fields are optional — commands that don't have a phase or gates simply omit those lines.
+**Rationale:** The brand panel was only in `zo build`. User noted it should appear everywhere — it establishes identity and shows current context at a glance. Professional tooling has consistent branding across all entry points.
+**Alternatives considered:** None — clearly the right move.
+**Outcome:** PR #25. All commands show the banner.
+
+---
+
+## Decision: 2026-04-12T22:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Production-grade phase definitions — enriched Phase 1, cross-cutting agents
+**Decision:** (1) Phase 1 (Data Review) expanded from 7 to 13 subtasks: added data schema validation, missing value analysis, outlier detection, class imbalance analysis, train/val/test split strategy, data drift baseline. Added research-scout, code-reviewer, domain-evaluator to Phase 1 agents (5 total, was 2). (2) Made code-reviewer and research-scout default on ALL phases across all 3 workflow modes (classical_ml, deep_learning, research).
+**Rationale:** Phase 1 with only data-engineer + test-engineer and 7 subtasks was adequate for CIFAR-10 but not for production data (messy, large-scale, domain-specific). The 6 new subtasks cover real-world essentials that were missing. Code review and research are cross-cutting concerns — code quality degrades silently and domain understanding should inform every phase, not just Phase 0.
+**Alternatives considered:** (1) Keep minimal, let plan.md override — misses the "good defaults" principle. (2) Add agents to Phase 1 only — leaves other phases thin on review/research. (3) Cross-cutting defaults + enriched Phase 1 (chosen) — good defaults everywhere, plan.md can still override.
+**Outcome:** PR #25. Phase 1: 13 subtasks, 5 agents. All phases: code-reviewer + research-scout default.
+
+---
+
+## Decision: 2026-04-12T23:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Autonomous path handoff — target file as single source of truth for delivery repo
+**Decision:** (1) `zo init` now always writes an absolute delivery path to `targets/{project}.target.md`. If `--scaffold-delivery PATH` given, uses that resolved path. If not, defaults to `../{project}-delivery/` resolved to absolute. (2) `zo init` always scaffolds the delivery repo (not just with `--scaffold-delivery`). (3) Target template uses `{target_repo}` placeholder instead of hardcoded `../target-{project}`. (4) `zo build` reads the absolute path from the target file — no path guessing. The user never needs to pass paths between commands.
+**Rationale:** User ran `zo init --scaffold-delivery ~/projects/cifar10-delivery`, then `zo build` looked for `/code/target-cifar10-demo` — a completely different path. The target template hardcoded a relative path that never matched the scaffold. The init → draft → build pipeline must carry its own context autonomously through the target file.
+**Alternatives considered:** (1) Ask user to pass path at every step — breaks autonomous promise. (2) Store path in STATE.md — wrong abstraction, target file already exists for this. (3) Target file as single source of truth with absolute paths (chosen) — deterministic, no user input between commands.
+**Outcome:** PR #25. Target file always has absolute paths. init auto-scaffolds. build reads target file. Full pipeline works without user passing paths.
+
+---
+
+## Decision: 2026-04-12T23:30:00Z
+**Type:** FEATURE
+**Title:** Haiku headline summaries in live build status feed
+**Decision:** Buffer comms events (decisions, gates, checkpoints, errors) during `zo build` status polling. Every 60 seconds, send the last 15 buffered events to Claude Haiku with a prompt to generate a 1-line headline (80 chars max). Print with `▸` prefix in amber. Non-blocking — fails silently if Haiku unavailable.
+**Rationale:** The raw event feed (decisions, checkpoints, errors) is useful but verbose. A periodic natural language summary gives the user a quick "what's happening" without reading every line. Like a news ticker for their build.
+**Alternatives considered:** (1) No summaries — raw events only. (2) Python-based summariser — brittle, can't handle diverse events. (3) Haiku API call (chosen) — fast, cheap, high quality, graceful degradation.
+**Outcome:** PR #25. 60s interval, 15-event batch, 80-char headline.
+
+---
+
+## Decision: 2026-04-12T23:30:00Z
+**Type:** FEATURE
+**Title:** zo gates set — toggle gate mode mid-session
+**Decision:** New CLI command `zo gates set MODE --project NAME` writes the mode to `memory/{project}/gate_mode`. The orchestrator calls `_refresh_gate_mode()` at the top of `advance_phase()` to re-read the file before each gate decision. The wrapper calls `_check_gate_mode_change()` each poll cycle. Changes take effect within 10 seconds — no restart needed.
+**Rationale:** In supervised mode, every agent tool call needs approval. User wants to start supervised (to verify things work), then switch to auto once confident. Previously required killing the session and restarting with a different flag.
+**Alternatives considered:** (1) Restart with different flag — loses session context. (2) Signal-based (SIGUSR1) — fragile, platform-specific. (3) File-based with polling (chosen) — simple, reliable, works from any terminal.
+**Outcome:** PR #25. 6 new tests, 347 total. MemoryManager.read_gate_mode() / write_gate_mode().
+
+---
+
+## Decision: 2026-04-13T00:00:00Z
+**Type:** DOCUMENTATION
+**Title:** Full documentation audit and consistency sweep
+**Decision:** Audited README, COMMANDS.md, SAMPLE_PROJECT.md, workflow.md, DELIVERY_STRUCTURE.md for consistency with session 011 features. Found: (1) COMMANDS.md missing all CLI commands (only had slash commands). (2) specs/workflow.md Phase 1 still had 7 subtasks (should be 13). (3) README agent table showed Research Scout as "Phase 0" (should be "All phases"). (4) Test counts stale (338 → 347). (5) New features (Haiku headlines, zo gates set, tmux orphan prevention) not documented. Fixed all issues.
+**Rationale:** PR-005 prior: aspirational docs without enforcement degrade. This session added 10+ features but only partially updated docs. Full sweep ensures any user reading any doc gets consistent, current information.
+**Alternatives considered:** None — mandatory per CLAUDE.md protocol.
+**Outcome:** All user-facing docs updated and cross-referenced.

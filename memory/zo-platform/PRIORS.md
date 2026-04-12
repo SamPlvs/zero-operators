@@ -353,3 +353,98 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
    The success criterion for setup is "can the user type `zo build` and have
    it work?" — not "are dependencies resolved?". Test from the user's
    perspective, not the package manager's.
+
+---
+
+## PR-013: ZO Artifacts Must Always Write to Main Repo, Not Worktrees
+**Source:** Session 011 (2026-04-12), zo draft wrote plan to worktree
+**Root cause category:** missing_rule
+**Failure:** User ran `zo draft` from a worktree. Plan was written to worktree's `plans/` dir. Then `zo build` from main repo couldn't find it. User had to manually copy the file.
+
+### Rules
+
+1. **Plans, memory, and state always live in the main repo.**
+   Worktrees are for ZO development, not ZO usage. Use
+   `_main_repo_root()` (git worktree list --porcelain) to find the
+   main repo when writing artifacts that need to persist.
+
+2. **Any zo command that writes artifacts must be worktree-aware.**
+   Check if cwd is a worktree. If so, write to main repo and inform
+   the user: "Written to main repo (not worktree)".
+
+3. **Test from the user's perspective: where would they look?**
+   Users expect `plans/project.md` in the repo they cloned, not in a
+   hidden `.claude/worktrees/` subdirectory.
+
+---
+
+## PR-014: CLI Commands Need Consistent Branding and Context Display
+**Source:** Session 011 (2026-04-12), user noted brand panel only in zo build
+**Root cause category:** missing_rule
+**Failure:** Not a failure — a UX gap. The brand panel (project, mode, phase, gates) only appeared in `zo build`. All other commands showed raw output with no context.
+
+### Rules
+
+1. **Every CLI entry point shows the brand banner.**
+   Extract into shared `_show_banner()`. Establishes identity and
+   shows current context (project, mode). Professional tooling has
+   consistent branding across all entry points.
+
+2. **Banner fields are contextual, not forced.**
+   Only show fields relevant to the command. `zo preflight` has no
+   project — skip that line. `zo draft` has no phase — skip it.
+   Don't show empty fields.
+
+---
+
+## PR-015: Phase Definitions Must Be Production-Ready by Default
+**Source:** Session 011 (2026-04-12), CIFAR-10 Phase 1 review
+**Root cause category:** missing_rule
+**Failure:** Not a failure — a gap. Phase 1 (Data Review) had only 2 agents and 7 subtasks. Sufficient for CIFAR-10 demo but would miss critical steps on messy production data (no schema validation, no outlier detection, no class imbalance analysis, no split strategy).
+
+### Rules
+
+1. **Phase defaults must handle the hardest case, not the easiest.**
+   CIFAR-10 is clean, balanced, well-known. IVL F5 data is messy,
+   domain-specific, potentially imbalanced. Defaults should be
+   production-grade — users can simplify via plan.md overrides.
+
+2. **Code review and research are cross-cutting — always present.**
+   `code-reviewer` catches quality issues before they compound.
+   `research-scout` ensures domain context informs every phase.
+   These shouldn't be opt-in. Add to all phases by default.
+
+3. **Data workflow subtasks must cover the full production checklist.**
+   Schema validation, missing values, outliers, class imbalance,
+   split strategy, drift baselines — all essential before training.
+   Missing any one can silently corrupt downstream results.
+
+---
+
+## PR-016: Pipeline Commands Must Carry Context Autonomously
+**Source:** Session 011 (2026-04-12), CIFAR-10 init → build path mismatch
+**Root cause category:** missing_rule
+**Failure:** User ran `zo init --scaffold-delivery ~/projects/cifar10-delivery`, then `zo build` looked for `/code/target-cifar10-demo`. Target template hardcoded `../target-{project}` — a relative path that never matched the scaffold location. User had to manually create the directory and re-init.
+
+### Rules
+
+1. **The user is not a message bus between commands.**
+   init → draft → build must carry context through artifacts (target
+   file, plan, STATE.md). If a path is set in init, every downstream
+   command must read it from the same source — never guess or compute
+   independently.
+
+2. **Always write absolute paths to config files.**
+   Relative paths resolve differently depending on cwd, worktree,
+   tmux session, or agent working directory. Absolute paths are
+   deterministic. Resolve at write time, not read time.
+
+3. **The target file is the single source of truth for delivery repo.**
+   `target_repo` in `targets/{project}.target.md` is THE path. init
+   writes it, build reads it, preflight validates it. No other source.
+
+4. **Default behavior should be autonomous — flags are for overrides.**
+   `zo init project` should scaffold everything (including delivery
+   repo at a default location) without flags. `--scaffold-delivery`
+   is an override for non-default paths, not the only way to get a
+   delivery repo.
