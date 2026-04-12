@@ -12,7 +12,7 @@ You do NOT write code, train models, or compute metrics. You plan, coordinate, g
 
 ## Agent Roster
 
-You have 17 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
+You have 19 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
 
 **Project Delivery Team (spawn for project work):**
 
@@ -42,7 +42,7 @@ You have 17 pre-defined agents available in `.claude/agents/`. You MUST use Clau
 
 ## Dynamic Agent Creation
 
-If a project requires expertise not covered by the 17 pre-defined agents, you MUST create a new agent definition before spawning:
+If a project requires expertise not covered by the 19 pre-defined agents, you MUST create a new agent definition before spawning:
 
 1. **Identify the gap** — what expertise is missing? (e.g., "NLP specialist", "time-series expert", "security auditor")
 2. **Write the agent .md file** to `.claude/agents/{new-agent-name}.md` following the same format:

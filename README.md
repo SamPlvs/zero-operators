@@ -16,7 +16,7 @@
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Tests](https://img.shields.io/badge/tests-382_passing-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
+[![Agents](https://img.shields.io/badge/agents-19_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
 ---
@@ -107,15 +107,15 @@ zo continue my-project
 
 Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path.
 
-### `zo draft` — Generate a plan conversationally
+### `zo draft` — Draft a plan with scout team
 
 ```bash
-zo draft ~/docs/requirements.md ~/data/notes/ --project my-project   # from source docs
-zo draft --project cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+ accuracy" # from description
-zo draft --project my-project                                         # interactive prompt
+zo draft -p my-project --docs ~/docs/ --data ~/data/    # docs + data inspection
+zo draft -p cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+"    # from description
+zo draft -p my-project                                    # fully conversational
 ```
 
-Launches an interactive Claude Code session that drafts a `plan.md` conversationally — asking about objectives, data, oracle metrics, and constraints. Optionally accepts **source document paths** (indexed and fed as context) or a **description** (`-d`). When called with no arguments, prompts for a brief project description. Use `--no-tmux` to skip the interactive session and generate a skeleton only.
+Launches a **Plan Architect** (Opus) that drafts `plan.md` conversationally with you. Optionally spawns **Data Scout** (inspects `--data` paths for schema, distributions, quality flags) and **Research Scout** (finds prior art and baselines) in the background. Scout findings are woven into the plan as they arrive. All args are optional — if nothing provided, the architect asks you everything conversationally.
 
 ### `zo init` — Scaffold a new project
 
@@ -312,7 +312,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 │  ├── Agent(name="oracle-qa", team_name="project")           │
 │  └── Agents communicate peer-to-peer via SendMessage        │
 │                                                             │
-│  The Lead knows all 17 agents and creates new ones on the   │
+│  The Lead knows all 19 agents and creates new ones on the   │
 │  fly if the project needs expertise not in the roster.      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -353,6 +353,8 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | Domain Evaluator | Opus | Phase 5 | Domain validation, plausibility checks |
 | ML Engineer | Sonnet | Phases 4-6 | Inference optimization, experiment tracking |
 | Infra Engineer | Haiku | Phases 1, 6 | Environment setup, packaging, deployment |
+| Plan Architect | Opus | zo draft | Leads plan drafting, spawns scouts, converses with human |
+| Data Scout | Sonnet | zo draft | Quick data inspection — schema, distributions, quality flags |
 
 Code Reviewer and Research Scout are cross-cutting agents present in all phases by default.
 
@@ -394,7 +396,7 @@ zero-operators/
 │   ├── semantic.py             # fastembed + SQLite semantic search
 │   ├── comms.py                # JSONL event logger (5 event types)
 │   └── evolution.py            # Self-evolving post-mortem protocol
-├── .claude/agents/             # 17 agent definitions
+├── .claude/agents/             # 19 agent definitions
 ├── specs/                      # 8 specification documents
 ├── plans/                      # Project plan files
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
@@ -453,7 +455,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
 
-347 platform tests. ruff clean. 17 agents. 24 slash commands.
+347 platform tests. ruff clean. 19 agents. 24 slash commands.
 
 ---
 

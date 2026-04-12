@@ -379,7 +379,7 @@ class TestDraftCommand:
     def test_draft_requires_project(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        result = runner.invoke(cli, ["draft", str(tmp_path)])
+        result = runner.invoke(cli, ["draft"])
         assert result.exit_code != 0
         assert "Missing option" in result.output or "required" in result.output.lower()
 
@@ -399,8 +399,8 @@ class TestDraftCommand:
 
         with patch("zo.cli._zo_root", return_value=zo_root):
             result = runner.invoke(
-                cli, ["draft", str(source_dir), "--project", "test-draft",
-                      "--no-tmux"]
+                cli, ["draft", "--docs", str(source_dir),
+                      "--project", "test-draft", "--no-tmux"]
             )
 
         assert result.exit_code == 0

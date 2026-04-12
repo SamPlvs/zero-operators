@@ -90,7 +90,7 @@ EXPECTED_AGENTS=(
     code-reviewer test-engineer xai-agent domain-evaluator
     ml-engineer infra-engineer software-architect backend-engineer
     frontend-engineer platform-test-engineer platform-code-reviewer
-    documentation-agent
+    documentation-agent plan-architect data-scout
 )
 AGENT_COUNT=0
 MISSING_AGENTS=()
@@ -102,10 +102,10 @@ for agent in "${EXPECTED_AGENTS[@]}"; do
     fi
 done
 
-if [[ $AGENT_COUNT -eq 17 ]]; then
-    pass "All 17 agent definitions present"
+if [[ $AGENT_COUNT -eq 19 ]]; then
+    pass "All 19 agent definitions present"
 else
-    fail "$AGENT_COUNT/17 agent definitions found"
+    fail "$AGENT_COUNT/19 agent definitions found"
     for missing in "${MISSING_AGENTS[@]}"; do
         echo -e "      ${RED}missing:${RESET} .claude/agents/${missing}.md"
     done

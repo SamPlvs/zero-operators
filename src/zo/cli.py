@@ -193,18 +193,21 @@ def _launch_and_monitor(
     prompt: str,
     team_name: str,
     zo_root: Path,
-    orchestrator,  # noqa: ANN001
-    semantic,  # noqa: ANN001
-    no_tmux: bool,
+    orchestrator=None,  # noqa: ANN001
+    semantic=None,  # noqa: ANN001
+    no_tmux: bool = False,
+    model: str = "opus",
+    max_turns: int = 200,
     gate_mode_file: Path | None = None,
     project_name: str = "",
     delivery_repo: Path | None = None,
 ) -> None:
-    """Shared launch → monitor → end-session flow for all modes."""
+    """Shared launch → monitor → end-session flow for build and draft."""
     use_tmux = not no_tmux
     console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
     process = wrapper.launch_lead_session(
-        prompt, cwd=str(zo_root), team_name=team_name, use_tmux=use_tmux,
+        prompt, cwd=str(zo_root), team_name=team_name,
+        model=model, max_turns=max_turns, use_tmux=use_tmux,
     )
 
     if process.tmux_pane_id:
@@ -358,8 +361,10 @@ def _launch_and_monitor(
     else:
         console.print(f"[red bold]Session ended with status:[/] {process.status}")
 
-    orchestrator.end_session()
-    semantic.close()
+    if orchestrator:
+        orchestrator.end_session()
+    if semantic:
+        semantic.close()
 
 
 @cli.command()
@@ -796,29 +801,38 @@ def preflight(plan_file: Path, target_repo: Path | None) -> None:
 
 
 @cli.command()
-@click.argument("source_paths", nargs=-1, type=click.Path(path_type=Path))
 @click.option("--project", "-p", required=True, help="Project name for the generated plan")
-@click.option("--description", "-d", default=None, help="Project description (when no source docs)")
+@click.option(
+    "--docs", multiple=True, type=click.Path(exists=True, path_type=Path),
+    help="Source documents (requirements, scope of work, domain docs)",
+)
+@click.option(
+    "--data", multiple=True, type=click.Path(exists=True, path_type=Path),
+    help="Data files/dirs for the Data Scout to inspect",
+)
+@click.option("--description", "-d", default=None, help="Project description")
 @click.option("--no-tmux", is_flag=True, help="Skip interactive drafting session")
 def draft(
-    source_paths: tuple[Path, ...], project: str,
+    project: str, docs: tuple[Path, ...], data: tuple[Path, ...],
     description: str | None, no_tmux: bool,
 ) -> None:
-    """Generate a plan.md conversationally or from source documents.
+    """Draft a plan.md with a scout team.
 
-    When source paths are provided, indexes documents and generates a
-    plan template seeded with their content. When no source paths are
-    given, prompts for a project description (or uses --description).
+    Launches a Plan Architect (Opus) that conversationally drafts the
+    plan with you.  Optionally spawns scouts in the background:
 
-    In both cases, launches an interactive Claude Code session that
-    drafts the plan conversationally — asking about objectives, data,
-    oracle metrics, and constraints.
+    - **Data Scout** inspects --data paths (schema, distributions,
+      quality flags, complexity signals)
+    - **Research Scout** finds prior art and baselines for the domain
+
+    All args are optional.  If nothing is provided, the Plan Architect
+    asks you conversationally.
 
     Usage::
 
-        zo draft ~/docs/spec.md --project my-project
-        zo draft --project cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+ accuracy"
-        zo draft --project my-project
+        zo draft -p my-project --docs ~/docs/ --data ~/data/
+        zo draft -p cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+ accuracy"
+        zo draft -p my-project
     """
     from zo.draft import PlanDrafter
 
@@ -832,23 +846,18 @@ def draft(
     # Always write plans to main repo, not worktrees
     plan_root = main_root if main_root != zo_root else zo_root
 
-    if source_paths:
-        # --- Branch A: source documents provided ---
-        for sp in source_paths:
-            if not sp.exists():
-                console.print(f"[red bold]Path not found: {sp}[/]")
-                raise SystemExit(1)
-
+    if docs:
+        # --- Source documents provided: index and generate skeleton ---
         drafter = PlanDrafter(
-            source_paths=list(source_paths), project_name=project,
+            source_paths=list(docs), project_name=project,
             zo_root=plan_root,
         )
 
         console.print(
             f"[{_AMBER}]Indexing documents from "
-            f"{len(source_paths)} path(s):[/]"
+            f"{len(docs)} path(s):[/]"
         )
-        for sp in source_paths:
+        for sp in docs:
             console.print(f"  [{_DIM}]{sp}[/]")
         count = drafter.index_documents()
         console.print(f"[green]Indexed {count} documents.[/]")
@@ -858,7 +867,7 @@ def draft(
         doc_context = drafter.get_document_summaries()
 
     else:
-        # --- Branch B: no source documents ---
+        # --- No source documents: description or interactive ---
         if not desc:
             console.print(
                 f"[{_AMBER}]No source documents provided.[/]\n"
@@ -883,7 +892,12 @@ def draft(
         console.print(f"[{_AMBER}]Generating plan skeleton...[/]")
         plan_path = drafter.generate_plan_from_description(desc)
 
-    console.print(f"[green]Plan generated:[/] {plan_path}")
+    if data:
+        console.print(f"[{_AMBER}]Data paths for scout inspection:[/]")
+        for dp in data:
+            console.print(f"  [{_DIM}]{dp}[/]")
+
+    console.print(f"[green]Plan skeleton:[/] {plan_path}")
     if plan_root != zo_root:
         console.print(
             f"  [{_DIM}]Written to main repo (not worktree)[/]"
@@ -898,116 +912,146 @@ def draft(
             "The drafting session will address them."
         )
 
-    # Interactive drafting session
+    # --- Launch scout team session ---
     if not no_tmux:
+        from zo.comms import CommsLogger
         from zo.wrapper import LifecycleWrapper
 
         console.print(
-            f"\n[{_AMBER}]Opening interactive drafting session...[/]"
+            f"\n[{_AMBER}]Launching draft scout team...[/]"
         )
-        from zo.comms import CommsLogger
 
         session_id = f"s-{uuid.uuid4().hex[:8]}"
         comms = CommsLogger(
             log_dir=zo_root / "logs" / "comms",
             project=project, session_id=session_id,
         )
-        wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
-
-        # Build context-aware prompt
-        context_block = ""
-        if doc_context:
-            context_block = f"\n\n{doc_context}\n"
-        elif desc:
-            context_block = f"\n\nUser's project description: {desc}\n"
-
-        # Build path always references main repo for zo build
-        build_cmd = f"zo build plans/{project}.md"
-
-        draft_prompt = (
-            f"You are drafting a plan.md for project '{project}' "
-            f"at {plan_path}.\n"
-            f"{context_block}\n"
-            f"A skeleton plan already exists at that path. Read it, "
-            f"then work with the user conversationally to complete "
-            f"it:\n\n"
-            f"1. Review what's there and summarise what you "
-            f"understand\n"
-            f"2. Ask about the objective — what exactly are we "
-            f"building?\n"
-            f"3. Ask about data sources — where does the data come "
-            f"from?\n"
-            f"4. Ask about oracle metrics — how do we measure "
-            f"success?\n"
-            f"5. Ask about constraints — time, compute, regulatory "
-            f"limits?\n"
-            f"6. Fill in each section as you get answers\n"
-            f"7. Validate the final plan against specs/plan.md "
-            f"schema\n\n"
-            f"Write the completed plan to {plan_path}. "
-            f"The plan schema is defined in specs/plan.md — ensure "
-            f"compliance.\n\n"
-            f"When the plan is complete:\n"
-            f"- Ask the user: 'Is there anything else you'd like to "
-            f"adjust? If not, this session is done — run "
-            f"`{build_cmd}` to start building.'\n"
-            f"- Once confirmed, say goodbye and tell them to type "
-            f"/exit to close this session.\n"
+        wrapper = LifecycleWrapper(
+            comms=comms, log_dir=zo_root / "logs" / "wrapper",
         )
 
-        prompt_file = zo_root / "logs" / "wrapper" / f"zo-draft-{project}-prompt.txt"
-        prompt_file.parent.mkdir(parents=True, exist_ok=True)
-        prompt_file.write_text(draft_prompt, encoding="utf-8")
-
-        # Kill any existing draft window for this project (prevent orphans)
-        window_name = f"draft-{project}"
-        __import__("subprocess").run(
-            ["tmux", "kill-window", "-t", window_name],
-            capture_output=True, text=True, timeout=5,
+        draft_prompt = _build_draft_prompt(
+            project=project,
+            plan_path=plan_path,
+            doc_context=doc_context,
+            description=desc,
+            data_paths=data,
+            zo_root=zo_root,
         )
 
-        # Launch interactive claude session
-        result = __import__("subprocess").run(
-            ["tmux", "new-window", "-d", "-n", window_name,
-             "-P", "-F", "#{pane_id}"],
-            capture_output=True, text=True, timeout=10,
-        )
-        pane_id = result.stdout.strip()
-
-        import shlex
-        claude_abs = wrapper._resolve_claude_bin()
-        cmd = (
-            f'{shlex.quote(claude_abs)}'
-            f' --model sonnet'
-            f' --add-dir {shlex.quote(str(zo_root))}'
-        )
-        __import__("subprocess").run(
-            ["tmux", "send-keys", "-t", pane_id, cmd, "Enter"],
-            capture_output=True, text=True, timeout=10,
-        )
-
-        import time
-        time.sleep(3)
-        __import__("subprocess").run(
-            ["tmux", "load-buffer", str(prompt_file)],
-            capture_output=True, text=True, timeout=10,
-        )
-        __import__("subprocess").run(
-            ["tmux", "paste-buffer", "-t", pane_id],
-            capture_output=True, text=True, timeout=10,
-        )
-        time.sleep(0.5)
-        __import__("subprocess").run(
-            ["tmux", "send-keys", "-t", pane_id, "Enter"],
-            capture_output=True, text=True, timeout=10,
-        )
-
-        console.print(
-            f"[{_AMBER}]Drafting session opened.[/] "
-            f"[{_DIM}]Ctrl-b n to switch to it.[/]"
+        _launch_and_monitor(
+            wrapper=wrapper,
+            prompt=draft_prompt,
+            team_name=f"draft-{project}",
+            zo_root=zo_root,
+            no_tmux=False,
+            model="opus",
+            max_turns=100,
         )
 
     drafter.close()
+
+
+def _build_draft_prompt(
+    *,
+    project: str,
+    plan_path: Path,
+    doc_context: str,
+    description: str,
+    data_paths: tuple[Path, ...],
+    zo_root: Path,
+) -> str:
+    """Construct the Plan Architect's prompt for a draft session."""
+    build_cmd = f"zo build plans/{project}.md"
+
+    # Context block
+    context_parts: list[str] = []
+    if doc_context:
+        context_parts.append(f"## Indexed Document Context\n\n{doc_context}")
+    if description:
+        context_parts.append(
+            f"## User Description\n\n{description}"
+        )
+    context_block = "\n\n".join(context_parts)
+
+    # Scout spawn instructions
+    scout_instructions: list[str] = []
+
+    # Data Scout — only if data paths provided
+    if data_paths:
+        paths_str = ", ".join(str(p.resolve()) for p in data_paths)
+        scout_instructions.append(
+            f'2. Spawn a **Data Scout** teammate:\n'
+            f'   ```\n'
+            f'   Agent(name="data-scout", team_name="draft-{project}",\n'
+            f'         prompt="Inspect the data at: {paths_str}. '
+            f'Report schema, shape, distributions, quality flags, '
+            f'and complexity signals. Send your findings back to me '
+            f'via SendMessage.")\n'
+            f'   ```'
+        )
+
+    # Research Scout — always
+    objective_hint = description or "the project described in the skeleton plan"
+    scout_instructions.append(
+        f'{"3" if data_paths else "2"}. Spawn a **Research Scout** teammate:\n'
+        f'   ```\n'
+        f'   Agent(name="research-scout", '
+        f'team_name="draft-{project}",\n'
+        f'         prompt="Research prior art, SOTA approaches, baselines, '
+        f'and open-source implementations for: {objective_hint}. '
+        f'Send your findings back to me via SendMessage.")\n'
+        f'   ```'
+    )
+
+    scout_block = "\n".join(scout_instructions)
+    data_note = ""
+    if not data_paths:
+        data_note = (
+            "\nNo data paths were provided. Ask the human where the "
+            "data is. If they provide paths during conversation, you "
+            "can spawn a Data Scout at that point.\n"
+        )
+
+    return (
+        f"# Role\n\n"
+        f"You are the Plan Architect for project '{project}'.\n"
+        f"Your agent definition is at .claude/agents/plan-architect.md "
+        f"— read it for your full protocol.\n\n"
+        f"---\n\n"
+        f"# Plan\n\n"
+        f"A skeleton plan exists at `{plan_path}`. Read it first.\n\n"
+        f"{context_block}\n\n"
+        f"---\n\n"
+        f"# Team Setup\n\n"
+        f"Immediately:\n\n"
+        f'1. Create a team: `TeamCreate(team_name="draft-{project}")`\n'
+        f"{scout_block}\n\n"
+        f"While scouts work in the background, begin your conversation "
+        f"with the human. When scout messages arrive, acknowledge them "
+        f"and weave their findings into the plan.\n"
+        f"{data_note}\n"
+        f"If scouts haven't reported within 5 minutes, proceed without "
+        f"them.\n\n"
+        f"---\n\n"
+        f"# Conversation Flow\n\n"
+        f"1. Read the skeleton plan and summarise what you understand\n"
+        f"2. Ask about the objective — what exactly are we building?\n"
+        f"3. Ask about data sources (incorporate Data Scout findings "
+        f"when they arrive)\n"
+        f"4. Ask about oracle metrics — how do we measure success?\n"
+        f"5. Ask about domain context (incorporate Research Scout "
+        f"findings when they arrive)\n"
+        f"6. Ask about constraints — time, compute, regulatory\n"
+        f"7. Fill in each section as you get answers\n"
+        f"8. Validate against specs/plan.md schema\n\n"
+        f"Write the completed plan to `{plan_path}`.\n\n"
+        f"---\n\n"
+        f"# Completion\n\n"
+        f"When done, ask: 'Anything to adjust? If not, run "
+        f"`{build_cmd}` to start building.'\n"
+        f"Once confirmed, tell the user to type /exit.\n"
+    )
 
 
 # ---------------------------------------------------------------------------
