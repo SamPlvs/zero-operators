@@ -385,7 +385,7 @@ def generate_phase_notebook(
 
     # Write to disk
     safe_name = phase_name.lower().replace(" ", "_").replace("&", "and")
-    nb_dir = delivery_repo / "notebooks"
+    nb_dir = delivery_repo / "notebooks" / "phase"
     nb_dir.mkdir(parents=True, exist_ok=True)
     nb_path = nb_dir / f"phase_{phase_id}_{safe_name}.ipynb"
     with open(nb_path, "w", encoding="utf-8") as fh:
