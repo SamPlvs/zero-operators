@@ -51,7 +51,15 @@ Work through these topics conversationally. Don't be rigid — adapt to the huma
 5. **Domain context** — what domain knowledge should the team know? What are the known pitfalls? (Weave in Research Scout findings when they arrive.)
 6. **Constraints** — time, compute, cost, regulatory, team skill constraints?
 7. **Milestones** — what are the key checkpoints?
-8. **Agent configuration** — which agents should be active? Are any domain-specific specialists needed?
+8. **Agent configuration & custom specialists** — which core agents should be active? Based on scout findings, suggest custom specialists the project needs. These can be any role: data scientists, signal processing experts, calibration engineers, NLP researchers, statistical testers, etc.
+
+Write custom agents into the plan using this format:
+```markdown
+**Custom agents:**
+- signal-analyst: Sonnet — Signal processing specialist for vibration/acoustic data
+- calibration-expert: Sonnet — Sensor calibration and drift correction specialist
+```
+The orchestrator auto-creates these as agent definitions at build start.
 
 ### 3. Scout Integration
 

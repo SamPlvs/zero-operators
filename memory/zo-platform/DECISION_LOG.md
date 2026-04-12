@@ -503,3 +503,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** The old positional arg was overloaded — no way to distinguish docs from data. For the scout team, Data Scout needs to know which paths are actual data files to inspect. Explicit flags are clear. Making everything optional preserves the conversational fallback — the architect asks the human for anything not provided on the command line.
 **Alternatives considered:** (1) Single positional arg, heuristic separation — fragile, confusing. (2) Explicit flags (chosen) — clear intent, both optional. (3) Config file — over-engineered for this.
 **Outcome:** PR #27. CLI: `zo draft -p NAME [--docs PATH...] [--data PATH...] [-d DESC]`.
+
+---
+
+## Decision: 2026-04-13T03:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Dynamic agent creation — custom/ directory, plan-defined + mid-build
+**Decision:** Custom agents live in `.claude/agents/custom/` (separate from 19 core agents). Two creation paths: (1) plan.md declares custom agents via `**Custom agents:**` block — orchestrator auto-creates `.md` files at build start. (2) Lead orchestrator creates agents mid-build when it discovers unplanned expertise gaps — full-auto, logged to DECISION_LOG. Custom agents persist across projects and are reusable. `_agents_for_phase()` treats unknown agents as available for ALL phases (lead decides when to spawn). `_prompt_roster()` scans both core and custom/ directories.
+**Rationale:** Static 19-agent roster doesn't scale to production projects with domain-specific needs (IVL F5: signal processing, sensor calibration, etc.). Custom agents can be any role — researchers, data scientists, testers, QA — not limited to domain specialists. The agent library grows as ZO encounters new problem types.
+**Alternatives considered:** (1) All agents in flat directory — mixes core with project-specific, hard to tell apart. (2) Agents in delivery repo — doesn't persist across projects. (3) Custom subdirectory (chosen) — clean separation, reusable, visible in roster.
+**Outcome:** PR #28. CustomAgentSpec in plan parser, _ensure_custom_agents + _render_custom_agent in orchestrator, 16 new tests.
