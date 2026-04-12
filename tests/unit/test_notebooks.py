@@ -177,7 +177,8 @@ def test_output_path_structure(delivery_repo: Path) -> None:
         delivery_repo=delivery_repo,
         artifacts=[],
     )
-    assert path.parent.name == "notebooks"
+    assert path.parent.name == "phase"
+    assert path.parent.parent.name == "notebooks"
     assert path.name == "phase_4_training.ipynb"
 
 
@@ -234,15 +235,15 @@ def test_invalid_phase_raises(delivery_repo: Path) -> None:
 
 
 def test_creates_notebooks_directory(delivery_repo: Path) -> None:
-    """The notebooks/ subdirectory is created automatically."""
-    assert not (delivery_repo / "notebooks").exists()
+    """The notebooks/phase/ subdirectory is created automatically."""
+    assert not (delivery_repo / "notebooks" / "phase").exists()
     generate_phase_notebook(
         phase_id="6",
         phase_name="Packaging",
         delivery_repo=delivery_repo,
         artifacts=[],
     )
-    assert (delivery_repo / "notebooks").is_dir()
+    assert (delivery_repo / "notebooks" / "phase").is_dir()
 
 
 # ---------------------------------------------------------------------------
