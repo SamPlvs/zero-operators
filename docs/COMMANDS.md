@@ -8,6 +8,76 @@ All commands are defined in `.claude/commands/` and invoked as `/category/comman
 
 ---
 
+## CLI Commands
+
+These are terminal commands provided by the `zo` CLI (installed via `uv`). They are distinct from the slash commands used inside Claude Code sessions.
+
+### zo build
+
+Launch an agent team to execute a plan. Parses the plan, shows a phase review, and spawns agents in a tmux session for parallel execution.
+
+```
+zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
+```
+
+### zo continue
+
+Resume a paused project. Shorthand for `zo build` with an existing plan -- finds the plan by project name and picks up from the current phase.
+
+```
+zo continue project-name [--gate-mode supervised|auto|full-auto]
+```
+
+### zo draft
+
+Draft a plan conversationally. Accepts source documents, a description, or launches an interactive prompt. Starts a Claude session to refine the plan collaboratively.
+
+```
+zo draft [SOURCE_PATHS...] --project NAME [-d DESC] [--no-tmux]
+```
+
+### zo init
+
+Initialize a project scaffold including memory directory, targets, plans, and delivery repo. Auto-scaffolds the delivery repo if `--scaffold-delivery` is provided.
+
+```
+zo init project-name [--scaffold-delivery PATH]
+```
+
+### zo status
+
+Show the current project status by reading `STATE.md`. Displays phase, blockers, recent activity, and next steps.
+
+```
+zo status project-name
+```
+
+### zo preflight
+
+Validate the environment before building. Checks CLI tools, plan structure, agent definitions, Docker availability, and GPU access.
+
+```
+zo preflight plans/project.md [-t TARGET_REPO]
+```
+
+### zo gates set
+
+Change the gate mode for a running project. The active build session picks up the change within 10 seconds.
+
+```
+zo gates set MODE --project NAME
+```
+
+`MODE` is one of: `supervised` (human approves every gate), `auto` (orchestrator approves unless ambiguous), `full-auto` (all gates auto-approved).
+
+---
+
+## Slash Commands
+
+The following slash commands are available inside Claude Code sessions.
+
+---
+
 ## Project Lifecycle
 
 ### /project/import \<github-url\>

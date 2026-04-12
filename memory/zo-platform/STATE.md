@@ -54,6 +54,11 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 - [x] v1.0.2-pre: README updated — zo draft docs reflect conversational flow + new usage patterns
 - [x] v1.0.2-pre: Autonomous path handoff — zo init writes absolute delivery path to target file, auto-scaffolds delivery repo
 - [x] v1.0.2-pre: init → draft → build pipeline carries context via target file (no user path passing)
+- [x] v1.0.2-pre: Haiku headline summaries — live 1-line status every 60s during zo build
+- [x] v1.0.2-pre: tmux orphan prevention — draft kills existing window before creating new one
+- [x] v1.0.2-pre: Draft tests fixed — all use --no-tmux (was spawning real tmux windows)
+- [x] v1.0.2-pre: zo gates set — toggle gate mode mid-session (supervised/auto/full-auto)
+- [x] v1.0.2-pre: Full doc audit — COMMANDS.md, workflow.md, README, SAMPLE_PROJECT updated for consistency
 
 ## Known Issues
 
@@ -78,7 +83,7 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fix
 last_checkpoint: 2026-04-12T22:00:00Z
 last_session: session-011
 branch: claude/eloquent-poincare (worktree)
-test_count: 341 passed, 7 skipped
+test_count: 347 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
 prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft)
