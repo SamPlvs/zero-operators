@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.1 — **complete, validated, user-tested, and self-enforcing**. All docs verified consistent with codebase. Hook system prevents doc-code drift. Ready for IVL F5.
+ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, delivery scaffold with Docker added, auto-notebook generation built, preflight validation added. 334 tests, ruff clean, validate-docs 9/9. Ready for IVL F5.
 
 ## Completed
 
@@ -30,28 +30,39 @@ ZO v1.0.1 — **complete, validated, user-tested, and self-enforcing**. All docs
 - [x] v1.0.1: zo draft accepts multiple file/dir paths + interactive refinement
 - [x] v1.0.1: Live monitoring dashboard (tasks, team, comms events)
 - [x] v1.0.1: Doc-code consistency: validate-docs.sh (10 checks, <2s)
-- [x] v1.0.1: Hook system: SessionStart (auto-context), PreToolUse (commit gate), PostToolUse (cascade reminder), Stop (drift check)
+- [x] v1.0.1: Hook system: SessionStart, PreToolUse, PostToolUse, Stop
 - [x] v1.0.1: Self-evolution: PR-005 (enforcement > aspiration), three-layer defense
-- [x] v1.0.1: Full doc audit: agent counts 16→17, version 1.0.0→1.0.1, test badge 295→298, Model Builder/Backend Engineer tiers fixed
+- [x] v1.0.1: Full doc audit: agent counts 16→17, version 1.0.0→1.0.1
+- [x] v1.0.2-pre: Phase persistence fix (SessionState tracks per-phase status + completed subtasks)
+- [x] v1.0.2-pre: Blocking gates fix (get_current_phase returns GATED phases for human review)
+- [x] v1.0.2-pre: Phase artifact contracts (required_artifacts on all 6 phases)
+- [x] v1.0.2-pre: Auto-generated Jupyter notebooks per phase (notebooks.py)
+- [x] v1.0.2-pre: Delivery repo scaffold with Docker (scaffold.py, Dockerfile, docker-compose.yml)
+- [x] v1.0.2-pre: zo preflight command (10 validation checks, GPU/Docker detection)
 
 ## Known Issues
 
-1. Phase state not persisted between zo build calls — re-decomposes each time
-2. Blocking gates cause repeated sessions in auto mode without advancing
+1. ~~Phase state not persisted between zo build calls~~ (RESOLVED: session-010)
+2. ~~Blocking gates cause repeated sessions in auto mode~~ (RESOLVED: session-010)
 3. MNIST Phase 6 (packaging: model card, validation report) not completed
-4. ~~Agent permissions need broader .claude/settings.json allow patterns~~ (resolved: cd, pip, source, cat, head, tail, find, wc, touch all added)
+4. ~~Agent permissions need broader .claude/settings.json allow patterns~~ (resolved)
+5. Device detection (Linux vs Mac) not yet implemented — affects Docker GPU passthrough
+6. Plan.md missing Environment section for base_image, CUDA version, paths
 
 ## What's Next
 
-1. **IVL F5** — first real production project
-2. Fix phase persistence between sessions
-3. v1.1: phase-in agents, multi-project support
+1. **IVL F5** — first real production project (oil & gas refinery optimization)
+2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
+3. Phase summary reports (B3) — markdown reports per phase with embedded plots
+4. Domain evaluator refactor — make project-specific via plan.md domain priors
+5. XAI + Domain Evaluator activation for IVL F5 Phase 5
+6. Device detection and user directory paths in plan schema
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-10T15:00:00Z
-last_session: session-009
-branch: main (merged PR #16, #17)
-test_count: 295 passed, 7 skipped
-lint: ruff clean
-validation: scripts/validate-docs.sh 10/10 passed
+last_checkpoint: 2026-04-12T12:30:00Z
+last_session: session-010
+branch: claude/mystifying-chatterjee (worktree)
+test_count: 334 passed, 7 skipped
+lint: ruff clean (src/zo/)
+validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)

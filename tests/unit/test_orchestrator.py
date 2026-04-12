@@ -646,3 +646,160 @@ def _make_orchestrator(plan: Plan, tmp_path: Path) -> Orchestrator:
         semantic=semantic,
         zo_root=REPO_ROOT,
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase persistence across sessions
+# ---------------------------------------------------------------------------
+
+
+class TestPhasePersistence:
+    """Phase states survive across decompose_plan() calls via STATE.md."""
+
+    def test_completed_phases_restored_after_redecompose(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Session 1 completes phases → Session 2 restores them."""
+        target = _make_target()
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+
+        # Session 1: decompose, complete phase_1, end session
+        orch1 = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.FULL_AUTO,
+        )
+        orch1.start_session()
+        decomp = orch1.decompose_plan()
+        phase_1 = decomp.phases[0]
+        for sub in phase_1.subtasks:
+            orch1.mark_subtask_complete(phase_1.phase_id, sub)
+        orch1.advance_phase(phase_1.phase_id)
+        assert phase_1.status == PhaseStatus.COMPLETED
+        orch1.end_session()
+
+        # Session 2: new orchestrator, reads STATE.md, should resume
+        comms2 = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-2",
+        )
+        orch2 = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms2,
+            semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.FULL_AUTO,
+        )
+        orch2.start_session()
+        decomp2 = orch2.decompose_plan()
+
+        # Phase 1 should be COMPLETED, not PENDING
+        restored_p1 = decomp2.phases[0]
+        assert restored_p1.status == PhaseStatus.COMPLETED
+        assert set(restored_p1.completed_subtasks) == set(phase_1.subtasks)
+
+        # get_current_phase should skip phase_1
+        current = orch2.get_current_phase()
+        assert current is not None
+        assert current.phase_id != phase_1.phase_id
+
+    def test_no_phase_states_backward_compat(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """STATE.md without ## Phases section (old format) still works."""
+        target = _make_target()
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        # Write old-format STATE.md (no phase_states)
+        from zo._memory_models import SessionState
+        memory.write_state(SessionState(phase="phase_2"))
+
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT,
+        )
+        orch.start_session()
+        decomp = orch.decompose_plan()
+
+        # All phases should be PENDING (no saved states)
+        assert all(p.status == PhaseStatus.PENDING for p in decomp.phases)
+
+    def test_gated_phase_returned_by_get_current_phase(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """A GATED phase is returned by get_current_phase() for human review."""
+        target = _make_target()
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+
+        orch = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.SUPERVISED,
+        )
+        orch.start_session()
+        decomp = orch.decompose_plan()
+        phase_1 = decomp.phases[0]
+
+        # Complete all subtasks and advance — supervised mode gates it
+        for sub in phase_1.subtasks:
+            orch.mark_subtask_complete(phase_1.phase_id, sub)
+        ev = orch.advance_phase(phase_1.phase_id)
+        assert ev.decision == GateDecision.HOLD
+        assert phase_1.status == PhaseStatus.GATED
+
+        # get_current_phase should return the GATED phase, not skip to next
+        current = orch.get_current_phase()
+        assert current is not None
+        assert current.phase_id == phase_1.phase_id
+        assert current.status == PhaseStatus.GATED
+
+    def test_partial_progress_restored(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Subtask progress within a phase is restored."""
+        target = _make_target()
+        memory = MemoryManager(project_dir=tmp_path, project_name="test-proj")
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-1",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+
+        # Session 1: complete some subtasks in phase_1
+        orch1 = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT,
+        )
+        orch1.start_session()
+        decomp = orch1.decompose_plan()
+        phase_1 = decomp.phases[0]
+        first_sub = phase_1.subtasks[0]
+        orch1.mark_subtask_complete(phase_1.phase_id, first_sub)
+        orch1.end_session()
+
+        # Session 2: should see partial progress
+        comms2 = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-proj", session_id="sess-2",
+        )
+        orch2 = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms2,
+            semantic=semantic, zo_root=REPO_ROOT,
+        )
+        orch2.start_session()
+        decomp2 = orch2.decompose_plan()
+        restored_p1 = decomp2.phases[0]
+        assert first_sub in restored_p1.completed_subtasks

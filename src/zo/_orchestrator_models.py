@@ -64,6 +64,7 @@ class PhaseDefinition(BaseModel):
     status: PhaseStatus = PhaseStatus.PENDING
     depends_on: list[str] = Field(default_factory=list)
     completed_subtasks: list[str] = Field(default_factory=list)
+    required_artifacts: list[str] = Field(default_factory=list)
 
 
 class AgentContract(BaseModel):

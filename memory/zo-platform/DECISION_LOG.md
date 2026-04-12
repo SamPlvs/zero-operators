@@ -235,3 +235,79 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** Adding Research Scout (17th agent) left 10+ files with stale counts. CLAUDE.md "Cascade doc updates" protocol existed but had zero enforcement. PR-003 recommended hooks but they were never implemented. Root cause: `missing_rule` — aspirational text without enforcement degrades to suggestion. Self-evolution protocol requires fixing both the symptom and the rule.
 **Alternatives considered:** (1) Manual discipline only — already failed. (2) CI pipeline — too heavy for v1, not available in local dev. (3) Automated validation with hooks (chosen) — catches drift at commit time, lightweight, works in all environments.
 **Outcome:** Three new files created (validate-docs.sh, pre-commit-validate.sh, cascade-reminder.sh). settings.json updated with hooks. CLAUDE.md cascade protocol strengthened. PR-005 documents the failure and fix. Validation runs 10 checks in <2 seconds.
+
+---
+
+## Decision: 2026-04-12T11:00:00Z
+**Type:** BUGFIX
+**Title:** Phase persistence across zo build sessions
+**Decision:** Extend SessionState with `phase_states: dict[str, str]` and `completed_subtasks_by_phase: dict[str, list[str]]`. Add `## Phases` section to STATE.md format. Fix `decompose_plan()` to restore saved phase states after creating fresh PhaseDefinition objects. Fix `end_session()` to capture phase states before writing STATE.md.
+**Rationale:** `decompose_plan()` unconditionally set `session_state.phase = phases[0].phase_id` (line 222), discarding all saved progress. Second `zo build` call always restarted from phase 1. This blocked any multi-session workflow.
+**Alternatives considered:** (1) Store phase state in a separate file — adds complexity. (2) Use git tags for phase tracking — fragile. (3) Extend SessionState + STATE.md format (chosen) — minimal, uses existing persistence infrastructure.
+**Outcome:** Phase states persist across sessions. 5 new tests verify round-trip, backward compat, and partial progress restoration. Known issue #1 resolved.
+
+---
+
+## Decision: 2026-04-12T11:15:00Z
+**Type:** BUGFIX
+**Title:** Blocking gates returned by get_current_phase()
+**Decision:** `get_current_phase()` now returns GATED phases first (before checking PENDING phases). This allows the CLI to detect "this phase needs human approval" instead of reporting "all phases complete."
+**Rationale:** In auto mode, blocking gates caused wrapper to re-launch sessions that couldn't advance because gated phases were skipped (only PENDING phases were considered). Known issue #2.
+**Outcome:** Known issue #2 resolved. 1 new test verifies GATED phase returned for human review.
+
+---
+
+## Decision: 2026-04-12T11:30:00Z
+**Type:** FEATURE
+**Title:** Phase artifact contracts — required_artifacts per phase
+**Decision:** Add `required_artifacts: list[str]` to PhaseDefinition model. Define expected artifacts for all 6 classical_ml phases (e.g., Phase 1 requires `reports/data_quality_report.md`, `reports/figures/eda_summary.png`, `data/processed/`).
+**Rationale:** Agents need to know what artifacts each phase must produce. Without explicit contracts, artifact generation is inconsistent. Required artifacts also enable gate-time validation (check files exist before advancing).
+**Outcome:** Artifact contracts defined for all 6 phases. No test breakage — field has default empty list for backward compat.
+
+---
+
+## Decision: 2026-04-12T11:45:00Z
+**Type:** FEATURE
+**Title:** Auto-generated Jupyter notebooks per phase
+**Decision:** New `src/zo/notebooks.py` module generates `.ipynb` files with pre-populated cells per phase: data loading, plotting, analysis. Uses nbformat library. Each notebook starts with phase summary, standard imports, and project root setup. Phase-specific cells include try/except for missing artifacts.
+**Rationale:** User needs interactive exploration after each phase. Agents produce reports, but notebooks allow hands-on data inspection. Auto-generation ensures consistent structure across phases.
+**Alternatives considered:** (1) Template notebooks (user fills in) — requires manual work. (2) Agent-generated notebooks — inconsistent quality. (3) Auto-generated with phase-specific cells (chosen) — consistent, works out of the box.
+**Outcome:** 27 tests. Notebooks generated for all 6 phases with valid nbformat. nbformat>=5.0 added to dependencies.
+
+---
+
+## Decision: 2026-04-12T12:00:00Z
+**Type:** FEATURE
+**Title:** Delivery repo scaffold with Docker (zo init --scaffold-delivery)
+**Decision:** New `src/zo/scaffold.py` creates standard ML project layout with multi-stage Dockerfile and docker-compose.yml. Template is bare minimum — agents customize based on plan.md. Dockerfile uses pytorch/pytorch base image, uv for deps, multi-stage for layer caching. No venv inside Docker.
+**Rationale:** ZO runs on host (SSH+tmux). Delivery project runs in Docker container with NVIDIA runtime. This separates ZO infrastructure from GPU compute environment. Multi-stage build with uv gives fast rebuilds (~1s for code changes, ~10s for dep changes).
+**Alternatives considered:** (1) Docker for ZO itself — too complex for v1. (2) No Docker — loses reproducibility. (3) Docker for delivery only (chosen) — clean separation, agents customize per project.
+**Outcome:** 8 new tests. Scaffold creates 10 directories, 6 template files. Idempotent (no-overwrite).
+
+---
+
+## Decision: 2026-04-12T12:15:00Z
+**Type:** FEATURE
+**Title:** zo preflight command for pre-launch validation
+**Decision:** New `src/zo/preflight.py` with `zo preflight plan.md` command. Runs 10 local-only checks: Claude CLI, tmux, plan validation, agent definitions, target repo, delivery structure, Dockerfile, memory round-trip, Docker, GPU availability. GPU/Docker are warnings (not blockers).
+**Rationale:** MNIST run revealed multiple issues (tmux TUI, permissions, CLI flags) with no automated detection. Preflight catches configuration problems before committing to a real project run.
+**Outcome:** Rich-formatted pass/fail output. <10 seconds, no API calls.
+
+---
+
+## Decision: 2026-04-12T12:30:00Z
+**Type:** ARCHITECTURE
+**Title:** GPU/CUDA strategy — Docker for delivery, not ZO
+**Decision:** ZO runs on host (SSH+tmux). Delivery projects run in Docker containers with NVIDIA runtime. `zo init --scaffold-delivery` provides multi-stage Dockerfile template. Agents customize based on plan.md Environment section. Server needs NVIDIA drivers + Docker + NVIDIA Container Toolkit.
+**Rationale:** User analyzed existing R&D Docker setup (pytorch base, 80+ apt packages, CMake from source, venv inside Docker). Identified root causes of slow builds: --no-cache, pip one-at-a-time, source builds in single stage. ZO template fixes all: uv (50-100x faster), multi-stage, layer caching, bare minimum base.
+**Alternatives considered:** (1) Docker for ZO itself — too complex. (2) No Docker (direct install) — loses reproducibility. (3) Conda — slower than uv. (4) Docker for delivery only (chosen) — clean separation.
+
+---
+
+## Decision: 2026-04-12T12:45:00Z
+**Type:** ARCHITECTURE
+**Title:** Device detection and directory paths — plan.md Environment section
+**Decision:** Add optional `## Environment` section to plan.md schema for platform detection, base image, data paths, and Docker mount mappings. `zo preflight` detects platform (Linux/Mac) and warns on incompatible GPU+platform combinations. Directory paths (data source, home, mounts) are declared in plan.md so agents and Docker know where things are.
+**Rationale:** Docker GPU passthrough only works on Linux (NVIDIA Container Toolkit). Mac has no NVIDIA GPU. Data paths on remote servers vary. Users need to declare paths at planning time so agents can configure Docker volume mounts correctly.
+**Alternatives considered:** (1) Auto-detect everything — unreliable across environments. (2) Target file paths only — doesn't capture Docker mount semantics. (3) Plan.md Environment section (chosen) — single source of truth, project-specific, agents read at build time.
+**Outcome:** Design captured. Implementation deferred to IVL F5 plan setup — exact schema TBD when real paths are known.
