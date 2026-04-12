@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Zero Operators (ZO) is an autonomous AI research and engineering team system.
-You input a plan; agents coordinate to build, continue, or maintain code.
+You input a plan; agents coordinate to build and deliver code.
 The human edits the plan; agents execute the plan; the oracle verifies the work.
 
 
