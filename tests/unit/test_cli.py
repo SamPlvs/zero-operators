@@ -469,6 +469,106 @@ class TestDraftCommand:
 
 
 # ---------------------------------------------------------------------------
+# draft prompt construction
+# ---------------------------------------------------------------------------
+
+
+class TestBuildDraftPrompt:
+    """Tests for _build_draft_prompt — the Plan Architect's prompt."""
+
+    def test_includes_role_and_team_setup(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="test project",
+            data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "Plan Architect" in prompt
+        assert "TeamCreate" in prompt
+        assert "draft-test" in prompt
+
+    def test_data_scout_spawned_with_data_paths(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="",
+            data_paths=(Path("/data/train.csv"), Path("/data/test.csv")),
+            zo_root=Path("/tmp"),
+        )
+        assert "data-scout" in prompt
+        assert "/data/train.csv" in prompt
+        assert "/data/test.csv" in prompt
+
+    def test_data_scout_not_spawned_without_data(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="a project",
+            data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "data-scout" not in prompt
+        assert "No data paths were provided" in prompt
+
+    def test_research_scout_always_spawned(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        for data in ((), (Path("/data"),)):
+            prompt = _build_draft_prompt(
+                project="test", plan_path=Path("/tmp/plan.md"),
+                doc_context="", description="test",
+                data_paths=data, zo_root=Path("/tmp"),
+            )
+            assert "research-scout" in prompt
+
+    def test_doc_context_included(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="Summary of requirements docs",
+            description="", data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "Indexed Document Context" in prompt
+        assert "Summary of requirements docs" in prompt
+
+    def test_description_included(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="CNN for CIFAR-10",
+            data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "CNN for CIFAR-10" in prompt
+
+    def test_build_command_in_completion(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="my-proj", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="test",
+            data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "zo build plans/my-proj.md" in prompt
+
+    def test_conversation_flow_steps(self) -> None:
+        from zo.cli import _build_draft_prompt
+
+        prompt = _build_draft_prompt(
+            project="test", plan_path=Path("/tmp/plan.md"),
+            doc_context="", description="test",
+            data_paths=(), zo_root=Path("/tmp"),
+        )
+        assert "objective" in prompt.lower()
+        assert "oracle" in prompt.lower() or "metric" in prompt.lower()
+        assert "constraint" in prompt.lower()
+        assert "specs/plan.md" in prompt
+
+
+# ---------------------------------------------------------------------------
 # gate-mode mapping
 # ---------------------------------------------------------------------------
 

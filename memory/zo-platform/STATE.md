@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo running**. Draft scout team (Plan Architect + Data Scout + Research Scout), live training dashboard, auto test reports at gates, structured Phase 1/5 report templates. 19 agents, 382 tests, ruff clean, validate-docs 9/9. PRs #22-#27.
+ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir, plan-defined + mid-build), draft scout team, live training dashboard, auto test reports, structured phase report templates. 19 core agents + custom library, 415 tests, ruff clean, validate-docs 10/10. PRs #22-#28.
 
 ## Completed
 
@@ -72,6 +72,11 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Draft scout team (Plan Architect + 
 - [x] v1.0.2-pre: zo draft CLI redesigned — --docs, --data, -d flags (all optional, conversational fallback)
 - [x] v1.0.2-pre: _launch_and_monitor refactored — shared by build and draft, model/max_turns params
 - [x] v1.0.2-pre: Agent count 17 → 19 (plan-architect, data-scout added)
+- [x] v1.0.2-pre: Dynamic agent creation — .claude/agents/custom/ for project-specific specialists
+- [x] v1.0.2-pre: Plan parser supports **Custom agents:** block (name: Model — role)
+- [x] v1.0.2-pre: Orchestrator auto-creates custom agent .md files from plan at build start
+- [x] v1.0.2-pre: Custom agents available for all phases (not restricted by AGENT_PHASE_MAP)
+- [x] v1.0.2-pre: _prompt_roster scans both core and custom/ directories, labels each
 
 ## Known Issues
 
@@ -96,7 +101,7 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Draft scout team (Plan Architect + 
 last_checkpoint: 2026-04-13T01:00:00Z
 last_session: session-012
 branch: claude/charming-lovelace (worktree)
-test_count: 382 passed, 7 skipped
+test_count: 415 passed, 7 skipped
 lint: ruff clean (src/zo/)
-validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge grep heuristic)
-prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft), #26 (training dashboard + test reports + phase templates)
+validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents)

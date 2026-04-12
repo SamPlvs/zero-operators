@@ -57,6 +57,47 @@ __all__ = [
 ]
 
 # ---------------------------------------------------------------------------
+# Custom agent template
+# ---------------------------------------------------------------------------
+
+
+def _render_custom_agent(spec: object) -> str:
+    """Render a custom agent definition from a ``CustomAgentSpec``."""
+    name_display = getattr(spec, "name", "custom").replace("-", " ").title()
+    model = getattr(spec, "model", "claude-sonnet-4-6")
+    role = getattr(spec, "role", "Custom specialist agent.")
+    return (
+        f"---\n"
+        f"name: {name_display}\n"
+        f"model: {model}\n"
+        f"role: {role}\n"
+        f"tier: phase-in\n"
+        f"team: project\n"
+        f"---\n\n"
+        f"You are **{name_display}**, a custom specialist agent.\n\n"
+        f"{role}\n\n"
+        f"## Coordination Rules\n\n"
+        f"- You are spawned by the Lead Orchestrator when your "
+        f"expertise is needed.\n"
+        f"- Communicate findings via SendMessage to the orchestrator "
+        f"and relevant peers.\n"
+        f"- Log significant decisions via the orchestrator for "
+        f"DECISION_LOG.md.\n"
+        f"- Follow all coding conventions: PEP8, type hints, Google "
+        f"docstrings, <500 line files, <50 line functions.\n"
+        f"- Do not modify files outside your assigned scope (the "
+        f"orchestrator defines your scope at spawn time).\n\n"
+        f"## Validation Checklist\n\n"
+        f"Before reporting done:\n\n"
+        f"- [ ] All deliverables produced as specified in your spawn "
+        f"contract\n"
+        f"- [ ] Findings communicated to relevant peers\n"
+        f"- [ ] No files modified outside assigned scope\n"
+        f"- [ ] Code follows project conventions\n"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Contract metadata lookups
 # ---------------------------------------------------------------------------
 
@@ -205,6 +246,8 @@ class Orchestrator:
 
     def decompose_plan(self) -> WorkflowDecomposition:
         """Decompose the plan into phases and agent contracts."""
+        self._ensure_custom_agents()
+
         mode = (
             self._plan.workflow.mode
             if self._plan.workflow
@@ -215,6 +258,11 @@ class Orchestrator:
         phases = factory()
 
         active = self._plan.agents.active_agents if self._plan.agents else []
+        # Include custom agents from the plan in the active list
+        if self._plan.agents and self._plan.agents.custom_agents:
+            for spec in self._plan.agents.custom_agents:
+                if spec.name not in active:
+                    active.append(spec.name)
         for phase in phases:
             phase.assigned_agents = self._agents_for_phase(phase.phase_id, active)
 
@@ -503,7 +551,14 @@ class Orchestrator:
 
     @staticmethod
     def _agents_for_phase(phase_id: str, active_agents: list[str]) -> list[str]:
-        return [a for a in active_agents if phase_id in AGENT_PHASE_MAP.get(a, [])]
+        result: list[str] = []
+        for a in active_agents:
+            phases = AGENT_PHASE_MAP.get(a)
+            # Custom agents (not in map) are available for all phases —
+            # the lead orchestrator decides when to actually spawn them.
+            if phases is None or phase_id in phases:
+                result.append(a)
+        return result
 
     def _compute_plan_hash(self) -> str:
         if self._plan.source_path and self._plan.source_path.exists():
@@ -663,16 +718,55 @@ class Orchestrator:
                 )
         return ("# Agent Contracts\n\n" + "\n\n".join(lines)) if lines else ""
 
+    def _ensure_custom_agents(self) -> None:
+        """Create agent definition files for plan-specified custom agents.
+
+        Writes ``.md`` files to ``.claude/agents/custom/`` for any custom
+        agents declared in the plan that don't already have definitions.
+        Existing files are reused (from previous projects).
+        """
+        if not self._plan.agents or not self._plan.agents.custom_agents:
+            return
+        custom_dir = self._zo_root / ".claude" / "agents" / "custom"
+        custom_dir.mkdir(parents=True, exist_ok=True)
+        for spec in self._plan.agents.custom_agents:
+            agent_path = custom_dir / f"{spec.name}.md"
+            if agent_path.exists():
+                self._comms.log_checkpoint(
+                    agent="orchestrator", phase="setup",
+                    subtask="custom-agent-reuse",
+                    progress=f"Reusing custom agent: {spec.name}",
+                )
+                continue
+            agent_md = _render_custom_agent(spec)
+            agent_path.write_text(agent_md, encoding="utf-8")
+            self._comms.log_decision(
+                agent="orchestrator",
+                title=f"Created custom agent: {spec.name}",
+                rationale=f"Plan specifies specialist not in core library: {spec.role}",
+                outcome="agent_created",
+            )
+
     def _prompt_roster(self) -> str:
         agents_dir = self._zo_root / ".claude" / "agents"
-        files = sorted(agents_dir.glob("*.md")) if agents_dir.is_dir() else []
-        roster = [f"- {f.stem}" for f in files]
-        return (
-            "# Agent Roster\n\nAvailable agents in `.claude/agents/`:\n"
-            + "\n".join(roster)
-            + "\n\nCreate new agent definitions if project requires "
-            "expertise not covered above."
+        core = sorted(agents_dir.glob("*.md")) if agents_dir.is_dir() else []
+        custom_dir = agents_dir / "custom"
+        custom = sorted(custom_dir.glob("*.md")) if custom_dir.is_dir() else []
+        # Exclude README from custom agents list
+        custom = [f for f in custom if f.stem.lower() != "readme"]
+
+        lines = ["# Agent Roster\n", "## Core Agents\n"]
+        lines.extend(f"- {f.stem}" for f in core)
+        if custom:
+            lines.append("\n## Custom Agents (from previous projects)\n")
+            lines.extend(f"- {f.stem}" for f in custom)
+        lines.append(
+            "\nCreate new specialists in `.claude/agents/custom/` "
+            "when the project needs expertise not covered above. "
+            "Custom agents can be any role: domain experts, data "
+            "scientists, researchers, testers, QA specialists, etc."
         )
+        return "\n".join(lines)
 
     def _prompt_memory(self) -> str:
         state = self.session_state
