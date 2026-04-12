@@ -402,6 +402,64 @@ class TestDraftCommand:
         plan_path = zo_root / "plans" / "test-draft.md"
         assert plan_path.exists()
 
+    def test_draft_from_description(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        zo_root = tmp_path / "zo"
+        zo_root.mkdir()
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli,
+                ["draft", "--project", "test-desc", "-d",
+                 "CIFAR-10 image classification with PyTorch CNN, target 90% accuracy"],
+            )
+
+        assert result.exit_code == 0
+        assert "Drafting plan for" in result.output
+        plan_path = zo_root / "plans" / "test-desc.md"
+        assert plan_path.exists()
+        content = plan_path.read_text()
+        assert "deep_learning" in content
+        assert "Accuracy" in content
+        assert "CIFAR-10" in content
+
+    def test_draft_interactive_prompt(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        zo_root = tmp_path / "zo"
+        zo_root.mkdir()
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli,
+                ["draft", "--project", "test-interactive", "--no-tmux"],
+                input="Random forest classifier for tabular sales data, target RMSE < 0.1\n",
+            )
+
+        assert result.exit_code == 0
+        plan_path = zo_root / "plans" / "test-interactive.md"
+        assert plan_path.exists()
+        content = plan_path.read_text()
+        assert "classical_ml" in content
+        assert "RMSE" in content
+
+    def test_draft_empty_input_aborts(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        zo_root = tmp_path / "zo"
+        zo_root.mkdir()
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli,
+                ["draft", "--project", "test-empty", "--no-tmux"],
+                input="\n",
+            )
+
+        assert result.exit_code == 1
+        assert "No description provided" in result.output
+
 
 # ---------------------------------------------------------------------------
 # gate-mode mapping
