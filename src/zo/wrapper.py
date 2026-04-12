@@ -307,18 +307,48 @@ class LifecycleWrapper:
         poll_interval: float = 10.0,
         timeout: float | None = None,
         on_status: Any | None = None,
+        gate_mode_file: Path | None = None,
     ) -> LeadProcess:
         """Poll until the lead session completes.
 
         In tmux mode, monitors the pane existence. In headless mode,
         polls the subprocess. Calls ``on_status(team_status)`` each
         cycle if provided, so the CLI can print live progress.
+
+        Args:
+            gate_mode_file: Optional path to the ``gate_mode`` file.
+                When provided, the wrapper re-reads the file each poll
+                cycle and logs when the mode changes (set via
+                ``zo gates set`` from another terminal).
         """
+        self._gate_mode_file = gate_mode_file
+        self._last_gate_mode: str | None = None
         if process.tmux_pane_id:
             return self._wait_tmux(process, poll_interval=poll_interval,
                                    timeout=timeout, on_status=on_status)
         return self._wait_headless(process, poll_interval=poll_interval,
                                    timeout=timeout, on_status=on_status)
+
+    def _check_gate_mode_change(self) -> None:
+        """Re-read the gate_mode file and log if the mode changed."""
+        gate_file = getattr(self, "_gate_mode_file", None)
+        if gate_file is None or not gate_file.exists():
+            return
+        try:
+            current = gate_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            return
+        last = getattr(self, "_last_gate_mode", None)
+        if last is None:
+            self._last_gate_mode = current
+            return
+        if current != last:
+            self._comms.log_checkpoint(
+                agent="wrapper", phase="lifecycle",
+                subtask="gate-mode-change",
+                progress=f"Gate mode changed: {last} -> {current}",
+            )
+            self._last_gate_mode = current
 
     def _wait_tmux(
         self,
@@ -333,6 +363,8 @@ class LifecycleWrapper:
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
 
         while True:
+            self._check_gate_mode_change()
+
             if not self._tmux_pane_alive(process.tmux_pane_id or ""):
                 process = process.model_copy(update={
                     "exit_code": 0, "completed_at": datetime.now(UTC),
@@ -374,6 +406,8 @@ class LifecycleWrapper:
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
 
         while True:
+            self._check_gate_mode_change()
+
             rc = self._proc.poll() if self._proc else -1
             if rc is not None:
                 self._close_log_handles()

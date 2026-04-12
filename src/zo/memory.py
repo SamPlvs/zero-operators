@@ -277,6 +277,33 @@ class MemoryManager:
             pass
         return None
 
+    # -- Gate mode file -------------------------------------------------------
+
+    def read_gate_mode(self) -> str | None:
+        """Read the current gate mode from the ``gate_mode`` file.
+
+        Returns:
+            The mode string (e.g. ``"supervised"``, ``"auto"``,
+            ``"full_auto"``) or ``None`` if the file does not exist.
+        """
+        path = self._memory_root / "gate_mode"
+        if not path.exists():
+            return None
+        try:
+            return path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+
+    def write_gate_mode(self, mode: str) -> None:
+        """Write the gate mode to the ``gate_mode`` file.
+
+        Args:
+            mode: One of ``"supervised"``, ``"auto"``, ``"full_auto"``.
+        """
+        self._memory_root.mkdir(parents=True, exist_ok=True)
+        path = self._memory_root / "gate_mode"
+        path.write_text(mode + "\n", encoding="utf-8")
+
     # -- Project initialization ---------------------------------------------
 
     def initialize_project(self) -> None:

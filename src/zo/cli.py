@@ -196,6 +196,7 @@ def _launch_and_monitor(
     orchestrator,  # noqa: ANN001
     semantic,  # noqa: ANN001
     no_tmux: bool,
+    gate_mode_file: Path | None = None,
 ) -> None:
     """Shared launch → monitor → end-session flow for all modes."""
     use_tmux = not no_tmux
@@ -345,7 +346,9 @@ def _launch_and_monitor(
         _maybe_print_headline()
         console.print()
 
-    process = wrapper.wait_for_completion(process, on_status=_print_status)
+    process = wrapper.wait_for_completion(
+        process, on_status=_print_status, gate_mode_file=gate_mode_file,
+    )
 
     if process.status == "completed":
         console.print("[green bold]Session completed successfully.[/]")
@@ -433,6 +436,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 
     # 6. Create Orchestrator
     gm = _gate_mode_from_str(gate_mode)
+    memory.write_gate_mode(gm.value)
     orchestrator = Orchestrator(
         plan=plan, target=target, memory=memory, comms=comms,
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
@@ -473,6 +477,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         orchestrator=orchestrator,
         semantic=semantic,
         no_tmux=no_tmux,
+        gate_mode_file=memory.memory_root / "gate_mode",
     )
 
 
@@ -642,6 +647,53 @@ def status(project_name: str) -> None:
         for s in recent:
             accomplished = ", ".join(s.accomplished[:3]) or "no summary"
             console.print(f"  {s.date} ({s.mode}): {accomplished}")
+
+
+@cli.group()
+def gates() -> None:
+    """Inspect and control gate modes for running projects."""
+
+
+@gates.command("set")
+@click.argument(
+    "mode",
+    type=click.Choice(["supervised", "auto", "full-auto"]),
+)
+@click.option(
+    "--project", "-p", required=True,
+    help="Project name whose gate mode to change.",
+)
+def gates_set(mode: str, project: str) -> None:
+    """Set the gate mode for a project mid-session.
+
+    Writes the mode to memory/{project}/gate_mode so that
+    the running orchestrator and wrapper pick it up dynamically.
+
+    Valid modes: supervised, auto, full-auto.
+
+    Usage::
+
+        zo gates set auto --project my-project
+        zo gates set full-auto -p my-project
+    """
+    from zo.memory import MemoryManager
+
+    zo_root = _zo_root()
+    memory = MemoryManager(project_dir=zo_root, project_name=project)
+
+    if not memory.memory_root.exists():
+        console.print(
+            f"[red bold]No memory found for '{project}'.[/] "
+            "Run [bold]zo init[/] or [bold]zo build[/] first."
+        )
+        raise SystemExit(1)
+
+    # Normalise CLI string to the GateMode enum value
+    gm = _gate_mode_from_str(mode)
+    memory.write_gate_mode(gm.value)
+
+    _show_banner(project=project, mode="gates", gate_mode=gm.value)
+    console.print(f"  Gate mode set to: [{_AMBER}]{gm.value}[/]")
 
 
 @cli.command()

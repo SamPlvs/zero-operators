@@ -25,7 +25,7 @@ class TestCliGroup:
     """Tests for the CLI group and its registered commands."""
 
     def test_cli_group_has_all_commands(self) -> None:
-        expected = {"build", "continue", "init", "status", "draft", "preflight"}
+        expected = {"build", "continue", "init", "status", "draft", "preflight", "gates"}
         actual = set(cli.commands.keys())
         assert expected == actual
 
@@ -489,3 +489,87 @@ class TestGateModeMapping:
 
         with pytest.raises(KeyError):
             _gate_mode_from_str("invalid")
+
+
+# ---------------------------------------------------------------------------
+# gates set command
+# ---------------------------------------------------------------------------
+
+
+class TestGatesSetCommand:
+    """Tests for the ``zo gates set`` command."""
+
+    def test_gates_set_writes_mode_file(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        # Set up minimal memory directory
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "auto", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        assert "Gate mode set to" in result.output
+
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.exists()
+        assert gate_file.read_text().strip() == "auto"
+
+    def test_gates_set_full_auto(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "full-auto", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.read_text().strip() == "full_auto"
+
+    def test_gates_set_supervised(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "supervised", "--project", "test-project"]
+            )
+
+        assert result.exit_code == 0
+        gate_file = mem_root / "gate_mode"
+        assert gate_file.read_text().strip() == "supervised"
+
+    def test_gates_set_invalid_mode(
+        self, runner: click.testing.CliRunner
+    ) -> None:
+        result = runner.invoke(
+            cli, ["gates", "set", "yolo", "--project", "test-project"]
+        )
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output
+
+    def test_gates_set_missing_project(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["gates", "set", "auto", "--project", "nonexistent"]
+            )
+
+        assert result.exit_code == 1
+        assert "No memory found" in result.output
+
+    def test_gates_set_requires_project_option(
+        self, runner: click.testing.CliRunner
+    ) -> None:
+        result = runner.invoke(cli, ["gates", "set", "auto"])
+        assert result.exit_code != 0
