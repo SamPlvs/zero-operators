@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo setup in progress on new machine**. setup.sh now auto-fixes missing deps (uv, Claude CLI, global settings) with interactive prompt. Environment bootstrapped successfully. 338 tests, ruff clean, validate-docs 9/9. PR #22 merged for setup auto-fix.
+ZO v1.0.2-pre — **CIFAR-10 demo running**. Full UX overhaul: setup.sh auto-fixes deps, zo draft works without source docs (conversational), brand banner on all commands, production-grade phase definitions with cross-cutting agents. 341 tests, ruff clean, validate-docs 9/9. PRs #22-#25.
 
 ## Completed
 
@@ -45,6 +45,13 @@ ZO v1.0.2-pre — **CIFAR-10 demo setup in progress on new machine**. setup.sh n
 - [x] v1.0.2-pre: Claude CLI install updated to official curl method (replaced deprecated npm install)
 - [x] v1.0.2-pre: setup.sh verifies zo CLI callable on PATH (check #11), auto-fixes via symlink to ~/.local/bin/
 - [x] v1.0.2-pre: setup.sh deps check upgraded from dry-run to actual `uv sync`
+- [x] v1.0.2-pre: zo draft works without source docs — conversational, description-based, or interactive prompt
+- [x] v1.0.2-pre: Draft plans write to main repo (not worktrees) via _main_repo_root()
+- [x] v1.0.2-pre: Draft session wrap-up — Claude asks "anything else?" then tells user to /exit and run zo build
+- [x] v1.0.2-pre: Brand banner (_show_banner) on all 6 CLI commands (build, draft, init, status, preflight, continue)
+- [x] v1.0.2-pre: Phase 1 enriched — 13 subtasks (was 7), 5 agents (was 2) for production data workflows
+- [x] v1.0.2-pre: Cross-cutting agents — code-reviewer + research-scout default on ALL phases, all workflow modes
+- [x] v1.0.2-pre: README updated — zo draft docs reflect conversational flow + new usage patterns
 
 ## Known Issues
 
@@ -57,7 +64,7 @@ ZO v1.0.2-pre — **CIFAR-10 demo setup in progress on new machine**. setup.sh n
 
 ## What's Next
 
-1. **CIFAR-10 demo** — environment ready, run `zo build plans/cifar10.md` next
+1. **CIFAR-10 demo** — running, plan drafted, zo build in progress
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Phase summary reports (B3) — markdown reports per phase with embedded plots
 4. Domain evaluator refactor — make project-specific via plan.md domain priors
@@ -66,10 +73,10 @@ ZO v1.0.2-pre — **CIFAR-10 demo setup in progress on new machine**. setup.sh n
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-12T20:00:00Z
+last_checkpoint: 2026-04-12T22:00:00Z
 last_session: session-011
 branch: claude/eloquent-poincare (worktree)
-test_count: 338 passed, 7 skipped
+test_count: 341 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
-pr: #22 (feat: setup auto-fix)
+prs: #22 (setup auto-fix), #23 (zo CLI install), #24 (conversational draft), #25 (banner + phases + worktree draft)
