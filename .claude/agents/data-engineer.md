@@ -33,20 +33,28 @@ Own and manage these directories and files exclusively:
 
 ### Data Quality Report
 
-File: `data/reports/data_quality_report.md`
-Format: Markdown with structured sections.
-Example:
+File: `reports/data_quality_report.md`
+Format: **Follow the Phase 1 Data Quality Report template in `specs/report_templates.md`.**
+
+The template has 10 required sections: Schema Validation, Completeness Analysis, Distribution Analysis, Outlier Analysis, Target/Class Analysis, Temporal Analysis, Correlation & Multicollinearity, Drift Baseline, Data Split Report, and Recommendations. Each section must have real data — no placeholders. Mark sections "N/A" with rationale if not applicable.
+
+This report is the primary artifact reviewed at Gate 1. It must be comprehensive enough for a domain expert to assess data readiness.
+
+Abbreviated example:
 ```markdown
 # Data Quality Report
 Generated: 2026-04-09T14:00:00Z
 Source: data/raw/dataset_v1.csv
 
-## Completeness
+## 1. Schema Validation
+(see specs/report_templates.md for full structure)
+
+## 2. Completeness Analysis
 - Total rows: 50,000
 - Missing values: feature_a (2.1%), feature_b (0.0%), target (0.0%)
 - Action taken: feature_a NaN filled with median (documented in transforms.py)
 
-## Class Distribution
+## 5. Target / Class Analysis
 - Class 0: 35,000 (70%)
 - Class 1: 15,000 (30%)
 - Imbalance ratio: 2.33:1 (within acceptable range)

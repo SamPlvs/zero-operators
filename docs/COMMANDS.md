@@ -70,6 +70,16 @@ zo gates set MODE --project NAME
 
 `MODE` is one of: `supervised` (human approves every gate), `auto` (orchestrator approves unless ambiguous), `full-auto` (all gates auto-approved).
 
+### zo watch-training
+
+Live training metrics dashboard. Tails `logs/training/metrics.jsonl` in the delivery repo and renders a persistent Rich panel with epoch progress, loss/metrics table, checkpoint log, and loss sparkline. Auto-launched by `zo build` during Phase 4 via tmux split-pane.
+
+```
+zo watch-training --project NAME [-i INTERVAL]
+```
+
+`INTERVAL` (default: 2.0) is the refresh rate in seconds. The dashboard shows current and best metrics, ETA, and the oracle target threshold from `plan.md`.
+
 ---
 
 ## Slash Commands
