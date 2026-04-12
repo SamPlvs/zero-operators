@@ -449,6 +449,8 @@ def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
 
     Finds plans/{project_name}.md and runs zo build on it.
     """
+    _show_banner(project=project_name, mode="continue")
+
     zo_root = _zo_root()
     plan_path = zo_root / "plans" / f"{project_name}.md"
     if not plan_path.exists():
@@ -483,6 +485,8 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
     With --scaffold-delivery PATH, also creates a delivery repo layout
     with data/, src/, Docker files, and a bare pyproject.toml.
     """
+    _show_banner(project=project_name, mode="init")
+
     zo_root = _zo_root()
 
     # Initialize memory
@@ -535,6 +539,8 @@ def init(project_name: str, scaffold_delivery: str | None) -> None:
 @click.argument("project_name")
 def status(project_name: str) -> None:
     """Show current project status from STATE.md."""
+    _show_banner(project=project_name, mode="status")
+
     from zo.memory import MemoryManager
 
     zo_root = _zo_root()
@@ -586,6 +592,8 @@ def preflight(plan_file: Path, target_repo: Path | None) -> None:
     Runs local-only checks: CLI availability, plan validation, agent
     definitions, memory round-trip, Docker, and GPU availability.
     """
+    _show_banner(mode="preflight")
+
     from zo.preflight import run_preflight
 
     zo_root = _zo_root()
@@ -639,6 +647,8 @@ def draft(
         zo draft --project my-project
     """
     from zo.draft import PlanDrafter
+
+    _show_banner(project=project, mode="draft")
 
     zo_root = _zo_root()
     main_root = _main_repo_root()
