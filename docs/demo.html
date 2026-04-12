@@ -948,6 +948,7 @@
   <div class="tab" onclick="switchTab('pipeline')">ML Pipeline</div>
   <div class="tab" onclick="switchTab('commands')">Commands</div>
   <div class="tab" onclick="switchTab('mnist')">MNIST Demo</div>
+  <div class="tab" onclick="switchTab('sample')">Sample Project</div>
   <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"></button>
 </div>
 
@@ -1822,6 +1823,128 @@
 </div>
 
 <!-- ═════════════════════════════════════════
+     SAMPLE PROJECT — CIFAR-10
+═════════════════════════════════════════ -->
+<div class="panel" id="panel-sample">
+
+  <h1>SAMPLE PROJECT</h1>
+  <div class="subtitle">CIFAR-10 walkthrough -- test your ZO setup end-to-end</div>
+
+  <div class="section-label">Quick Start</div>
+
+  <h3>1. Initialize</h3>
+  <pre class="code-block"><code>zo init cifar10-demo
+mkdir -p ~/projects/cifar10-delivery && cd ~/projects/cifar10-delivery && git init && cd -
+zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery</code></pre>
+
+  <h3>2. Write Plan</h3>
+  <p>Edit <code>plans/cifar10-demo.md</code> with CIFAR-10 config. Key fields:</p>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 24px;">
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px; margin-bottom: 4px;">Oracle</div>
+      <div style="color: #8a7a40; font-size: 12px;">Test accuracy >= 0.85 (Tier 2)</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px; margin-bottom: 4px;">Workflow</div>
+      <div style="color: #8a7a40; font-size: 12px;">deep_learning mode, 6 phases</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px; margin-bottom: 4px;">Agents</div>
+      <div style="color: #8a7a40; font-size: 12px;">7 active (lead, data, model, oracle, review, test, research)</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px; margin-bottom: 4px;">Gates</div>
+      <div style="color: #8a7a40; font-size: 12px;">Gate 2 + Gate 5 blocking (human review)</div>
+    </div>
+  </div>
+
+  <h3>3. Build Docker + Preflight</h3>
+  <pre class="code-block"><code># Build delivery container
+cd ~/projects/cifar10-delivery && docker compose build && cd -
+
+# Validate everything
+zo preflight plans/cifar10-demo.md --target-repo ~/projects/cifar10-delivery</code></pre>
+
+  <h3>4. Launch</h3>
+  <pre class="code-block"><code>zo build plans/cifar10-demo.md --gate-mode supervised</code></pre>
+
+  <div class="section-label">What Happens</div>
+
+  <div class="timeline">
+    <div class="timeline-item highlight">
+      <div class="timeline-phase">Phase 1 -- Data Pipeline</div>
+      <div class="timeline-desc">CIFAR-10 auto-download, DataLoaders with train/val/test splits, augmentation. Automated gate.</div>
+      <div class="timeline-commit">artifacts: data_quality_report.md, eda_summary.png, notebooks/phase_1.ipynb</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 2 -- Input Representation</div>
+      <div class="timeline-desc">Normalization strategy, augmentation config (random crop, flip, color jitter). Blocking gate -- you review.</div>
+      <div class="timeline-commit">artifacts: feature_selection_report.md, notebooks/phase_2.ipynb</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 3 -- Model Design</div>
+      <div class="timeline-desc">CNN architecture (ResNet-style or custom), loss function, optimizer + LR schedule. Automated gate.</div>
+      <div class="timeline-commit">artifacts: architecture_rationale.md, notebooks/phase_3.ipynb</div>
+    </div>
+    <div class="timeline-item highlight">
+      <div class="timeline-phase">Phase 4 -- Training</div>
+      <div class="timeline-desc">Training inside Docker container (docker compose run --rm gpu python src/train.py). Iterates until oracle threshold met.</div>
+      <div class="timeline-commit">artifacts: training_report.md, training_curves.png, best_model.pt, notebooks/phase_4.ipynb</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 5 -- Analysis</div>
+      <div class="timeline-desc">GradCAM visualizations, confusion matrix, per-class accuracy, ablation study. Blocking gate -- you review.</div>
+      <div class="timeline-commit">artifacts: analysis_report.md, confusion_matrix.png, notebooks/phase_5.ipynb</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Phase 6 -- Packaging</div>
+      <div class="timeline-desc">Inference script, model card, validation report, test suite. Automated gate.</div>
+      <div class="timeline-commit">artifacts: model_card.md, validation_report.md, inference.py, notebooks/phase_6.ipynb</div>
+    </div>
+  </div>
+
+  <div class="section-label">Validation Checklist</div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 24px;">
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Phase persistence</div>
+      <div style="color: #8a7a40; font-size: 11px;">Stop mid-run, zo build again -- resumes correct phase</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Gate handling</div>
+      <div style="color: #8a7a40; font-size: 11px;">Supervised mode pauses at Gate 2 and Gate 5</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Artifact contracts</div>
+      <div style="color: #8a7a40; font-size: 11px;">Reports + figures appear in delivery repo</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Auto notebooks</div>
+      <div style="color: #8a7a40; font-size: 11px;">.ipynb files in notebooks/ after each phase</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Docker compute</div>
+      <div style="color: #8a7a40; font-size: 11px;">Training runs inside container with GPU</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Repo isolation</div>
+      <div style="color: #8a7a40; font-size: 11px;">No ZO files in delivery repo</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Session continuity</div>
+      <div style="color: #8a7a40; font-size: 11px;">tmux detach + reattach, agents still working</div>
+    </div>
+    <div class="stat-item scanlines" style="padding: 12px 16px;">
+      <div style="color: var(--amber); font-size: 13px;">Comms logging</div>
+      <div style="color: #8a7a40; font-size: 11px;">JSONL events in logs/comms/</div>
+    </div>
+  </div>
+
+  <p>Full step-by-step guide: <code>docs/SAMPLE_PROJECT.md</code></p>
+
+</div>
+
+<!-- ═════════════════════════════════════════
      JAVASCRIPT
 ═════════════════════════════════════════ -->
 <!-- ═════════════════════════════════════════
@@ -1856,7 +1979,7 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
 
   const tabs = document.querySelectorAll('.tab');
-  const tabNames = ['overview', 'workflow', 'agents', 'pipeline', 'commands', 'mnist'];
+  const tabNames = ['overview', 'workflow', 'agents', 'pipeline', 'commands', 'mnist', 'sample'];
   const idx = tabNames.indexOf(name);
   if (idx >= 0) tabs[idx].classList.add('active');
 
