@@ -809,9 +809,16 @@ def draft(
         prompt_file.parent.mkdir(parents=True, exist_ok=True)
         prompt_file.write_text(draft_prompt, encoding="utf-8")
 
+        # Kill any existing draft window for this project (prevent orphans)
+        window_name = f"draft-{project}"
+        __import__("subprocess").run(
+            ["tmux", "kill-window", "-t", window_name],
+            capture_output=True, text=True, timeout=5,
+        )
+
         # Launch interactive claude session
         result = __import__("subprocess").run(
-            ["tmux", "new-window", "-d", "-n", f"draft-{project}",
+            ["tmux", "new-window", "-d", "-n", window_name,
              "-P", "-F", "#{pane_id}"],
             capture_output=True, text=True, timeout=10,
         )

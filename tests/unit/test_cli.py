@@ -399,7 +399,8 @@ class TestDraftCommand:
 
         with patch("zo.cli._zo_root", return_value=zo_root):
             result = runner.invoke(
-                cli, ["draft", str(source_dir), "--project", "test-draft"]
+                cli, ["draft", str(source_dir), "--project", "test-draft",
+                      "--no-tmux"]
             )
 
         assert result.exit_code == 0
@@ -417,7 +418,8 @@ class TestDraftCommand:
             result = runner.invoke(
                 cli,
                 ["draft", "--project", "test-desc", "-d",
-                 "CIFAR-10 image classification with PyTorch CNN, target 90% accuracy"],
+                 "CIFAR-10 image classification with PyTorch CNN, target 90% accuracy",
+                 "--no-tmux"],
             )
 
         assert result.exit_code == 0
