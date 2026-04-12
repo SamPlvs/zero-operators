@@ -283,3 +283,73 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
    All phase-exit logic (artifact checks, notebook generation, comms logging)
    routes through advance_phase() for automated gates and apply_human_decision()
    for human gates. New phase-exit behaviors must be wired into both paths.
+
+---
+
+## PR-010: macOS Bash 3.2 Breaks Empty Array Checks Under set -u
+**Source:** Session 011 (2026-04-12), setup.sh --fix silent failure
+**Root cause category:** missing_rule
+**Failure:** setup.sh auto-fix block never triggered despite --fix flag. Bash 3.2.57 (macOS default) throws "unbound variable" on `${#ARRAY[@]}` when the array is empty and `set -u` is active. The error silently killed the auto-fix conditional.
+
+### Rules
+
+1. **Never use bash arrays with `set -u` if the script must run on macOS.**
+   macOS ships bash 3.2 (2007). Empty arrays + `set -u` = silent failure.
+   Use string variables with word splitting or integer counters instead.
+
+2. **Always test shell scripts on bash 3.2 when targeting macOS.**
+   `bash --version` on macOS returns 3.2.57. Scripts that work on bash 5+
+   (Linux, Homebrew) can silently break on stock macOS. Run `bash -n` for
+   syntax, but also test runtime behavior with actual bash 3.2.
+
+3. **Setup/bootstrap scripts must be maximally portable.**
+   These run on the widest variety of environments (fresh machines, CI,
+   different OS versions). Avoid bashisms that require 4.0+: associative
+   arrays, `${!var}`, `${array[@]}` with nounset, `&>`, `|&`.
+
+---
+
+## PR-011: Setup Scripts Should Auto-Fix, Not Just Report
+**Source:** Session 011 (2026-04-12), CIFAR-10 demo on new machine
+**Root cause category:** missing_rule
+**Failure:** User hit 3 setup failures, all with known install commands printed in the error messages. Had to manually copy-paste each command. First fix added --fix flag, but user pointed out this shouldn't require a flag — if the fix is known, just offer to run it.
+
+### Rules
+
+1. **If the fix is known and safe, offer to run it interactively.**
+   Report-only error messages with "run this command" are a UX anti-pattern
+   when the script already knows the command. Prompt "Install now? [Y/n]"
+   with Enter as default-yes.
+
+2. **After auto-fixing, re-run validation to confirm.**
+   Use `exec "$0"` to re-validate from scratch. Don't assume the fix worked
+   — prove it by passing the same checks that originally failed.
+
+3. **Keep install commands up to date in setup scripts.**
+   The Claude CLI install changed from npm to curl. Stale install commands
+   in setup scripts cause silent failures or confusion. When a dependency
+   changes its install method, update all references.
+
+---
+
+## PR-012: uv sync Does Not Put CLI Entry Points on PATH
+**Source:** Session 011 (2026-04-12), CIFAR-10 demo — `zo: command not found`
+**Root cause category:** missing_rule
+**Failure:** User ran `uv sync`, then `zo init` → "command not found". `uv sync` installs into `.venv/bin/` which is not on PATH when the user has conda, system Python, or any non-venv shell active. setup.sh checked that deps "resolve" (dry-run) but never verified the CLI was callable.
+
+### Rules
+
+1. **Checking ≠ installing ≠ callable.**
+   setup.sh must verify the full chain: (1) deps resolve, (2) deps installed,
+   (3) CLI entry points are on PATH and executable. A dry-run check that
+   passes means nothing if the user can't type the command.
+
+2. **`uv sync` isolates into `.venv/` — symlink entry points to `~/.local/bin/`.**
+   After `uv sync`, the `zo` binary lives at `.venv/bin/zo`. Users with conda,
+   pyenv, or system Python won't have `.venv/bin/` on PATH. Fix: symlink
+   `.venv/bin/zo` → `~/.local/bin/zo` (already on PATH from uv's own install).
+
+3. **Setup scripts must leave the user with a working command, not a working venv.**
+   The success criterion for setup is "can the user type `zo build` and have
+   it work?" — not "are dependencies resolved?". Test from the user's
+   perspective, not the package manager's.
