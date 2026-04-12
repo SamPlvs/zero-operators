@@ -93,6 +93,51 @@ class TestStateRoundTrip:
         assert loaded.last_completed_subtask is None
         assert loaded.git_head is None
 
+    def test_phase_states_round_trip(self, mm: MemoryManager) -> None:
+        state = SessionState(
+            timestamp=datetime(2026, 4, 12, 10, 0, 0, tzinfo=UTC),
+            phase="phase_3",
+            phase_states={
+                "phase_1": "completed",
+                "phase_2": "completed",
+                "phase_3": "active",
+                "phase_4": "pending",
+            },
+            completed_subtasks_by_phase={
+                "phase_1": ["Data audit", "Data hygiene", "EDA"],
+                "phase_2": ["Feature selection", "Domain validation"],
+                "phase_3": ["Architecture selection"],
+                "phase_4": [],
+            },
+        )
+        mm.write_state(state)
+        loaded = mm.read_state()
+
+        assert loaded.phase == "phase_3"
+        assert loaded.phase_states == {
+            "phase_1": "completed",
+            "phase_2": "completed",
+            "phase_3": "active",
+            "phase_4": "pending",
+        }
+        assert loaded.completed_subtasks_by_phase["phase_1"] == [
+            "Data audit", "Data hygiene", "EDA",
+        ]
+        assert loaded.completed_subtasks_by_phase["phase_2"] == [
+            "Feature selection", "Domain validation",
+        ]
+        assert loaded.completed_subtasks_by_phase["phase_3"] == ["Architecture selection"]
+        assert loaded.completed_subtasks_by_phase["phase_4"] == []
+
+    def test_empty_phase_states_round_trip(self, mm: MemoryManager) -> None:
+        """Backward compat: STATE.md without ## Phases section still parses."""
+        state = SessionState(phase="phase_1")
+        mm.write_state(state)
+        loaded = mm.read_state()
+
+        assert loaded.phase_states == {}
+        assert loaded.completed_subtasks_by_phase == {}
+
 
 # ---------------------------------------------------------------------------
 # Atomic write

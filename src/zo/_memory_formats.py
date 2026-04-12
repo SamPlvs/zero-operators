@@ -62,7 +62,16 @@ def render_state(state: SessionState) -> str:
         f"git_head: {state.git_head or 'null'}",
         f"context_window_usage: {state.context_window_usage}",
     ]
+    if state.phase_states:
+        lines.append("")
+        lines.append("## Phases")
+        for pid, status in state.phase_states.items():
+            subtasks = state.completed_subtasks_by_phase.get(pid, [])
+            lines.append(f"{pid}: {status} {_format_list(subtasks)}")
     return "\n".join(lines) + "\n"
+
+
+_PHASE_LINE_RE = re.compile(r"^(phase_\d+):\s*(\w+)\s*(.*)")
 
 
 def parse_state(text: str) -> SessionState:
@@ -72,13 +81,29 @@ def parse_state(text: str) -> SessionState:
         ValueError: If the text cannot be parsed.
     """
     kv: dict[str, str] = {}
+    phase_states: dict[str, str] = {}
+    completed_by_phase: dict[str, list[str]] = {}
+    in_phases_section = False
+
     for line in text.splitlines():
-        line = line.strip()
-        if line.startswith("#") or not line:
+        stripped = line.strip()
+        if stripped == "## Phases":
+            in_phases_section = True
             continue
-        if ":" not in line:
+        if stripped.startswith("## ") and in_phases_section:
+            in_phases_section = False
+        if in_phases_section:
+            m = _PHASE_LINE_RE.match(stripped)
+            if m:
+                pid, status, rest = m.group(1), m.group(2), m.group(3)
+                phase_states[pid] = status
+                completed_by_phase[pid] = _parse_bracket_list(rest)
             continue
-        key, _, value = line.partition(":")
+        if stripped.startswith("#") or not stripped:
+            continue
+        if ":" not in stripped:
+            continue
+        key, _, value = stripped.partition(":")
         kv[key.strip()] = value.strip()
 
     if not kv:
@@ -99,6 +124,9 @@ def parse_state(text: str) -> SessionState:
     if "git_head" in kv:
         val = kv["git_head"]
         kwargs["git_head"] = None if val == "null" else val
+    if phase_states:
+        kwargs["phase_states"] = phase_states
+        kwargs["completed_subtasks_by_phase"] = completed_by_phase
     return SessionState(**kwargs)
 
 
