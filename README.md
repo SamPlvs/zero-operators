@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-298_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-334_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -119,9 +119,18 @@ Accepts **multiple file and directory paths**. Indexes all source documents, gen
 
 ```bash
 zo init my-project
+zo init my-project --scaffold-delivery /path/to/delivery-repo
 ```
 
-Creates: `memory/`, `targets/`, `plans/` with template files for the project.
+Creates: `memory/`, `targets/`, `plans/` with template files for the project. With `--scaffold-delivery`, also creates the delivery repo layout with standard ML directory structure, multi-stage Dockerfile, and docker-compose.yml for GPU compute.
+
+### `zo preflight` — Validate before launch
+
+```bash
+zo preflight plans/my-project.md --target-repo /path/to/delivery
+```
+
+Runs local-only validation: Claude CLI, tmux, plan parsing, agent definitions, memory round-trip, Docker, GPU availability. Fix failures before running `zo build`.
 
 ### `zo status` — Check current state
 
@@ -366,7 +375,7 @@ zero-operators/
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
 ├── logs/                       # JSONL audit trails
 ├── targets/                    # Delivery repo configuration
-├── tests/                      # 298 tests (unit + integration)
+├── tests/                      # 334 tests (unit + integration)
 ├── setup.sh                    # Environment validation (10 checks)
 └── pyproject.toml              # Python package config
 ```
@@ -406,7 +415,7 @@ mnist-delivery/          ← delivery repo (clean)
 
 ## Status
 
-**v1.0.1 — All phases complete. Validated end-to-end. Interactive tmux sessions working.**
+**v1.0.1 — All phases complete. Validated end-to-end. Pre-IVL F5 hardening done.**
 
 | Phase | What | Status |
 |-------|------|--------|
@@ -417,8 +426,9 @@ mnist-delivery/          ← delivery repo (clean)
 | 4 | Evolution engine, CLI, integration tests | Done |
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
+| pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
 
-298 platform tests. ruff clean. 17 agents. 24 slash commands.
+334 platform tests. ruff clean. 17 agents. 24 slash commands.
 
 ---
 

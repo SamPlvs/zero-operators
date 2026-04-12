@@ -54,6 +54,11 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.AUTOMATED,
             depends_on=[],
+            required_artifacts=[
+                "reports/data_quality_report.md",
+                "reports/figures/eda_summary.png",
+                "data/processed/",
+            ],
         ),
         PhaseDefinition(
             phase_id="phase_2",
@@ -65,6 +70,10 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.BLOCKING,
             depends_on=["phase_1"],
+            required_artifacts=[
+                "reports/feature_selection_report.md",
+                "reports/figures/feature_importance.png",
+            ],
         ),
         PhaseDefinition(
             phase_id="phase_3",
@@ -80,6 +89,9 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_2"],
+            required_artifacts=[
+                "reports/architecture_rationale.md",
+            ],
         ),
         PhaseDefinition(
             phase_id="phase_4",
@@ -91,6 +103,11 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_3"],
+            required_artifacts=[
+                "reports/training_report.md",
+                "reports/figures/training_curves.png",
+                "models/",
+            ],
         ),
         PhaseDefinition(
             phase_id="phase_5",
@@ -108,6 +125,10 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.BLOCKING,
             depends_on=["phase_4"],
+            required_artifacts=[
+                "reports/analysis_report.md",
+                "reports/figures/confusion_matrix.png",
+            ],
         ),
         PhaseDefinition(
             phase_id="phase_6",
@@ -119,6 +140,11 @@ def classical_ml_phases() -> list[PhaseDefinition]:
             ],
             gate_type=GateType.AUTOMATED,
             depends_on=["phase_5"],
+            required_artifacts=[
+                "reports/model_card.md",
+                "reports/validation_report.md",
+                "src/inference.py",
+            ],
         ),
     ]
 

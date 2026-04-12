@@ -173,3 +173,62 @@ Three-layer defense against doc-codebase drift:
 3. **Layer 3 — Explicit cascade mappings** (CLAUDE.md):
    File-to-file cascade chains for agent, command, version, and tier changes.
    No ambiguity about which files to update.
+
+---
+
+## PR-006: Ephemeral In-Memory State Must Be Persisted If It Crosses Sessions
+**Source:** Session 010 (2026-04-12), phase persistence bug fix
+**Root cause category:** missing_rule
+**Failure:** `decompose_plan()` created fresh PhaseDefinition objects on every call,
+discarding all in-memory phase progress. `end_session()` only wrote scalar fields
+(phase name, last subtask) but not the per-phase status map or completed subtask lists.
+
+### Rules
+
+1. **Any in-memory state that must survive across sessions needs a persistence path.**
+   PhaseDefinition.status and .completed_subtasks were tracked in memory but never
+   serialized. The fix: `phase_states` and `completed_subtasks_by_phase` fields on
+   SessionState, rendered to a `## Phases` section in STATE.md.
+   - *Failure ref:* Second `zo build` call always restarted from phase_1.
+
+2. **Factory functions that create fresh objects must check for saved state.**
+   `decompose_plan()` calls `factory()` which returns default-initialized phases.
+   A `_restore_phase_states()` step must follow to rehydrate from saved state.
+   - *Failure ref:* Line 222 of orchestrator.py unconditionally set phase to phases[0].
+
+3. **Round-trip tests are mandatory for any persisted state.**
+   The fix included 5 tests: full round-trip, backward compat (old STATE.md format),
+   partial progress restoration, and GATED phase detection.
+
+### Verified Solution
+
+1. SessionState extended with `phase_states: dict[str, str]` and `completed_subtasks_by_phase: dict[str, list[str]]`
+2. STATE.md format extended with `## Phases` section (backward compatible — old format still parses)
+3. `decompose_plan()` → `_restore_phase_states()` rehydrates after factory()
+4. `end_session()` → `_capture_phase_states()` serializes before write
+
+---
+
+## PR-007: Docker Builds — Layer Order and Caching Are Everything
+**Source:** Session 010 (2026-04-12), Docker template design from user's R&D setup analysis
+**Root cause category:** novel_case
+**Failure:** User's existing Docker setup took 30+ minutes to build and required full
+rebuild on any dependency change. Root causes: `--no-cache` flag, venv inside Docker,
+pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
+
+### Rules
+
+1. **Never use `--no-cache` on `docker build` unless debugging.**
+   Layer caching is the primary mechanism for fast rebuilds. `--no-cache` defeats it entirely.
+
+2. **Multi-stage builds: least-changing → most-changing.**
+   Stage 1: base image (CUDA). Stage 2: tooling (uv). Stage 3: deps (pyproject.toml).
+   Stage 4: code (COPY .). Code changes rebuild only stage 4 (~1 second).
+
+3. **No venv inside Docker.** Docker IS the isolation. Venv adds complexity and confusion.
+
+4. **Use uv, not pip.** 50-100x faster dependency resolution and installation.
+   `uv sync --frozen` with a lock file gives deterministic, fast installs.
+
+5. **Keep base template bare minimum.** Only git, curl, tmux, sudo in template.
+   Agents add project-specific packages based on plan.md requirements.

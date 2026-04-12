@@ -438,7 +438,13 @@ def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
 
 @cli.command("init")
 @click.argument("project_name")
-def init(project_name: str) -> None:
+@click.option(
+    "--scaffold-delivery",
+    type=click.Path(),
+    default=None,
+    help="Create standard ML project layout with Docker support at PATH.",
+)
+def init(project_name: str, scaffold_delivery: str | None) -> None:
     """Initialize a new project scaffold.
 
     Creates:
@@ -448,6 +454,9 @@ def init(project_name: str) -> None:
     - memory/{project_name}/sessions/
     - targets/{project_name}.target.md (template)
     - plans/{project_name}.md (template with all 8 required sections)
+
+    With --scaffold-delivery PATH, also creates a delivery repo layout
+    with data/, src/, Docker files, and a bare pyproject.toml.
     """
     zo_root = _zo_root()
 
@@ -483,6 +492,12 @@ def init(project_name: str) -> None:
         console.print(f"[green]Plan template created:[/] {plan_path}")
     else:
         console.print(f"[{_DIM}]Plan already exists:[/] {plan_path}")
+
+    # Optional delivery repo scaffold
+    if scaffold_delivery is not None:
+        from zo.scaffold import scaffold_delivery as _scaffold
+
+        _scaffold(Path(scaffold_delivery), project_name)
 
     console.print(f"\n[{_AMBER}]Project '{project_name}' scaffolded.[/]")
     console.print("Next steps:")
@@ -532,6 +547,45 @@ def status(project_name: str) -> None:
         for s in recent:
             accomplished = ", ".join(s.accomplished[:3]) or "no summary"
             console.print(f"  {s.date} ({s.mode}): {accomplished}")
+
+
+@cli.command()
+@click.argument("plan_file", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--target-repo", "-t", type=click.Path(path_type=Path), default=None,
+    help="Path to the delivery repository to validate.",
+)
+def preflight(plan_file: Path, target_repo: Path | None) -> None:
+    """Validate a project is ready for zo build.
+
+    Runs local-only checks: CLI availability, plan validation, agent
+    definitions, memory round-trip, Docker, and GPU availability.
+    """
+    from zo.preflight import run_preflight
+
+    zo_root = _zo_root()
+    report = run_preflight(plan_file, zo_root, target_repo)
+
+    for check in report.checks:
+        if check.passed:
+            icon = "[green bold]PASS[/]"
+        elif check.warning:
+            icon = "[yellow bold]WARN[/]"
+        else:
+            icon = "[red bold]FAIL[/]"
+        console.print(f"  {icon}  {check.name}: {check.message}")
+
+    console.print()
+    total = len(report.checks)
+    console.print(
+        f"  [{_AMBER}]{report.passed}/{total} passed[/], "
+        f"{report.warnings} warnings, {report.failed} failures"
+    )
+
+    if not report.all_passed:
+        console.print(f"\n  [{_AMBER}]Fix failures before running zo build.[/]")
+        raise SystemExit(1)
+    console.print(f"\n  [{_AMBER}]Ready for zo build.[/]")
 
 
 @cli.command()
