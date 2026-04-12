@@ -15,10 +15,13 @@ RESET='\033[0m'
 PASS=0
 FAIL=0
 WARN=0
+FIXABLE_COUNT=0
+FIXABLE_ITEMS=""
 
 pass() { echo -e "  ${GREEN}✓${RESET} $1"; ((PASS++)); }
 fail() { echo -e "  ${RED}✗${RESET} $1"; ((FAIL++)); }
 warn() { echo -e "  ${AMBER}!${RESET} $1"; ((WARN++)); }
+fixable() { FIXABLE_ITEMS="$FIXABLE_ITEMS $1"; ((FIXABLE_COUNT++)); }
 
 echo -e "${AMBER}━━━ Zero Operators Setup ━━━${RESET}"
 echo ""
@@ -45,6 +48,7 @@ if command -v uv &>/dev/null; then
     pass "uv ($UV_VERSION)"
 else
     fail "uv not found — install: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    fixable "uv"
 fi
 
 # 3. Claude Code CLI
@@ -52,7 +56,8 @@ echo -e "${DIM}Checking Claude Code CLI...${RESET}"
 if command -v claude &>/dev/null; then
     pass "Claude Code CLI available"
 else
-    fail "Claude Code CLI not found — install: npm install -g @anthropic-ai/claude-code"
+    fail "Claude Code CLI not found — install: curl -fsSL https://claude.ai/install.sh | bash"
+    fixable "claude"
 fi
 
 # 4. Agent teams enabled
@@ -63,9 +68,11 @@ if [[ -f "$SETTINGS_FILE" ]]; then
         pass "Agent teams enabled in global settings"
     else
         fail "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not set in $SETTINGS_FILE"
+        fixable "agent-teams-env"
     fi
 else
     fail "Global settings not found at $SETTINGS_FILE"
+    fixable "global-settings"
 fi
 
 # 5. Project settings.json
@@ -154,6 +161,99 @@ if [[ $DIR_OK -eq ${#DIRS[@]} ]]; then
     pass "All ${#DIRS[@]} required directories present"
 else
     warn "$DIR_OK/${#DIRS[@]} directories present"
+fi
+
+# ── Auto-fix ──────────────────────────────────────────────────────────────────
+fix_item() {
+    local item="$1"
+    case "$item" in
+        uv)
+            echo -e "  ${AMBER}→${RESET} Installing uv..."
+            if curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null; then
+                # Source the env so uv is available for the rest of the script
+                export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+                if command -v uv &>/dev/null; then
+                    echo -e "  ${GREEN}✓${RESET} uv installed ($(uv --version 2>/dev/null | head -1))"
+                    return 0
+                fi
+            fi
+            echo -e "  ${RED}✗${RESET} uv install failed — try manually: curl -LsSf https://astral.sh/uv/install.sh | sh"
+            return 1
+            ;;
+        claude)
+            echo -e "  ${AMBER}→${RESET} Installing Claude Code CLI..."
+            if curl -fsSL https://claude.ai/install.sh | bash 2>/dev/null; then
+                # Refresh PATH for newly installed binary
+                export PATH="$HOME/.local/bin:$HOME/.claude/local/bin:$PATH"
+                if command -v claude &>/dev/null; then
+                    echo -e "  ${GREEN}✓${RESET} Claude Code CLI installed"
+                    return 0
+                fi
+            fi
+            echo -e "  ${RED}✗${RESET} Claude CLI install failed — try manually: curl -fsSL https://claude.ai/install.sh | bash"
+            return 1
+            ;;
+        global-settings)
+            echo -e "  ${AMBER}→${RESET} Creating global settings at $SETTINGS_FILE..."
+            mkdir -p "$HOME/.claude"
+            cat > "$SETTINGS_FILE" << 'SETTINGS_EOF'
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+SETTINGS_EOF
+            echo -e "  ${GREEN}✓${RESET} Global settings created with agent teams enabled"
+            return 0
+            ;;
+        agent-teams-env)
+            echo -e "  ${AMBER}→${RESET} Adding agent teams env to $SETTINGS_FILE..."
+            # Use python to merge the env key into existing settings
+            if python3 -c "
+import json, sys
+with open('$SETTINGS_FILE') as f:
+    data = json.load(f)
+data.setdefault('env', {})['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1'
+with open('$SETTINGS_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+" 2>/dev/null; then
+                echo -e "  ${GREEN}✓${RESET} Agent teams env added to global settings"
+                return 0
+            else
+                echo -e "  ${RED}✗${RESET} Failed to update settings — add manually"
+                return 1
+            fi
+            ;;
+    esac
+}
+
+if [[ $FIXABLE_COUNT -gt 0 && $FAIL -gt 0 ]]; then
+    echo ""
+    echo -ne "${AMBER}$FIXABLE_COUNT issue(s) can be auto-fixed. Install now? [Y/n]${RESET} "
+    read -r REPLY
+    if [[ -z "$REPLY" || "$REPLY" =~ ^[Yy] ]]; then
+        echo ""
+        echo -e "${AMBER}━━━ Auto-fixing $FIXABLE_COUNT issue(s) ━━━${RESET}"
+        FIXED=0
+        STILL_BROKEN=0
+        for item in $FIXABLE_ITEMS; do
+            if fix_item "$item"; then
+                ((FIXED++))
+            else
+                ((STILL_BROKEN++))
+            fi
+        done
+        echo ""
+        if [[ $STILL_BROKEN -eq 0 ]]; then
+            echo -e "${GREEN}All issues fixed.${RESET} Re-running validation..."
+            echo ""
+            exec "$0"
+        else
+            echo -e "${AMBER}Fixed $FIXED/$FIXABLE_COUNT.${RESET} $STILL_BROKEN issue(s) need manual attention."
+            exit 1
+        fi
+    fi
 fi
 
 # Summary
