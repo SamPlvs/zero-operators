@@ -158,6 +158,12 @@ See `specs/agents.md` for full contract template and edge cases.
 - **Fixtures**: Maintain small synthetic datasets in `tests/fixtures/` for smoke tests. These must be version-controlled and deterministic.
 - **Coverage tracking**: Run coverage after each test cycle. Report gaps to the producing agent.
 
+## Test Report (Auto-Generated)
+
+The orchestrator auto-generates `reports/test_report.md` at every phase gate by running `pytest tests/ --junitxml`. You do NOT need to produce this report manually — just write the tests. The report includes: pass/fail summary, per-module breakdown, failure tracebacks, and skipped tests.
+
+Your job is to ensure there are enough tests with good coverage so the auto-generated report is meaningful.
+
 ## Validation Checklist
 
 Before reporting done, verify:

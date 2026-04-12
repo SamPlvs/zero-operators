@@ -386,6 +386,7 @@ class Orchestrator:
                 self._log_gate(ev)
                 return ev
             phase.status = PhaseStatus.COMPLETED
+            self._generate_test_report(phase)
             self._generate_notebook(phase)
             ev = GateEvaluation(
                 phase_id=phase_id, gate_type=GateType.AUTOMATED,
@@ -464,6 +465,7 @@ class Orchestrator:
         phase = self._find_phase(phase_id)
         if decision == GateDecision.PROCEED:
             phase.status = PhaseStatus.COMPLETED
+            self._generate_test_report(phase)
             self._generate_notebook(phase)
         elif decision == GateDecision.ITERATE:
             phase.status = PhaseStatus.ACTIVE
@@ -526,6 +528,34 @@ class Orchestrator:
             elif not path.exists():
                 missing.append(artifact)
         return missing
+
+    def _generate_test_report(self, phase: PhaseDefinition) -> None:
+        """Generate a test report for a completed phase."""
+        target_repo = Path(self._target.target_repo)
+        test_dir = target_repo / "tests"
+        if not target_repo.is_dir():
+            return
+        try:
+            from zo.test_report import generate_test_report
+            report_path = generate_test_report(
+                test_dir=test_dir,
+                delivery_repo=target_repo,
+                phase_id=phase.phase_id,
+                phase_name=phase.name,
+            )
+            if report_path:
+                self._comms.log_checkpoint(
+                    agent="orchestrator", phase=phase.phase_id,
+                    subtask="test_report_generation",
+                    progress=f"Test report generated: {report_path.name}",
+                )
+        except Exception as exc:  # noqa: BLE001
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="test_report_generation_failed",
+                message=f"Failed to generate test report for {phase.phase_id}: {exc}",
+                severity="warning",
+            )
 
     def _generate_notebook(self, phase: PhaseDefinition) -> None:
         """Generate a Jupyter notebook for a completed phase."""

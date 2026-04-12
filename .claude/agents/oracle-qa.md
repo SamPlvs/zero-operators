@@ -119,6 +119,10 @@ Format: Statistical test results with actionable recommendations.
 
 See `specs/agents.md` for full contract template and edge cases.
 
+## Phase 5 Analysis Report
+
+When contributing to the Phase 5 analysis report (`reports/analysis_report.md`), follow the **Phase 5 Analysis Report template in `specs/report_templates.md`**. You own the Error Analysis and Statistical Significance sections. The XAI Agent owns Explainability, and the Domain Evaluator owns Bias & Fairness. Coordinate to produce a single consolidated report.
+
 ## Coordination Rules
 
 - **Before first evaluation**: Lock the held-out test set. Record its hash. Confirm evaluation criteria with Orchestrator. Create tiered question sets if not already defined.

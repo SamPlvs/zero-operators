@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-347_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-382_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-17_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -141,6 +141,14 @@ zo status my-project
 ```
 
 Displays the current `STATE.md`: active phase, blockers, next steps, agent statuses.
+
+### `zo watch-training` — Live training dashboard
+
+```bash
+zo watch-training --project my-project
+```
+
+Persistent Rich panel showing epoch progress, metrics table (current/best/target), loss sparkline, and checkpoint history. Auto-launched by `zo build` during Phase 4 via tmux split-pane — no window switching needed. Training scripts emit metrics via `ZOTrainingCallback` from `zo.training_metrics`.
 
 ---
 
@@ -392,7 +400,7 @@ zero-operators/
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
 ├── logs/                       # JSONL audit trails
 ├── targets/                    # Delivery repo configuration
-├── tests/                      # 347 tests (unit + integration)
+├── tests/                      # 382 tests (unit + integration)
 ├── setup.sh                    # Environment validation (10 checks)
 └── pyproject.toml              # Python package config
 ```

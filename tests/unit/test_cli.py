@@ -25,7 +25,7 @@ class TestCliGroup:
     """Tests for the CLI group and its registered commands."""
 
     def test_cli_group_has_all_commands(self) -> None:
-        expected = {"build", "continue", "init", "status", "draft", "preflight", "gates"}
+        expected = {"build", "continue", "init", "status", "draft", "preflight", "gates", "watch-training"}
         actual = set(cli.commands.keys())
         assert expected == actual
 
