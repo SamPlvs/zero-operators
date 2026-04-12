@@ -37,6 +37,31 @@ def _zo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+def _main_repo_root() -> Path:
+    """Return the main git repo root, even if running from a worktree.
+
+    ZO artifacts (plans, memory, state) should always live in the main
+    repo, not in worktrees. Worktrees are for ZO development.
+    """
+    import subprocess
+
+    zo_root = _zo_root()
+    try:
+        # git worktree list --porcelain: first line is the main repo
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, timeout=5, cwd=str(zo_root),
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if line.startswith("worktree "):
+                    # First worktree entry is always the main repo
+                    return Path(line.split(" ", 1)[1])
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return zo_root
+
+
 def _gate_mode_from_str(value: str) -> GateMode:
     """Map CLI gate-mode string to GateMode enum."""
     mapping = {
@@ -616,8 +641,12 @@ def draft(
     from zo.draft import PlanDrafter
 
     zo_root = _zo_root()
+    main_root = _main_repo_root()
     desc = description or ""
     doc_context = ""
+
+    # Always write plans to main repo, not worktrees
+    plan_root = main_root if main_root != zo_root else zo_root
 
     if source_paths:
         # --- Branch A: source documents provided ---
@@ -627,10 +656,14 @@ def draft(
                 raise SystemExit(1)
 
         drafter = PlanDrafter(
-            source_paths=list(source_paths), project_name=project, zo_root=zo_root,
+            source_paths=list(source_paths), project_name=project,
+            zo_root=plan_root,
         )
 
-        console.print(f"[{_AMBER}]Indexing documents from {len(source_paths)} path(s):[/]")
+        console.print(
+            f"[{_AMBER}]Indexing documents from "
+            f"{len(source_paths)} path(s):[/]"
+        )
         for sp in source_paths:
             console.print(f"  [{_DIM}]{sp}[/]")
         count = drafter.index_documents()
@@ -651,10 +684,14 @@ def draft(
             console.print()
             desc = console.input(f"  [{_AMBER}]>[/] ").strip()
             if not desc:
-                console.print("[red bold]No description provided. Aborting.[/]")
+                console.print(
+                    "[red bold]No description provided. Aborting.[/]"
+                )
                 raise SystemExit(1)
 
-        drafter = PlanDrafter(project_name=project, zo_root=zo_root)
+        drafter = PlanDrafter(
+            project_name=project, zo_root=plan_root,
+        )
 
         console.print(f"\n[{_AMBER}]Drafting plan for:[/] {project}")
         console.print(f"  [{_DIM}]Description:[/] {desc}")
@@ -663,6 +700,10 @@ def draft(
         plan_path = drafter.generate_plan_from_description(desc)
 
     console.print(f"[green]Plan generated:[/] {plan_path}")
+    if plan_root != zo_root:
+        console.print(
+            f"  [{_DIM}]Written to main repo (not worktree)[/]"
+        )
 
     valid = drafter.validate_draft(plan_path)
     if valid:
@@ -696,22 +737,38 @@ def draft(
         elif desc:
             context_block = f"\n\nUser's project description: {desc}\n"
 
+        # Build path always references main repo for zo build
+        build_cmd = f"zo build plans/{project}.md"
+
         draft_prompt = (
-            f"You are drafting a plan.md for project '{project}' at {plan_path}.\n"
+            f"You are drafting a plan.md for project '{project}' "
+            f"at {plan_path}.\n"
             f"{context_block}\n"
-            f"A skeleton plan already exists at that path. Read it, then work with "
-            f"the user conversationally to complete it:\n\n"
-            f"1. Review what's there and summarise what you understand\n"
-            f"2. Ask about the objective — what exactly are we building?\n"
-            f"3. Ask about data sources — where does the data come from?\n"
-            f"4. Ask about oracle metrics — how do we measure success?\n"
-            f"5. Ask about constraints — time, compute, regulatory limits?\n"
+            f"A skeleton plan already exists at that path. Read it, "
+            f"then work with the user conversationally to complete "
+            f"it:\n\n"
+            f"1. Review what's there and summarise what you "
+            f"understand\n"
+            f"2. Ask about the objective — what exactly are we "
+            f"building?\n"
+            f"3. Ask about data sources — where does the data come "
+            f"from?\n"
+            f"4. Ask about oracle metrics — how do we measure "
+            f"success?\n"
+            f"5. Ask about constraints — time, compute, regulatory "
+            f"limits?\n"
             f"6. Fill in each section as you get answers\n"
-            f"7. Validate the final plan against specs/plan.md schema\n\n"
+            f"7. Validate the final plan against specs/plan.md "
+            f"schema\n\n"
             f"Write the completed plan to {plan_path}. "
-            f"The plan schema is defined in specs/plan.md — ensure compliance.\n"
-            f"After the plan is complete, tell the user to run: "
-            f"zo build {plan_path}"
+            f"The plan schema is defined in specs/plan.md — ensure "
+            f"compliance.\n\n"
+            f"When the plan is complete:\n"
+            f"- Ask the user: 'Is there anything else you'd like to "
+            f"adjust? If not, this session is done — run "
+            f"`{build_cmd}` to start building.'\n"
+            f"- Once confirmed, say goodbye and tell them to type "
+            f"/exit to close this session.\n"
         )
 
         prompt_file = zo_root / "logs" / "wrapper" / f"zo-draft-{project}-prompt.txt"
