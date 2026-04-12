@@ -220,6 +220,40 @@ def _launch_and_monitor(
     console.print()
 
     _seen_events: set[str] = set()
+    _headline_buffer: list[str] = []
+    _last_headline_time: float = 0.0
+    _headline_interval = 60  # seconds between Haiku summaries
+
+    def _maybe_print_headline() -> None:
+        """Send buffered events to Haiku for a 1-line summary."""
+        import time as _time
+
+        nonlocal _last_headline_time
+        now = _time.monotonic()
+        if not _headline_buffer:
+            return
+        if now - _last_headline_time < _headline_interval:
+            return
+
+        events_text = "\n".join(_headline_buffer[-15:])
+        _headline_buffer.clear()
+        _last_headline_time = now
+
+        try:
+            result = __import__("subprocess").run(
+                ["claude", "-p", "--model", "haiku",
+                 f"Summarise these agent events in ONE short "
+                 f"headline (max 80 chars). No preamble, just "
+                 f"the headline:\n\n{events_text}"],
+                capture_output=True, text=True, timeout=15,
+            )
+            headline = result.stdout.strip().split("\n")[0][:80]
+            if headline:
+                console.print(
+                    f"  [{_AMBER}]▸ {headline}[/]"
+                )
+        except Exception:
+            pass  # Non-critical — skip if Haiku unavailable
 
     def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
         from datetime import UTC, datetime
@@ -286,23 +320,29 @@ def _launch_and_monitor(
                         console.print(
                             f"    [{_AMBER}]◆ DECISION[/] [{_DIM}]{agent}:[/] {title}"
                         )
+                        _headline_buffer.append(f"{agent} decided: {title}")
                     elif etype == "gate":
                         result = evt.get("result", "")
                         gphase = evt.get("phase_id", "")
                         console.print(
                             f"    [{_AMBER}]⊘ GATE[/] {gphase}: {result}"
                         )
+                        _headline_buffer.append(f"Gate {gphase}: {result}")
                     elif etype == "checkpoint":
                         progress = evt.get("progress", "")[:70]
                         console.print(f"    [{_DIM}]↳ {agent}: {progress}[/]")
+                        _headline_buffer.append(f"{agent}: {progress}")
                     elif etype == "error":
                         desc = evt.get("description", "")[:70]
                         console.print(
                             f"    [red]✗ ERROR[/] [{_DIM}]{agent}:[/] {desc}"
                         )
+                        _headline_buffer.append(f"ERROR {agent}: {desc}")
 
         if not tasks and not header_parts:
             console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
+
+        _maybe_print_headline()
         console.print()
 
     process = wrapper.wait_for_completion(process, on_status=_print_status)
