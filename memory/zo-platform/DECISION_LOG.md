@@ -333,3 +333,43 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** Modules were built and independently tested but not connected to the orchestrator. Without wiring, a real run would produce no auto-notebooks and no artifact validation — defeating the purpose of building them. Non-negotiable for production use.
 **Alternatives considered:** (1) Leave as independent modules, call manually — defeats automation. (2) Wire only notebooks, skip artifact checks — misses the enforcement value. (3) Wire everything into advance_phase() (chosen) — single enforcement point, both automated and human gates covered.
 **Outcome:** 4 new tests verify: missing artifacts block gate, present artifacts pass + generate notebook, prompt includes artifacts, prompt includes Docker. 338 tests total.
+
+---
+
+## Decision: 2026-04-12T20:00:00Z
+**Type:** UX
+**Title:** setup.sh interactive auto-fix — no flags, just prompt
+**Decision:** setup.sh now detects fixable failures (uv, Claude CLI, global settings) and prompts "N issue(s) can be auto-fixed. Install now? [Y/n]" instead of requiring a --fix flag. On success, re-execs itself for validation. Uses string-based tracking (FIXABLE_ITEMS/FIXABLE_COUNT) instead of bash arrays.
+**Rationale:** User ran setup.sh on a new machine for CIFAR-10 demo and hit 3 failures. Original script only reported errors with manual fix instructions. First iteration added --fix flag, but user correctly pointed out this should be automatic — the install commands are known, why make the user copy-paste them?
+**Alternatives considered:** (1) Report-only (original) — poor UX, forces manual copy-paste. (2) --fix flag — still requires user to know about the flag. (3) Interactive prompt with default Y (chosen) — zero-friction, user just hits Enter.
+**Outcome:** PR #22. Tested on macOS bash 3.2.57. Auto-installed uv 0.11.6 + Claude Code 2.1.104. Re-validation passed 11/11.
+
+---
+
+## Decision: 2026-04-12T20:00:00Z
+**Type:** BUGFIX
+**Title:** Claude CLI install command updated to official curl method
+**Decision:** Replaced `npm install -g @anthropic-ai/claude-code` with `curl -fsSL https://claude.ai/install.sh | bash` in both the check message and auto-fix function.
+**Rationale:** The npm method is deprecated. Official install is now via curl. Discovered during CIFAR-10 demo setup on new machine.
+**Alternatives considered:** npm (deprecated), brew (not official), curl (chosen — official method).
+**Outcome:** Claude Code 2.1.104 installed successfully via curl on fresh machine.
+
+---
+
+## Decision: 2026-04-12T20:00:00Z
+**Type:** BUGFIX
+**Title:** Bash 3.2 compatibility — replace array tracking with string counters
+**Decision:** Replaced `FIXABLE=()` array + `${#FIXABLE[@]}` length checks with `FIXABLE_ITEMS=""` string + `FIXABLE_COUNT=0` integer counter. Iterates with `for item in $FIXABLE_ITEMS` (word splitting).
+**Rationale:** macOS ships bash 3.2.57. In bash 3.2, `${#array[@]}` on an empty array with `set -u` throws "unbound variable" and silently kills the auto-fix block. The --fix flag appeared to do nothing on first attempt because of this.
+**Alternatives considered:** (1) Remove `set -u` — weakens safety. (2) Use `${FIXABLE[@]+"${FIXABLE[@]}"}` workaround — fragile, hard to read. (3) String + counter (chosen) — simple, works on all bash versions.
+**Outcome:** Auto-fix block now triggers correctly on macOS bash 3.2.57.
+
+---
+
+## Decision: 2026-04-12T20:30:00Z
+**Type:** BUGFIX
+**Title:** setup.sh must verify zo CLI is callable, not just deps resolvable
+**Decision:** Added check #11 to setup.sh: verify `command -v zo` passes. Auto-fix: `uv sync` to build .venv, then symlink `.venv/bin/zo` → `~/.local/bin/zo` (already on PATH from uv install). Changed dep check from dry-run to actual `uv sync --quiet`. Handles worktree case by checking superproject .venv.
+**Rationale:** User ran `uv sync` then `zo init` → "command not found". `uv sync` installs into `.venv/bin/` which isn't on PATH when conda/pyenv/system Python is active. setup.sh only checked deps *resolve* (dry-run), never verified the CLI was *callable*. This is the difference between "package manager happy" and "user can type the command".
+**Alternatives considered:** (1) Tell user to `source .venv/bin/activate` — adds manual step, breaks "just run setup.sh" promise. (2) `uv pip install -e .` into active env — fragile with conda, pollutes base env. (3) Symlink to `~/.local/bin/` (chosen) — clean, already on PATH, works with any Python env manager.
+**Outcome:** setup.sh now passes 12/12 checks. `zo, version 1.0.1` callable after setup. PR-012 prior added.
