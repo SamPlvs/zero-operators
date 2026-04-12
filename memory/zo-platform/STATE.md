@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, delivery scaffold with Docker added, auto-notebook generation built, preflight validation added, orchestrator pipeline wired. 338 tests, ruff clean, validate-docs 9/9. Ready for CIFAR-10 demo.
+ZO v1.0.2-pre — **CIFAR-10 demo setup in progress on new machine**. setup.sh now auto-fixes missing deps (uv, Claude CLI, global settings) with interactive prompt. Environment bootstrapped successfully. 338 tests, ruff clean, validate-docs 9/9. PR #22 merged for setup auto-fix.
 
 ## Completed
 
@@ -41,6 +41,10 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 - [x] v1.0.2-pre: zo preflight command (10 validation checks, GPU/Docker detection)
 - [x] v1.0.2-pre: Delivery repo structure redesign (configs/, src/ by responsibility, experiments context trail, tests unit/ml split, docker/ subdir, STRUCTURE.md)
 - [x] v1.0.2-pre: Orchestrator pipeline wiring (artifact validation at gates, auto-notebook generation, Docker/STRUCTURE.md in lead prompt)
+- [x] v1.0.2-pre: setup.sh auto-fix — interactive prompt installs uv, Claude CLI, global settings (bash 3.2 compatible)
+- [x] v1.0.2-pre: Claude CLI install updated to official curl method (replaced deprecated npm install)
+- [x] v1.0.2-pre: setup.sh verifies zo CLI callable on PATH (check #11), auto-fixes via symlink to ~/.local/bin/
+- [x] v1.0.2-pre: setup.sh deps check upgraded from dry-run to actual `uv sync`
 
 ## Known Issues
 
@@ -53,7 +57,7 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 
 ## What's Next
 
-1. **CIFAR-10 demo** — smoke test full pipeline on new machine, then IVL F5
+1. **CIFAR-10 demo** — environment ready, run `zo build plans/cifar10.md` next
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Phase summary reports (B3) — markdown reports per phase with embedded plots
 4. Domain evaluator refactor — make project-specific via plan.md domain priors
@@ -62,9 +66,10 @@ ZO v1.0.2-pre — **pre-IVL F5 hardening complete**. Phase persistence fixed, de
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-12T12:30:00Z
-last_session: session-010
-branch: claude/mystifying-chatterjee (worktree)
+last_checkpoint: 2026-04-12T20:00:00Z
+last_session: session-011
+branch: claude/eloquent-poincare (worktree)
 test_count: 338 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 9/9 passed, 1 warning (test badge)
+pr: #22 (feat: setup auto-fix)
