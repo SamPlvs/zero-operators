@@ -649,6 +649,187 @@ def _make_orchestrator(plan: Plan, tmp_path: Path) -> Orchestrator:
 
 
 # ---------------------------------------------------------------------------
+# Per-project agent adaptations
+# ---------------------------------------------------------------------------
+
+
+_PLAN_WITH_ADAPTATIONS = """\
+---
+project_name: "sensor-project"
+version: "1.0"
+created: "2026-04-13"
+last_modified: "2026-04-13"
+status: active
+owner: "Tester"
+---
+
+## Objective
+
+Vibration-based anomaly detection for bearings.
+
+## Oracle
+
+**Primary metric:** F1-score
+**Ground truth source:** maintenance logs
+**Evaluation method:** time-series CV
+**Target threshold:** > 0.85
+**Evaluation frequency:** per iteration
+
+## Workflow
+
+**Mode:** deep_learning
+
+## Data Sources
+
+### Source 1: sensor readings
+- **Location:** data/raw/sensors.parquet
+
+## Domain Priors
+
+Vibration spectral features dominate.
+
+## Agents
+
+**Active agents:** lead-orchestrator, data-engineer, model-builder, xai-agent, domain-evaluator
+
+**Custom agents:**
+- signal-analyst: Sonnet — Signal processing specialist for vibration data
+
+**Agent adaptations:**
+
+- xai-agent:
+  Focus on frequency-domain attribution, spectrograms, and vibration-mode
+  decomposition. Generic SHAP/GradCAM is less relevant for time-series data.
+
+- domain-evaluator:
+  Apply IVL F5 vibration priors: bearing failure signatures via envelope
+  demodulation, modal frequency ranges 20-2000Hz, known sensor drift patterns.
+
+- signal-analyst:
+  Project scope — vibration data sampled at 20kHz, 2048-sample windows,
+  3-axis accelerometers mounted on bearing housings.
+
+## Constraints
+
+- GPU training, 4-hour budget.
+"""
+
+
+class TestAgentAdaptationsOrchestrator:
+    """Orchestrator threading of plan adaptations into lead prompt + contracts."""
+
+    def _make_orch_with_adaptations(self, tmp_path: Path) -> Orchestrator:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text(_PLAN_WITH_ADAPTATIONS, encoding="utf-8")
+        plan = parse_plan(plan_path)
+        return _make_orchestrator(plan, tmp_path)
+
+    def test_adaptation_for_core_agent(self, tmp_path: Path) -> None:
+        orch = self._make_orch_with_adaptations(tmp_path)
+        text = orch._adaptation_for("xai-agent")
+        assert text is not None
+        assert "frequency-domain" in text
+
+    def test_adaptation_for_missing_agent(self, tmp_path: Path) -> None:
+        orch = self._make_orch_with_adaptations(tmp_path)
+        assert orch._adaptation_for("data-engineer") is None
+
+    def test_adaptation_for_custom_agent(self, tmp_path: Path) -> None:
+        """Custom agents can also have adaptations (project-scope context)."""
+        orch = self._make_orch_with_adaptations(tmp_path)
+        text = orch._adaptation_for("signal-analyst")
+        assert text is not None
+        assert "20kHz" in text
+
+    def test_plan_without_adaptations_returns_none(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Plans without the adaptations block work normally."""
+        orch = _make_orchestrator(plan, tmp_path)
+        assert orch._adaptation_for("xai-agent") is None
+
+    def test_contracts_section_includes_adaptation_for_adapted_agent(
+        self, tmp_path: Path,
+    ) -> None:
+        """Agent contract block shows the adaptation inline."""
+        orch = self._make_orch_with_adaptations(tmp_path)
+        decomp = orch.decompose_plan()
+        # Find a phase where xai-agent is assigned (phase_5 for DL)
+        xai_phase = next(
+            p for p in decomp.phases if "xai-agent" in p.assigned_agents
+        )
+        contracts_text = orch._prompt_contracts(xai_phase)
+        assert "xai-agent" in contracts_text
+        assert "Project-specific adaptation" in contracts_text
+        assert "frequency-domain" in contracts_text
+
+    def test_contracts_section_no_adaptation_block_for_unadapted_agent(
+        self, tmp_path: Path,
+    ) -> None:
+        """Agents without adaptations don't get an empty adaptation block."""
+        orch = self._make_orch_with_adaptations(tmp_path)
+        decomp = orch.decompose_plan()
+        # data-engineer has no adaptation in our test plan
+        de_phase = next(
+            p for p in decomp.phases if "data-engineer" in p.assigned_agents
+        )
+        contracts_text = orch._prompt_contracts(de_phase)
+        # The block should render data-engineer contract but NOT show
+        # "Project-specific adaptation" under data-engineer.
+        de_idx = contracts_text.find("### data-engineer")
+        assert de_idx != -1
+        # Find the next agent heading (or EOF) to scope the check
+        next_idx = contracts_text.find("\n### ", de_idx + 1)
+        de_block = (
+            contracts_text[de_idx:next_idx] if next_idx != -1
+            else contracts_text[de_idx:]
+        )
+        assert "Project-specific adaptation" not in de_block
+
+    def test_lead_prompt_includes_adaptations_section(
+        self, tmp_path: Path,
+    ) -> None:
+        """Full lead prompt has a dedicated Agent Adaptations section."""
+        orch = self._make_orch_with_adaptations(tmp_path)
+        decomp = orch.decompose_plan()
+        phase = decomp.phases[0]
+        prompt = orch.build_lead_prompt(phase)
+        assert "# Per-project Agent Adaptations" in prompt
+        assert "## xai-agent" in prompt
+        assert "## domain-evaluator" in prompt
+        # The section tells the Lead HOW to apply them
+        assert "spawn prompt" in prompt.lower()
+
+    def test_lead_prompt_omits_adaptations_section_when_none(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Plans without adaptations produce a lead prompt with no
+        adaptations section (not an empty header)."""
+        orch = _make_orchestrator(plan, tmp_path)
+        decomp = orch.decompose_plan()
+        phase = decomp.phases[0]
+        prompt = orch.build_lead_prompt(phase)
+        assert "# Per-project Agent Adaptations" not in prompt
+
+    def test_adaptations_and_custom_agents_coexist_in_lead_prompt(
+        self, tmp_path: Path,
+    ) -> None:
+        """Plan with custom agents AND adaptations works end-to-end —
+        the dynamic-agents feature from PR #28 is not broken."""
+        orch = self._make_orch_with_adaptations(tmp_path)
+        decomp = orch.decompose_plan()
+        phase = decomp.phases[0]
+        prompt = orch.build_lead_prompt(phase)
+        # Custom agent appears in the roster
+        assert "signal-analyst" in prompt
+        # Adaptations section present
+        assert "# Per-project Agent Adaptations" in prompt
+        # Both xai-agent AND the custom signal-analyst get adaptations
+        assert "## xai-agent" in prompt
+        assert "## signal-analyst" in prompt
+
+
+# ---------------------------------------------------------------------------
 # Phase persistence across sessions
 # ---------------------------------------------------------------------------
 

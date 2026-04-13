@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened**. Conversational `zo init` via Init Architect (interview → CLI), env detection module, adaptive layout mode for existing repos, plan template with auto-populated Environment section, target template with responsibility-based agent_working_dirs + branch flag. 20 core agents + custom library, 443 tests, ruff clean, validate-docs 10/10. PRs #22-#28 + this batch.
+ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent adaptations**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, and now **`**Agent adaptations:**` block** — Plan Architect proposes domain-specific prompt additions for existing agents (xai-agent, domain-evaluator, custom agents) during draft; orchestrator injects them into spawn prompts at build time. 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29 merged.
 
 ## Completed
 
@@ -88,6 +88,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened**. Conversational `zo 
 - [x] v1.0.2-pre: `zo init --dry-run` — preview file tree, target/plan content, scaffold plan without writing (Init Architect runs this before every commit)
 - [x] v1.0.2-pre: `zo init --reset` — deletes memory/{project}/, targets/{project}.target.md, plans/{project}.md; refuses without --yes unless user types project name; NEVER touches delivery repo
 - [x] v1.0.2-pre: Init Architect partial-match + semantic-alias guidance — default to standard for partial src/ dirs (idempotent fill-in), adaptive + map for semantic aliases (src/data_loading → src/data)
+- [x] v1.0.2-pre: Per-project agent adaptations — `**Agent adaptations:**` block in plan.md; Plan Architect populates during draft based on scout findings; orchestrator injects into spawn prompts at build time; works for both core (xai-agent, domain-evaluator) and custom agents; appended not replaced (agent `.md` files stay reusable)
 
 ## Known Issues
 
@@ -103,16 +104,16 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened**. Conversational `zo 
 1. **IVL F5 setup** — run `zo init ivl-f5` (conversational) on the existing repo at branch `samtukra`. Scout team drafts plan; build with auto/supervised gates.
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Domain evaluator refactor — make project-specific via plan.md domain priors
-4. XAI + Domain Evaluator activation for IVL F5 Phase 5
+4. ~~XAI + Domain Evaluator activation for IVL F5 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
 5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
 6. IVL F5 project — first production deployment
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-13T12:00:00Z
-last_session: session-013
-branch: claude/confident-wescoff (worktree)
-test_count: 453 passed, 7 skipped
+last_checkpoint: 2026-04-13T15:00:00Z
+last_session: session-014
+branch: worktree-adapt-agents (worktree)
+test_count: 476 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), pending (init-architect + IVL F5 readiness)

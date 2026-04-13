@@ -539,3 +539,31 @@ This pattern generalises: any time a CLI ergonomics gap suggests "just add a fla
 ### Verified Solution
 
 `zo init --dry-run` and `zo init --reset [--yes]` added to CLI surface. Init Architect protocol updated with: dry-run as mandatory step before commit, partial-match guidance (standard mode default for partial src/), semantic alias guidance (adaptive + explicit mapping), `--reset` as the canonical rollback path. 10 new tests covering: dry-run writes nothing, dry-run shows branch + layout, dry-run rejected without --no-tmux, reset deletes ZO artifacts, reset preserves delivery repo + user code, reset no-ops on nonexistent project, reset refuses on name mismatch, reset accepts matching name.
+
+---
+
+## PR-020: Generic Agents Need a Per-Project Adaptation Mechanism
+**Source:** Session 014 (2026-04-13), IVL F5 readiness review
+**Root cause category:** missing_rule
+**Failure:** The user asked for XAI and Domain Evaluator to adapt per project, but there was no mechanism — the agent `.md` files were static. For CIFAR-10 (generic image classification) the defaults worked; for IVL F5 (rotating-machinery vibration signals) they were useless. The "custom agents" feature (PR #28) adds NEW roles but doesn't modify existing ones. This left `xai-agent` and `domain-evaluator` producing generic SHAP/GradCAM output for a project that needed frequency-domain attribution, envelope-demodulation plots, and rotating-machinery domain priors (BPFO/BPFI/BSF/FTF bearing defect frequencies).
+
+### Rules
+
+1. **Generic, cross-project agents need a per-project adaptation channel.**
+   Not everything should be hard-coded in the agent's `.md`. The static portion is the agent's role, tools, and coordination protocol — stable across projects. The project-specific portion (domain priors, relevant techniques, dataset-specific quirks) lives in the plan and is injected at spawn time. This keeps the agent file reusable and the plan the single source of truth for project context.
+   - *Failure ref:* Without an adaptation mechanism, the user's options were (a) fork xai-agent.md per project — drift-prone, (b) accept generic output — defeats the purpose, (c) manually override in the build session — not reproducible. An explicit plan-level mechanism is the only clean option.
+
+2. **Adaptations are additive, not replacement.**
+   Append to the agent's base spawn prompt rather than replacing it. Keeps the agent's core identity and coordination rules intact; the adaptation just tailors focus areas, techniques, and priors. Replacement-style overrides fragment agent behavior across projects and make regressions hard to trace.
+   - *Implementation:* Lead Orchestrator prompt includes a `# Per-project Agent Adaptations` section; Lead spawns agents with `Agent(name="xai-agent", prompt="... base contract ... ## Project-specific adaptation\n{adaptation_text}")`.
+
+3. **The Plan Architect during draft is the right author for adaptations.**
+   Adaptations require domain understanding (from Research Scout) and data understanding (from Data Scout) that emerges during plan drafting. Asking the user to write them manually after `zo init` misses the conversational advantage. The architect proposes adaptations as part of the normal flow, and the user approves/revises like any other plan section.
+
+4. **Adaptations compose with custom agents, not compete.**
+   A project can have both: `**Custom agents:**` (new roles like `signal-analyst`) AND `**Agent adaptations:**` (domain context for `xai-agent` + `domain-evaluator` + custom agents themselves). Orchestrator handles both in one pass. Don't force the user to pick a single mechanism.
+
+### Verified Solution
+
+Plan schema extension: `AgentAdaptation` pydantic model, `AgentConfig.adaptations` field, `adaptation_for(name)` lookup. Parser: `_ADAPTATIONS_RE` + `_parse_adaptations` supports single-line and multi-line entries, blank-line-separated. Orchestrator: `_adaptation_for`, `_prompt_adaptations` dedicated section in lead prompt, inline adaptation inside each agent contract in `_prompt_contracts`. Protocol: Plan Architect tells its scouts' findings become adaptation text; Lead Orchestrator tells the Lead to append adaptations to spawn prompts. 23 new tests (7 parser + 9 orchestrator + 7 integration covering core + custom agent adaptations, plans without adaptations, contracts inline, lead prompt dedicated section) bring total to 476 passing.
+

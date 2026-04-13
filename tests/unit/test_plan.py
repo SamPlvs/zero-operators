@@ -484,4 +484,147 @@ class TestEdgeCases:
         )
         plan = parse_plan(_write_plan(tmp_path, content))
         assert plan.workflow is not None
+
+
+# ---------------------------------------------------------------------------
+# Agent adaptations parsing
+# ---------------------------------------------------------------------------
+
+
+class TestAgentAdaptations:
+    """Parser coverage for the ``**Agent adaptations:**`` block."""
+
+    def test_no_adaptations_block_means_empty_list(
+        self, tmp_path: Path,
+    ) -> None:
+        plan = parse_plan(_write_plan(tmp_path, MINIMAL_VALID_PLAN))
+        assert plan.agents is not None
+        assert plan.agents.adaptations == []
+        assert plan.agents.adaptation_for("xai-agent") is None
+
+    def test_single_line_adaptation(self, tmp_path: Path) -> None:
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent: Focus on time-series attribution for vibration "
+            "sensor data.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        assert len(plan.agents.adaptations) == 1
+        a = plan.agents.adaptations[0]
+        assert a.agent_name == "xai-agent"
+        assert "time-series attribution" in a.adaptation
+
+    def test_multi_line_adaptation(self, tmp_path: Path) -> None:
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent:\n"
+            "  Focus on frequency-domain attribution and spectrograms.\n"
+            "  Generic SHAP/GradCAM is less relevant for time-series data.\n"
+            "  Include bearing failure envelope plots in the Phase 5 report.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        assert len(plan.agents.adaptations) == 1
+        a = plan.agents.adaptations[0]
+        assert a.agent_name == "xai-agent"
+        assert "frequency-domain" in a.adaptation
+        assert "bearing failure envelope" in a.adaptation
+
+    def test_multiple_adaptations(self, tmp_path: Path) -> None:
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent, domain-evaluator\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent:\n"
+            "  Focus on frequency-domain attribution.\n"
+            "\n"
+            "- domain-evaluator:\n"
+            "  Apply IVL F5 vibration priors.\n"
+            "  Flag predictions contradicting bearing failure signatures.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        assert len(plan.agents.adaptations) == 2
+        names = [a.agent_name for a in plan.agents.adaptations]
+        assert "xai-agent" in names
+        assert "domain-evaluator" in names
+        dom = plan.agents.adaptation_for("domain-evaluator")
+        assert dom is not None
+        assert "IVL F5" in dom
+        assert "bearing failure" in dom
+
+    def test_adaptation_for_missing_agent_returns_none(
+        self, tmp_path: Path,
+    ) -> None:
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent: Single-line adaptation.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        assert plan.agents.adaptation_for("unknown-agent") is None
+
+    def test_adaptation_coexists_with_custom_agents(
+        self, tmp_path: Path,
+    ) -> None:
+        """Custom agents AND adaptations in the same plan, both parsed."""
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent\n"
+            "\n"
+            "**Custom agents:**\n"
+            "- signal-analyst: Sonnet — Signal processing specialist\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent:\n"
+            "  Focus on frequency-domain attribution.\n"
+            "\n"
+            "- signal-analyst:\n"
+            "  Project scope: vibration data sampled at 20kHz, 2048-sample windows.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        # Custom agent parsed
+        assert len(plan.agents.custom_agents) == 1
+        assert plan.agents.custom_agents[0].name == "signal-analyst"
+        # Both adaptations parsed
+        assert len(plan.agents.adaptations) == 2
+        # Adaptation for a custom agent also works
+        sa = plan.agents.adaptation_for("signal-analyst")
+        assert sa is not None
+        assert "20kHz" in sa
+
+    def test_empty_adaptation_body_is_skipped(self, tmp_path: Path) -> None:
+        """An entry with no body text is dropped, not parsed as empty."""
+        content = MINIMAL_VALID_PLAN.replace(
+            "**Active agents:** lead-orchestrator, data-engineer",
+            "**Active agents:** lead-orchestrator, data-engineer, xai-agent\n"
+            "\n"
+            "**Agent adaptations:**\n"
+            "\n"
+            "- xai-agent:\n"
+            "\n"
+            "- domain-evaluator: Real adaptation here.",
+        )
+        plan = parse_plan(_write_plan(tmp_path, content))
+        assert plan.agents is not None
+        names = [a.agent_name for a in plan.agents.adaptations]
+        assert "xai-agent" not in names  # empty body skipped
+        assert "domain-evaluator" in names
         assert plan.workflow.mode == WorkflowMode.CLASSICAL_ML
