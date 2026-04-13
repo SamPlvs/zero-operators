@@ -1,0 +1,279 @@
+---
+---
+
+<section id="contracts" data-animate>
+  <div class="container">
+    <div class="section-label">CONTRACTS</div>
+    <h2>Precision, not prompts</h2>
+    <p class="contract-sub">Every agent gets a precise contract: what to do, what to produce, how to know it's done.</p>
+
+    <div class="contract-grid">
+      <!-- Left: animated contract card -->
+      <div class="contract-card card" id="contract-expand">
+        <div class="contract-prompt">Build a model</div>
+
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 2v10M4 8l3 4 3-4" stroke="var(--amber)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            INPUTS
+          </span>
+          <span class="cs-content">processed data at data/processed/, feature list from Phase 2</span>
+        </div>
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 12V2M4 6l3-4 3 4" stroke="var(--amber)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            OUTPUTS
+          </span>
+          <span class="cs-content">trained model at models/best.pt, training_metrics.jsonl, oracle evaluation</span>
+        </div>
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="var(--amber)" stroke-width="1"/><circle cx="7" cy="7" r="2.5" stroke="var(--amber)" stroke-width="1"/><circle cx="7" cy="7" r="0.8" fill="var(--amber)"/></svg>
+            SUCCESS CRITERIA
+          </span>
+          <span class="cs-content">accuracy &ge; 95%, inference &lt; 100ms, reproducible with seed</span>
+        </div>
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="var(--amber)" stroke-width="1"/><path d="M7 3v4l3 2" stroke="var(--amber)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            PRECEDENT
+          </span>
+          <span class="cs-content">DECISION_LOG: &ldquo;Linear baseline scored 78%, try CNN next&rdquo;</span>
+        </div>
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M5 1h4l-1.5 5H9l-4 7 1.5-5H5L5 1z" stroke="var(--amber)" stroke-width="0.8" fill="none"/><line x1="4" y1="5" x2="10" y2="5" stroke="var(--amber)" stroke-width="0.6" opacity="0.5"/><line x1="4" y1="9" x2="10" y2="9" stroke="var(--amber)" stroke-width="0.6" opacity="0.5"/></svg>
+            BUDGET
+          </span>
+          <span class="cs-content">max 5 iterations, 30 min wall clock</span>
+        </div>
+        <div class="contract-section">
+          <span class="cs-label">
+            <svg class="cs-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9 2L5 6l4 4" stroke="var(--amber)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 7 7)"/><rect x="1" y="8" width="5" height="5" rx="0.5" stroke="var(--amber)" stroke-width="0.8" fill="none"/><circle cx="10" cy="4" r="3" stroke="var(--amber)" stroke-width="0.8" fill="none"/></svg>
+            TOOLS / OFF-LIMITS
+          </span>
+          <span class="cs-content">PyTorch, CUDA, tensorboard &nbsp;|&nbsp; delivery repo configs, ZO infrastructure</span>
+        </div>
+      </div>
+
+      <!-- Right: comparison text -->
+      <div class="contract-compare">
+        <div class="compare-before">
+          <div class="compare-card compare-card--dim">
+            <span class="compare-prompt">Build a model</span>
+          </div>
+          <span class="compare-label-dim">vague prompt</span>
+        </div>
+
+        <div class="compare-vs">
+          <span class="compare-vs-line"></span>
+          <span class="compare-vs-text">VS</span>
+          <span class="compare-vs-line"></span>
+        </div>
+
+        <div class="compare-after">
+          <span class="compare-arrow" aria-hidden="true">&larr;</span>
+          <span class="compare-label-amber">full contract</span>
+        </div>
+
+        <p class="compare-text">Vague prompts produce vague results. Precise contracts produce verified deliverables.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Custom IntersectionObserver: reveal contract sections one by one with 400ms delay
+  const contractCard = document.getElementById('contract-expand');
+  if (contractCard) {
+    const sections = contractCard.querySelectorAll('.contract-section');
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          sections.forEach((section, i) => {
+            setTimeout(() => {
+              section.classList.add('revealed');
+            }, 600 + i * 400);
+          });
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    obs.observe(contractCard);
+  }
+</script>
+
+<style>
+  .contract-sub {
+    color: var(--amber-dim);
+    margin-bottom: 48px;
+    max-width: 560px;
+  }
+
+  .contract-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* ── Contract card ── */
+  .contract-card {
+    padding: 28px;
+    transition: box-shadow 0.6s ease;
+  }
+
+  .contract-card:has(.contract-section.revealed) {
+    box-shadow: 0 0 20px rgba(240, 192, 64, 0.08), 0 0 40px rgba(240, 192, 64, 0.04);
+  }
+
+  .contract-prompt {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 24px;
+    color: var(--amber);
+    margin-bottom: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  .contract-section {
+    /* Uses global .contract-section styles for max-height/opacity animation */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .contract-section.revealed {
+    /* Uses global .contract-section.revealed for max-height/opacity */
+  }
+
+  .cs-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cs-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .cs-content {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--amber);
+    line-height: 1.6;
+  }
+
+  /* ── Comparison side ── */
+  .contract-compare {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-top: 8px;
+  }
+
+  .compare-before {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 20px 24px;
+  }
+
+  .compare-card--dim {
+    opacity: 0.4;
+  }
+
+  .compare-prompt {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 20px;
+    color: var(--amber-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .compare-label-dim {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    opacity: 0.6;
+  }
+
+  .compare-vs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .compare-vs-line {
+    flex: 1;
+    height: 1px;
+    background: var(--amber-border);
+  }
+
+  .compare-vs-text {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    color: var(--amber-dim);
+    flex-shrink: 0;
+  }
+
+  .compare-after {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .compare-arrow {
+    font-size: 24px;
+    color: var(--amber);
+  }
+
+  .compare-label-amber {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  .compare-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--amber);
+    line-height: 1.7;
+    opacity: 0.8;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .contract-grid {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+
+    .contract-compare {
+      order: -1;
+    }
+  }
+</style>

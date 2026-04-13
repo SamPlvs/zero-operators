@@ -1,0 +1,22 @@
+[
+  { "name": "Lead Orchestrator", "model": "opus", "role": "Reads plan, decomposes phases, issues contracts, gates work", "team": "project" },
+  { "name": "Data Engineer", "model": "sonnet", "role": "Data loading, cleaning, validation, schema design, drift detection", "team": "project" },
+  { "name": "Model Builder", "model": "opus", "role": "Architecture design, loss functions, hyperparameter search, training", "team": "project" },
+  { "name": "Oracle / QA", "model": "sonnet", "role": "Executes oracle criteria, reports pass/fail with evidence", "team": "project" },
+  { "name": "Code Reviewer", "model": "sonnet", "role": "Reviews all code, enforces conventions, catches security issues", "team": "project" },
+  { "name": "Test Engineer", "model": "sonnet", "role": "Writes and runs unit, integration, regression, and edge case tests", "team": "project" },
+  { "name": "Research Scout", "model": "opus", "role": "Literature review, prior art survey, baseline identification", "team": "project" },
+  { "name": "XAI Agent", "model": "sonnet", "role": "Feature importance, model interpretation, explainability analysis", "team": "project" },
+  { "name": "Domain Evaluator", "model": "opus", "role": "Business/domain coherence, edge cases, distributional shift", "team": "project" },
+  { "name": "ML Engineer", "model": "sonnet", "role": "Productionisation, containerisation, inference optimisation", "team": "project" },
+  { "name": "Infra Engineer", "model": "haiku", "role": "Compute allocation, experiment tracking, artifact storage", "team": "project" },
+  { "name": "Plan Architect", "model": "opus", "role": "Drafts compliant plan.md from source documents and data", "team": "project" },
+  { "name": "Data Scout", "model": "sonnet", "role": "Inspects raw data during plan drafting for quality and schema", "team": "project" },
+  { "name": "Init Architect", "model": "opus", "role": "Conversational project setup, environment detection, scaffolding", "team": "project" },
+  { "name": "Software Architect", "model": "opus", "role": "Decomposes platform into buildable modules, defines contracts", "team": "platform" },
+  { "name": "Backend Engineer", "model": "opus", "role": "Builds core ZO infrastructure: memory, orchestration, comms", "team": "platform" },
+  { "name": "Frontend Engineer", "model": "sonnet", "role": "Command dashboard, agent panel, live log viewer", "team": "platform" },
+  { "name": "Platform Test Engineer", "model": "sonnet", "role": "Tests all ZO modules: unit, integration, end-to-end", "team": "platform" },
+  { "name": "Platform Code Reviewer", "model": "sonnet", "role": "Reviews platform code, enforces coding conventions", "team": "platform" },
+  { "name": "Documentation Agent", "model": "haiku", "role": "Maintains docstrings, README, API documentation", "team": "platform" }
+]

@@ -9,3 +9,8 @@ build/
 .venv/
 *.db
 *.sqlite
+
+# Website
+website/node_modules/
+website/dist/
+website/.astro/
