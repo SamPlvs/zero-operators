@@ -13,9 +13,10 @@ A step-by-step guide to running Zero Operators on a CIFAR-10 image classifier. U
 cd /path/to/zero-operators
 ./setup.sh
 
-# 2. Initialize (auto-scaffolds delivery repo)
+# 2. Initialize — conversational by default (Init Architect interviews you)
 zo init cifar10-demo
-zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery
+# ...or headless for scripts/CI:
+zo init cifar10-demo --no-tmux --scaffold-delivery ~/projects/cifar10-delivery
 
 # 3. Draft a plan (or write one manually — see Step 2 below)
 zo draft --project cifar10-demo              # interactive prompt
@@ -46,15 +47,31 @@ All 10 checks should pass. `setup.sh` will offer to install missing tools (uv, C
 
 ## Step 1: Initialize the Project
 
-```bash
-# ZO-side scaffold (memory, targets, plans)
-zo init cifar10-demo
+**Default (recommended): conversational** — the Init Architect inspects your environment, asks a short interview (new vs existing repo, branch, training host, data location), runs a dry-run preview, and only commits writes after you approve.
 
-# Delivery repo with Docker + ML layout
+```bash
+zo init cifar10-demo
+```
+
+**Headless equivalent** (good for scripts, reproducible setups):
+
+```bash
 mkdir -p ~/projects/cifar10-delivery
 cd ~/projects/cifar10-delivery && git init && cd -
-zo init cifar10-demo --scaffold-delivery ~/projects/cifar10-delivery
+zo init cifar10-demo --no-tmux --scaffold-delivery ~/projects/cifar10-delivery
 ```
+
+**Working with an existing repo** (e.g. you already have a project at `~/code/cifar10-demo`):
+
+```bash
+# Conversational — agent inspects layout, picks adaptive vs standard mode for you
+zo init cifar10-demo
+
+# Or headless with explicit flags
+zo init cifar10-demo --no-tmux --existing-repo ~/code/cifar10-demo --branch main --layout-mode adaptive
+```
+
+**If you make a mistake:** `zo init cifar10-demo --reset` deletes the ZO artifacts (memory, target, plan) so you can start over. The delivery repo is never touched.
 
 **What this creates:**
 

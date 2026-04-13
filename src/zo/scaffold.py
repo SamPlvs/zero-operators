@@ -29,12 +29,29 @@ console = Console()
 # Directory layout
 # ---------------------------------------------------------------------------
 
-_DIRECTORIES: list[str] = [
+# Directories that are ZO-specific and always created (even in adaptive
+# mode). These don't conflict with user code conventions — they're where
+# agents drop configs, experiment trails, reports, phase notebooks, and
+# containerisation files.
+_META_DIRECTORIES: list[str] = [
     # Config
     "configs/data",
     "configs/model",
     "configs/training",
     "configs/experiment",
+    # Experiment trail
+    "experiments",
+    # Reports (agent-generated)
+    "reports/figures",
+    # Auto-generated phase notebooks (ZO artefacts)
+    "notebooks/phase",
+    # Containerisation
+    "docker",
+]
+
+# Directories that assume ZO's responsibility-based layout. Skipped in
+# adaptive mode so existing repos keep their own conventions.
+_STANDARD_DIRECTORIES: list[str] = [
     # Source code
     "src/data",
     "src/model",
@@ -46,21 +63,19 @@ _DIRECTORIES: list[str] = [
     "data/processed",
     # Artifacts
     "models",
-    "experiments",
-    # Reports
-    "reports/figures",
-    # Notebooks — human exploration + ZO auto-generated
+    # Human-authored notebooks
     "notebooks/data",
     "notebooks/model",
     "notebooks/analysis",
-    "notebooks/phase",
     # Tests — code correctness vs ML validation
     "tests/unit",
     "tests/ml",
     "tests/fixtures",
-    # Docker
-    "docker",
 ]
+
+# Kept for backwards compatibility with existing callers / tests that
+# reference ``_DIRECTORIES`` directly. ``standard`` mode uses both lists.
+_DIRECTORIES: list[str] = _META_DIRECTORIES + _STANDARD_DIRECTORIES
 
 # ---------------------------------------------------------------------------
 # File templates — ``{project_name}`` is interpolated where it appears.
@@ -297,23 +312,77 @@ _FILE_TEMPLATES: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 
 
-def scaffold_delivery(path: Path, project_name: str) -> None:
-    """Create the standard ML project layout at *path*.
+def scaffold_delivery(
+    path: Path,
+    project_name: str,
+    *,
+    overlay: bool = False,
+    layout_mode: str = "standard",
+) -> None:
+    """Create the ZO project layout at *path*.
 
     Directories and files are created only when they don't already exist,
-    so the function is safe to call repeatedly.
+    so the function is safe to call repeatedly (idempotent).
 
     Args:
         path: Root directory for the delivery repo scaffold.
         project_name: Name interpolated into templates.
+        overlay: When True, the operation is explicitly applying ZO
+            structure to an existing repository. Affects logging, not
+            which directories get created.
+        layout_mode: Either ``"standard"`` or ``"adaptive"``.
+
+            - ``"standard"`` (default) — creates the full ZO layout:
+              ``configs/``, ``src/*``, ``data/``, ``experiments/``,
+              ``reports/``, ``notebooks/*``, ``tests/*``, ``docker/``.
+              Good for fresh projects and existing repos with no
+              established code layout.
+
+            - ``"adaptive"`` — creates only ZO meta-directories
+              (``configs/``, ``experiments/``, ``reports/``,
+              ``notebooks/phase/``, ``docker/``). Skips ``src/`` and
+              ``data/`` so an existing repo's own code layout is left
+              alone. Use for existing repos with established conventions
+              (e.g. src-layout, django-style, flat layout). The caller
+              is then responsible for writing a project-specific
+              ``STRUCTURE.md`` and updating ``agent_working_dirs`` in
+              the target file to point at the actual code paths.
     """
+    if layout_mode not in {"standard", "adaptive"}:
+        raise ValueError(
+            f"layout_mode must be 'standard' or 'adaptive', "
+            f"got {layout_mode!r}"
+        )
     root = Path(path).resolve()
+    mode = "overlay" if overlay else "scaffold"
     root.mkdir(parents=True, exist_ok=True)
 
-    _create_directories(root)
-    _create_template_files(root, project_name)
+    if layout_mode == "adaptive":
+        dirs = _META_DIRECTORIES
+    else:
+        dirs = _META_DIRECTORIES + _STANDARD_DIRECTORIES
 
-    console.print(f"\n[{_AMBER}]Delivery repo scaffolded at:[/] {root}")
+    dirs_created, dirs_preserved = _create_directories(
+        root, dirs, overlay=overlay,
+    )
+    files_created, files_preserved = _create_template_files(
+        root, project_name, overlay=overlay, layout_mode=layout_mode,
+    )
+
+    if overlay:
+        console.print(
+            f"\n[{_AMBER}]Overlay applied at:[/] {root} "
+            f"([{_DIM}]{layout_mode}[/])\n"
+            f"  [{_DIM}]dirs:[/] {dirs_created} added, "
+            f"{dirs_preserved} preserved\n"
+            f"  [{_DIM}]files:[/] {files_created} added, "
+            f"{files_preserved} preserved"
+        )
+    else:
+        console.print(
+            f"\n[{_AMBER}]Delivery repo {mode}ed at:[/] {root} "
+            f"([{_DIM}]{layout_mode}[/])"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -321,23 +390,68 @@ def scaffold_delivery(path: Path, project_name: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _create_directories(root: Path) -> None:
-    """Create all scaffold directories under *root*."""
-    for rel in _DIRECTORIES:
+def _create_directories(
+    root: Path, dirs: list[str], *, overlay: bool = False,
+) -> tuple[int, int]:
+    """Create scaffold directories from *dirs* under *root*.
+
+    Returns ``(created, preserved)`` counts. A ``.gitkeep`` placeholder is
+    only written into directories that are truly empty — this avoids
+    polluting existing code dirs when running in overlay mode.
+    """
+    created = 0
+    preserved = 0
+    for rel in dirs:
         d = root / rel
+        if d.exists() and any(d.iterdir()):
+            preserved += 1
+            continue
         d.mkdir(parents=True, exist_ok=True)
-        gitkeep = d / ".gitkeep"
-        if not gitkeep.exists():
-            gitkeep.touch()
-    console.print(f"[green]Created {len(_DIRECTORIES)} directories[/]")
+        # .gitkeep only if still empty after mkdir (i.e. freshly created).
+        if not any(d.iterdir()):
+            gitkeep = d / ".gitkeep"
+            if not gitkeep.exists():
+                gitkeep.touch()
+        created += 1
+    if not overlay:
+        console.print(f"[green]Created {created} directories[/]")
+    return (created, preserved)
 
 
-def _create_template_files(root: Path, project_name: str) -> None:
-    """Write template files into *root*, skipping existing ones."""
-    for rel_path, template in _FILE_TEMPLATES:
+def _create_template_files(
+    root: Path,
+    project_name: str,
+    *,
+    overlay: bool = False,
+    layout_mode: str = "standard",
+) -> tuple[int, int]:
+    """Write template files into *root*, skipping existing ones.
+
+    In ``adaptive`` layout mode we omit ``README.md``, ``pyproject.toml``,
+    and ``.gitignore`` — the existing repo almost certainly already has
+    these and the templates would either be skipped as no-ops or, worse,
+    misrepresent the project. We still write ``STRUCTURE.md`` (the Init
+    Architect customises it afterwards), Docker files, and the base
+    experiment config.
+
+    Returns ``(created, preserved)`` counts.
+    """
+    if layout_mode == "adaptive":
+        skip = {"README.md", "pyproject.toml", ".gitignore"}
+        templates = [
+            (p, t) for (p, t) in _FILE_TEMPLATES if p not in skip
+        ]
+    else:
+        templates = _FILE_TEMPLATES
+
+    created = 0
+    preserved = 0
+    for rel_path, template in templates:
         dest = root / rel_path
         if dest.exists():
-            console.print(f"[{_DIM}]Already exists:[/] {rel_path}")
+            if not overlay:
+                console.print(f"[{_DIM}]Already exists:[/] {rel_path}")
+            preserved += 1
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         content = (
@@ -346,4 +460,7 @@ def _create_template_files(root: Path, project_name: str) -> None:
             else template
         )
         dest.write_text(content, encoding="utf-8")
-        console.print(f"[green]Created:[/] {rel_path}")
+        if not overlay:
+            console.print(f"[green]Created:[/] {rel_path}")
+        created += 1
+    return (created, preserved)
