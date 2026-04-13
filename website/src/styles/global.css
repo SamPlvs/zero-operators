@@ -99,8 +99,26 @@ h1, h2, h3, h4, h5 {
 }
 
 h1 { font-size: clamp(36px, 5vw, 64px); font-weight: 700; letter-spacing: 0.14em; color: var(--accent); }
-h2 { font-size: clamp(28px, 3.5vw, 42px); color: var(--accent); }
+h2 { font-size: clamp(32px, 4.5vw, 52px); font-weight: 700; letter-spacing: 0.02em; color: var(--accent); margin-bottom: 16px; }
 h3 { font-size: clamp(20px, 2.5vw, 28px); color: var(--accent); }
+
+/* Subtitles — the line below h2 headings */
+h2 + p, .oracle-sub, .pipeline-sub {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  font-size: clamp(17px, 2.2vw, 22px);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+
+/* Section labels — small uppercase above headings */
+.section-label {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  margin-bottom: 12px;
+}
 
 p { max-width: 640px; }
 
