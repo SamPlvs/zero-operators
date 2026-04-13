@@ -330,11 +330,35 @@ class Orchestrator:
         sections = [
             self._prompt_role(), self._prompt_plan_context(),
             self._prompt_phase(phase), self._prompt_contracts(phase),
-            self._prompt_roster(), self._prompt_memory(),
-            self._prompt_coordination(), self._prompt_gate_criteria(phase),
-            self._prompt_constraints(),
+            self._prompt_adaptations(), self._prompt_roster(),
+            self._prompt_memory(), self._prompt_coordination(),
+            self._prompt_gate_criteria(phase), self._prompt_constraints(),
         ]
         return "\n\n---\n\n".join(s for s in sections if s)
+
+    def _prompt_adaptations(self) -> str:
+        """Render the plan's agent adaptations as a dedicated section.
+
+        Emits nothing when the plan has no adaptations. When present,
+        the Lead Orchestrator reads this section and appends each
+        adaptation to the corresponding agent's base ``.md`` instructions
+        when spawning that agent via the ``Agent`` tool.
+        """
+        if not self._plan.agents or not self._plan.agents.adaptations:
+            return ""
+        lines: list[str] = [
+            "# Per-project Agent Adaptations",
+            "",
+            "The plan tailors these agents for the project's domain. "
+            "When you spawn any of them via `Agent(name=..., ...)`, "
+            "include the adaptation text below in the spawn prompt, "
+            "AFTER the agent's base instructions. Do NOT modify the "
+            "agent's `.md` file itself — the adaptation is project-"
+            "scoped.",
+        ]
+        for a in self._plan.agents.adaptations:
+            lines.extend(["", f"## {a.agent_name}", "", a.adaptation])
+        return "\n".join(lines)
 
     # -- Phase management -----------------------------------------------------
 
@@ -709,14 +733,34 @@ class Orchestrator:
         lines: list[str] = []
         for c in self._workflow.agent_contracts:
             if c.phase_id == phase.phase_id:
-                lines.append(
+                block = (
                     f"### {c.agent_name}\nRole: {c.role_description}\n"
                     f"Owns: {', '.join(c.ownership) or 'n/a'}\n"
                     f"Off-limits: {', '.join(c.off_limits) or 'n/a'}\n"
                     f"Produces: {', '.join(c.contract_produced)}\n"
                     f"Consumes: {', '.join(c.contract_consumed)}"
                 )
+                adaptation = self._adaptation_for(c.agent_name)
+                if adaptation:
+                    block += (
+                        "\n\n**Project-specific adaptation "
+                        f"(append to {c.agent_name}'s base instructions "
+                        "when spawning):**\n"
+                        + adaptation
+                    )
+                lines.append(block)
         return ("# Agent Contracts\n\n" + "\n\n".join(lines)) if lines else ""
+
+    def _adaptation_for(self, agent_name: str) -> str | None:
+        """Return the plan's adaptation text for *agent_name*, or None.
+
+        Wraps ``AgentConfig.adaptation_for`` so the orchestrator tolerates
+        plans that lack an ``agents`` section entirely (older plans, or
+        plans drafted before the adaptation feature existed).
+        """
+        if not self._plan.agents:
+            return None
+        return self._plan.agents.adaptation_for(agent_name)
 
     def _ensure_custom_agents(self) -> None:
         """Create agent definition files for plan-specified custom agents.

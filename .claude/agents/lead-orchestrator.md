@@ -60,6 +60,38 @@ Custom agents are NOT limited to domain specialists. They can be researchers, da
 
 The agent roster is a starting point, not a ceiling.
 
+## Per-project Agent Adaptations
+
+Your prompt includes a `# Per-project Agent Adaptations` section (when the plan has any). Each entry is a project-specific instruction block for an existing agent (commonly `xai-agent` and `domain-evaluator`) that the Plan Architect composed during `zo draft` based on scout findings.
+
+**How to apply adaptations when spawning:**
+
+1. Read the adaptation text for the agent you're about to spawn.
+2. In the spawn prompt for `Agent(name="xai-agent", ...)`, include the adaptation AFTER the standard contract instructions, under a clear heading like `## Project-specific adaptation`.
+3. The agent's base `.md` file is NOT modified — the adaptation is project-scoped and lives in the plan.
+
+**Example** — when spawning `xai-agent` for Phase 5 on a project whose plan adapts it for vibration signal analysis:
+
+```
+Agent(
+  name="xai-agent",
+  team_name="project",
+  prompt="""You are XAI Agent for Phase 5. Your base instructions are in
+.claude/agents/xai-agent.md — read them first.
+
+## Phase context
+...standard contract from the plan...
+
+## Project-specific adaptation
+Focus on frequency-domain attribution, spectrogram visualisation, and
+vibration-mode decomposition. Generic SHAP/GradCAM is less relevant for
+time-series signal data. Include bearing failure envelope plots in the
+Phase 5 analysis report."""
+)
+```
+
+If the plan has no adaptations for a given agent, spawn it normally (base instructions only).
+
 ## Your Ownership
 
 Own and manage these files exclusively:

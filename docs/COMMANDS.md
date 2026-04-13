@@ -40,6 +40,25 @@ zo draft --project NAME [--docs PATH...] [--data PATH...] [-d DESC] [--no-tmux]
 - `--data` — data files/dirs for the Data Scout to inspect (schema, distributions, quality)
 - `-d` — free-text project description
 
+The Plan Architect populates two Agent Configuration blocks in the resulting `plan.md` based on scout findings:
+
+- **Custom agents** — new specialist roles the project needs (e.g. `signal-analyst`, `calibration-expert`). Each entry is auto-created as a `.claude/agents/custom/{name}.md` file at build start. Format:
+  ```
+  **Custom agents:**
+  - signal-analyst: Sonnet — Signal processing specialist for vibration data
+  ```
+- **Agent adaptations** — project-specific prompt additions for existing agents (most commonly `xai-agent` and `domain-evaluator`, which are generic by default and need domain context). The adaptation text is appended to the agent's base spawn prompt at build time; the agent's `.md` file is unchanged. Format:
+  ```
+  **Agent adaptations:**
+
+  - xai-agent:
+    Focus on frequency-domain attribution, spectrograms, and
+    vibration-mode decomposition. Generic SHAP/GradCAM is less
+    relevant for time-series signal data.
+  ```
+
+Custom agents and adaptations are complementary: custom agents extend the team roster; adaptations tailor existing members. Both flow through to the build automatically — the Lead Orchestrator reads the plan's `# Per-project Agent Adaptations` section in its spawn prompt and appends each adaptation when it spawns the corresponding agent.
+
 ### zo init
 
 Initialize a project. **Conversational by default** — launches the **Init Architect** in a tmux pane to interview you (new vs existing repo, branch, training host, data location), inspect the target repo, then call the headless CLI to write all artifacts.
