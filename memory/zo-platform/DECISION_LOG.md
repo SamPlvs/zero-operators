@@ -513,3 +513,43 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** Static 19-agent roster doesn't scale to production projects with domain-specific needs (IVL F5: signal processing, sensor calibration, etc.). Custom agents can be any role — researchers, data scientists, testers, QA — not limited to domain specialists. The agent library grows as ZO encounters new problem types.
 **Alternatives considered:** (1) All agents in flat directory — mixes core with project-specific, hard to tell apart. (2) Agents in delivery repo — doesn't persist across projects. (3) Custom subdirectory (chosen) — clean separation, reusable, visible in roster.
 **Outcome:** PR #28. CustomAgentSpec in plan parser, _ensure_custom_agents + _render_custom_agent in orchestrator, 16 new tests.
+
+---
+
+## Decision: 2026-04-13T11:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Conversational `zo init` via Init Architect — same UX pattern as `zo draft`
+**Decision:** `zo init project` defaults to launching a tmux session with the **Init Architect** (Opus, 20th agent). The architect interviews the user (new vs existing repo, branch, training host, data location, Docker base image, layout mode), inspects any existing target repo via `Glob`/`Read`/`Bash`, then invokes `zo init project --no-tmux ...` to commit all writes. The headless flag-driven path is the single source of truth for file writes — the agent never writes target/plan/memory files itself.
+**Rationale:** The original `zo init` had a hardcoded `target_branch: main`, no Environment section, no overlay mode for existing repos. Each gap suggested a new flag, but flag proliferation doesn't scale: real init questions need *context* (is this an existing src-layout repo? is the GPU server local or remote? is the data on a separate host?). A conversational interview adapts to the project; flags don't. Mirrors the proven `zo draft` pattern.
+**Alternatives considered:** (1) Add 5+ flags to the existing programmatic `zo init` — works for single questions but degrades when answers depend on inspecting the repo. (2) Agent writes files directly with `Write`/`Edit` — fragments responsibility, hard to test, easy to drift from CLI behavior. (3) Hybrid (chosen) — agent collects answers + inspects, CLI does all writes.
+**Outcome:** New `init-architect.md`, `src/zo/environment.py` (host detection), scaffold `layout_mode={standard,adaptive}`, `_TARGET_TEMPLATE` with `{target_branch}` + responsibility-based `agent_working_dirs`, `_PLAN_TEMPLATE` with `## Environment` section, `zo init` with 8 headless flags + tmux/git/path guardrails. 4 new test files / classes, 28 new tests (433→443 passed when also accounting for prior cleanup).
+
+---
+
+## Decision: 2026-04-13T11:30:00Z
+**Type:** ARCHITECTURE
+**Title:** Scaffold `layout_mode=adaptive` — preserve existing code layout in overlay mode
+**Decision:** Split scaffold directories into `_META_DIRECTORIES` (always created: `configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`) and `_STANDARD_DIRECTORIES` (only created in standard mode: `src/*`, `data/*`, `models/`, human notebooks, tests). Adaptive mode also skips `README.md`, `pyproject.toml`, `.gitignore` template files (the existing repo has these). `.gitkeep` writes are restricted to dirs that are truly empty after creation — no pollution of pre-existing code dirs.
+**Rationale:** IVL F5 (and any serious existing project) has its own src-layout, e.g. `src/ivl_f5/data/`. Naively running scaffold would create both `src/data/` AND leave `src/ivl_f5/data/` — agents get confused about where code lives. Adaptive mode preserves the user's layout; the Init Architect then writes a project-specific `STRUCTURE.md` and updates `agent_working_dirs` in the target file to point at real paths (the one allowed direct-write exception, since only the agent has the project context to do this correctly).
+**Alternatives considered:** (1) Always run full scaffold — pollutes existing repos. (2) Skip scaffold entirely on existing repos — loses ZO's `configs/`, `experiments/`, `docker/` infrastructure that agents depend on. (3) Two layout modes (chosen) — clean separation of "ZO infrastructure" vs "code layout".
+**Outcome:** scaffold.py refactor with `layout_mode` param + `_META_DIRECTORIES`/`_STANDARD_DIRECTORIES` split. CLI guardrail: adaptive requires --existing-repo. 5 new tests covering empty-dir gitkeep, adaptive mode skipping src/, README/pyproject preservation, invalid layout mode rejection, overlay logging.
+
+---
+
+## Decision: 2026-04-13T11:45:00Z
+**Type:** ARCHITECTURE
+**Title:** Plan template `## Environment` section + auto-detection
+**Decision:** Plan template (`_PLAN_TEMPLATE` in cli.py) gains an `## Environment` section with three blocks: **Host** (where ZO runs — platform, Python, Docker, GPU count, CUDA), **Training target** (where Docker runs — gpu_host, base_image, train_cuda), **Data** (data_layout, data_path, docker_mounts). At `zo init` time, `src/zo/environment.py` runs detection probes (subprocess to nvidia-smi + docker + python version + uname) and the values are interpolated into the template. User-supplied flags (`--gpu-host`, `--base-image`, `--data-path`) override detection. `--no-detect` produces TODO placeholders.
+**Rationale:** Resolves known issue #6. Manual Environment specification was error-prone. Distinguishing host (where ZO runs) from training target (where Docker runs) is essential because IVL F5 dev happens on Mac but training runs on a Linux GPU server with different CUDA. Auto-detection captures host correctly; explicit flags capture training target.
+**Alternatives considered:** (1) Single `Environment` block conflating host + training — wrong abstraction for remote-GPU setups. (2) Defer to `zo draft` — but draft happens after init, and Environment should be in the plan from the start. (3) Three-block Environment (chosen) — explicit separation matches reality.
+**Outcome:** _render_plan_template() in cli.py builds the populated section. Environment.suggest_base_image() picks a sensible PyTorch image from detected CUDA (12.4 / 12.1 / 11.8 with safe fallback).
+
+---
+
+## Decision: 2026-04-13T12:15:00Z
+**Type:** ARCHITECTURE
+**Title:** `zo init` dry-run + reset — mid-flight adaptability for the Init Architect
+**Decision:** Added two CLI affordances that make the conversational init safely reversible: (1) `--dry-run` prints the exact file tree, directory preserved/added counts, target.md content, and plan.md Environment section WITHOUT any filesystem writes. Init Architect runs dry-run before every commit and shows the user what will happen. (2) `--reset` deletes `memory/{project}/`, `targets/{project}.target.md`, and `plans/{project}.md`; prompts for the project name as confirmation (or `--yes` to skip); NEVER touches the delivery repo. Init Architect mentions reset in its closing message only when the user seemed uncertain.
+**Rationale:** The first pass made init conversational but the user asked: "will the agent adapt mid-flight?" The answer revealed gaps: no preview before commit (user commits blind), no rollback after commit (user has to rm-rf manually, risky if they confuse ZO paths with delivery paths). Dry-run + reset close the loop: agent can preview, user can undo, without any path-sensitive shell commands. Mirrors the "plan before action, action if approved" pattern from the rest of ZO.
+**Alternatives considered:** (1) Leave as-is — real IVL F5 friction would catch issues, but expensive when you're mid-session and unsure. (2) Separate `zo reset` command — cleaner surface but adds another command to cascade across docs; init+reset on same command is more discoverable ("how do I undo init? init --reset"). (3) Agent writes files directly with Write tool so it can re-edit — breaks the "single source of truth for writes" rule and is harder to test.
+**Outcome:** 3 new classes (TestInitDryRun, TestInitReset) + 10 tests. Total 451 passing. PR-019 added (preview-before-commit principle). COMMANDS.md updated with --dry-run / --reset / --yes. Init Architect protocol gets explicit partial-match guidance (default standard for partial src/) and semantic-alias guidance (adaptive + map for src/data_loading → src/data), closing the layout adaptability gap the user raised.

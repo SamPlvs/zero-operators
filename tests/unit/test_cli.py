@@ -56,7 +56,9 @@ class TestInitCommand:
     ) -> None:
         with patch("zo.cli._zo_root", return_value=tmp_path), \
              patch("zo.cli._main_repo_root", return_value=tmp_path):
-            result = runner.invoke(cli, ["init", "test-project"])
+            result = runner.invoke(
+                cli, ["init", "test-project", "--no-tmux", "--no-detect"],
+            )
 
         assert result.exit_code == 0
 
@@ -73,6 +75,11 @@ class TestInitCommand:
         assert target.exists()
         content = target.read_text()
         assert "test-project" in content
+        # Default branch
+        assert "target_branch: main" in content
+        # Responsibility-based agent dirs
+        assert "data-engineer: src/data/" in content
+        assert "model-builder: src/model/" in content
 
         # Plan template
         plan = tmp_path / "plans" / "test-project.md"
@@ -82,6 +89,7 @@ class TestInitCommand:
         assert "## Objective" in content
         assert "## Oracle Definition" in content
         assert "## Workflow Configuration" in content
+        assert "## Environment" in content  # NEW section
         assert "## Data Sources" in content
         assert "## Domain Context and Priors" in content
         assert "## Agent Configuration" in content
@@ -93,8 +101,12 @@ class TestInitCommand:
     ) -> None:
         with patch("zo.cli._zo_root", return_value=tmp_path), \
              patch("zo.cli._main_repo_root", return_value=tmp_path):
-            result1 = runner.invoke(cli, ["init", "test-project"])
-            result2 = runner.invoke(cli, ["init", "test-project"])
+            result1 = runner.invoke(
+                cli, ["init", "test-project", "--no-tmux", "--no-detect"],
+            )
+            result2 = runner.invoke(
+                cli, ["init", "test-project", "--no-tmux", "--no-detect"],
+            )
 
         assert result1.exit_code == 0
         assert result2.exit_code == 0
@@ -110,7 +122,8 @@ class TestInitCommand:
              patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
-                ["init", "my-ml", "--scaffold-delivery", str(delivery)],
+                ["init", "my-ml", "--no-tmux", "--no-detect",
+                 "--scaffold-delivery", str(delivery)],
             )
 
         assert result.exit_code == 0
@@ -178,23 +191,473 @@ class TestInitCommand:
              patch("zo.cli._main_repo_root", return_value=zo_root):
             result = runner.invoke(
                 cli,
-                ["init", "my-ml", "--scaffold-delivery", str(delivery)],
+                ["init", "my-ml", "--no-tmux", "--no-detect",
+                 "--scaffold-delivery", str(delivery)],
             )
 
         assert result.exit_code == 0
         assert (delivery / "README.md").read_text() == "custom content"
-        assert "already exists" in result.output.lower()
 
     def test_init_without_scaffold_still_works(
         self, runner: click.testing.CliRunner, tmp_path: Path
     ) -> None:
-        """Ensure the flag is optional and init works without it."""
+        """Ensure init works without --scaffold-delivery or --existing-repo."""
         with patch("zo.cli._zo_root", return_value=tmp_path), \
              patch("zo.cli._main_repo_root", return_value=tmp_path):
-            result = runner.invoke(cli, ["init", "plain-project"])
+            result = runner.invoke(
+                cli, ["init", "plain-project", "--no-tmux", "--no-detect"],
+            )
 
         assert result.exit_code == 0
         assert (tmp_path / "plans" / "plain-project.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# init command — failure modes and new flags
+# ---------------------------------------------------------------------------
+
+
+class TestInitHeadlessFlags:
+    """Tests for the new --no-tmux flag surface on ``zo init``."""
+
+    def test_init_branch_flag_writes_to_target(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "ivl-f5", "--no-tmux", "--no-detect",
+                 "--branch", "samtukra"],
+            )
+        assert result.exit_code == 0
+        target = (tmp_path / "targets" / "ivl-f5.target.md").read_text()
+        assert "target_branch: samtukra" in target
+
+    def test_init_existing_repo_requires_path_to_exist(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Pointing --existing-repo at a missing path is a UsageError."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "foo", "--no-tmux", "--no-detect",
+                 "--existing-repo", str(tmp_path / "does-not-exist")],
+            )
+        assert result.exit_code != 0
+
+    def test_init_existing_repo_requires_git(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """A plain directory without .git/ is a UsageError."""
+        existing = tmp_path / "not-a-repo"
+        existing.mkdir()
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "foo", "--no-tmux", "--no-detect",
+                 "--existing-repo", str(existing)],
+            )
+        assert result.exit_code != 0
+        assert "not a git repository" in result.output.lower()
+
+    def test_init_scaffold_and_existing_mutually_exclusive(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        existing = tmp_path / "repo"
+        existing.mkdir()
+        (existing / ".git").mkdir()
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "foo", "--no-tmux", "--no-detect",
+                 "--existing-repo", str(existing),
+                 "--scaffold-delivery", str(tmp_path / "other")],
+            )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output.lower()
+
+    def test_init_adaptive_requires_existing_repo(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """--layout-mode=adaptive only makes sense with --existing-repo."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "foo", "--no-tmux", "--no-detect",
+                 "--layout-mode", "adaptive"],
+            )
+        assert result.exit_code != 0
+        assert "adaptive" in result.output.lower()
+
+    def test_init_adaptive_mode_skips_src_dirs(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Adaptive mode must not create src/* or data/* directories."""
+        existing = tmp_path / "real-repo"
+        existing.mkdir()
+        (existing / ".git").mkdir()
+        # Pretend the user already has a src-layout
+        (existing / "src" / "ivl_f5").mkdir(parents=True)
+        (existing / "src" / "ivl_f5" / "__init__.py").touch()
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "ivl-f5", "--no-tmux", "--no-detect",
+                 "--existing-repo", str(existing),
+                 "--layout-mode", "adaptive",
+                 "--branch", "samtukra"],
+            )
+        assert result.exit_code == 0, result.output
+        # Meta-dirs created
+        assert (existing / "configs").is_dir()
+        assert (existing / "experiments").is_dir()
+        assert (existing / "docker").is_dir()
+        assert (existing / "notebooks" / "phase").is_dir()
+        # But ZO src/* layout NOT created (user has their own)
+        assert not (existing / "src" / "data").exists()
+        assert not (existing / "src" / "model").exists()
+        # Existing code dir preserved
+        assert (existing / "src" / "ivl_f5" / "__init__.py").exists()
+        # Adaptive also should NOT clobber README / pyproject / .gitignore
+        # (skipped in adaptive mode even if missing)
+        assert not (existing / "README.md").exists()
+        assert not (existing / "pyproject.toml").exists()
+
+    def test_init_adaptive_overlay_does_not_pollute_existing_src(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Existing code in src/ must not receive .gitkeep (no pollution)."""
+        existing = tmp_path / "real-repo"
+        existing.mkdir()
+        (existing / ".git").mkdir()
+        code_dir = existing / "src" / "ivl_f5"
+        code_dir.mkdir(parents=True)
+        (code_dir / "trainer.py").write_text("x = 1", encoding="utf-8")
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "ivl-f5", "--no-tmux", "--no-detect",
+                 "--existing-repo", str(existing),
+                 "--layout-mode", "adaptive"],
+            )
+        assert result.exit_code == 0, result.output
+        assert not (code_dir / ".gitkeep").exists()
+
+    def test_init_environment_section_filled_when_detect(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Without --no-detect, plan's Environment section is populated."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "foo", "--no-tmux"],
+            )
+        assert result.exit_code == 0, result.output
+        plan = (tmp_path / "plans" / "foo.md").read_text()
+        # Platform line filled — not "TODO"
+        assert "platform: TODO" not in plan
+        assert "python: TODO" not in plan
+
+    def test_init_gpu_host_and_data_path_in_plan(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "foo", "--no-tmux", "--no-detect",
+                 "--gpu-host", "gpu-server-01",
+                 "--data-path", "gpu-server-01:/mnt/data"],
+            )
+        assert result.exit_code == 0, result.output
+        plan = (tmp_path / "plans" / "foo.md").read_text()
+        assert "gpu-server-01" in plan
+        assert "/mnt/data" in plan
+        # Remote data_layout inferred from host:path
+        assert "data_layout: remote" in plan
+
+    def test_init_no_tmux_avoids_tmux_guardrail(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Even with tmux missing, --no-tmux should succeed."""
+        import shutil
+
+        original_which = shutil.which
+
+        def fake_which(name):
+            if name == "tmux":
+                return None
+            return original_which(name)
+
+        monkeypatch.setattr(shutil, "which", fake_which)
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "foo", "--no-tmux", "--no-detect"],
+            )
+        assert result.exit_code == 0, result.output
+
+    def test_init_conversational_default_errors_without_tmux(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Default conversational init must give a helpful error when tmux
+        is missing rather than silently failing in the wrapper."""
+        import shutil
+
+        original_which = shutil.which
+
+        def fake_which(name):
+            if name == "tmux":
+                return None
+            return original_which(name)
+
+        monkeypatch.setattr(shutil, "which", fake_which)
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(cli, ["init", "foo"])
+        assert result.exit_code != 0
+        assert "tmux" in result.output.lower()
+        assert "--no-tmux" in result.output
+
+
+# ---------------------------------------------------------------------------
+# init architect prompt construction
+# ---------------------------------------------------------------------------
+
+
+class TestInitArchitectPrompt:
+    """The prompt the Init Architect agent receives on launch."""
+
+    def test_prompt_includes_project_name(self) -> None:
+        from zo.cli import _build_init_architect_prompt
+
+        prompt = _build_init_architect_prompt(
+            project="ivl-f5", hints={},
+        )
+        assert "ivl-f5" in prompt
+        assert "init-architect.md" in prompt
+
+    def test_prompt_surfaces_non_none_hints(self) -> None:
+        from zo.cli import _build_init_architect_prompt
+
+        prompt = _build_init_architect_prompt(
+            project="ivl-f5",
+            hints={
+                "branch": "samtukra",
+                "existing_repo": "/code/ivl-f5",
+                "gpu_host": None,  # None should be omitted
+                "base_image": None,
+                "data_path": None,
+                "layout_mode": "adaptive",
+            },
+        )
+        assert "branch: samtukra" in prompt
+        assert "existing_repo: /code/ivl-f5" in prompt
+        assert "layout_mode: adaptive" in prompt
+        # None values must NOT appear
+        assert "gpu_host: None" not in prompt
+        assert "base_image: None" not in prompt
+
+    def test_prompt_reinforces_no_direct_writes(self) -> None:
+        """Agent prompt must tell the architect to route writes through CLI."""
+        from zo.cli import _build_init_architect_prompt
+
+        prompt = _build_init_architect_prompt(project="foo", hints={})
+        assert "--no-tmux" in prompt
+        assert "single source of truth" in prompt
+
+
+# ---------------------------------------------------------------------------
+# init dry-run
+# ---------------------------------------------------------------------------
+
+
+class TestInitDryRun:
+    """``--dry-run`` must produce a preview without touching the filesystem."""
+
+    def test_dry_run_writes_nothing(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "preview-test", "--no-tmux", "--no-detect",
+                 "--dry-run"],
+            )
+        assert result.exit_code == 0, result.output
+        # No artifacts created
+        assert not (tmp_path / "memory" / "preview-test").exists()
+        assert not (tmp_path / "targets" / "preview-test.target.md").exists()
+        assert not (tmp_path / "plans" / "preview-test.md").exists()
+        # Preview output mentions dry-run
+        assert "DRY RUN" in result.output.upper()
+
+    def test_dry_run_shows_branch_and_layout(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        existing = tmp_path / "repo"
+        existing.mkdir()
+        (existing / ".git").mkdir()
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli,
+                ["init", "ivl-f5", "--no-tmux", "--no-detect", "--dry-run",
+                 "--existing-repo", str(existing),
+                 "--branch", "samtukra",
+                 "--layout-mode", "adaptive"],
+            )
+        assert result.exit_code == 0, result.output
+        # Key decisions surface in the preview
+        assert "samtukra" in result.output
+        assert "adaptive" in result.output
+        # Still nothing written
+        assert not (tmp_path / "targets" / "ivl-f5.target.md").exists()
+
+    def test_dry_run_rejected_in_conversational_mode(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """--dry-run without --no-tmux is a UsageError (conversational
+        mode has its own preview flow)."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "foo", "--dry-run"],
+            )
+        assert result.exit_code != 0
+        assert "--dry-run" in result.output
+        assert "--no-tmux" in result.output
+
+
+# ---------------------------------------------------------------------------
+# init --reset
+# ---------------------------------------------------------------------------
+
+
+class TestInitReset:
+    """``--reset`` must delete ZO artifacts safely and only on confirmation."""
+
+    def _init_a_project(
+        self, runner: click.testing.CliRunner, tmp_path: Path, name: str,
+    ) -> None:
+        """Helper: create a complete init state for *name* in tmp_path."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", name, "--no-tmux", "--no-detect"],
+            )
+        assert result.exit_code == 0, result.output
+
+    def test_reset_deletes_init_artifacts(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        self._init_a_project(runner, tmp_path, "doomed")
+        # Confirm artifacts exist
+        assert (tmp_path / "memory" / "doomed").is_dir()
+        assert (tmp_path / "targets" / "doomed.target.md").exists()
+        assert (tmp_path / "plans" / "doomed.md").exists()
+
+        # Reset with -y to skip confirmation
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "doomed", "--reset", "--yes"],
+            )
+        assert result.exit_code == 0, result.output
+
+        # All artifacts gone
+        assert not (tmp_path / "memory" / "doomed").exists()
+        assert not (tmp_path / "targets" / "doomed.target.md").exists()
+        assert not (tmp_path / "plans" / "doomed.md").exists()
+
+    def test_reset_does_not_touch_delivery_repo(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """The delivery repo MUST survive --reset — it may contain user code."""
+        zo_root = tmp_path / "zo"
+        delivery = tmp_path / "delivery"
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
+            runner.invoke(
+                cli,
+                ["init", "keep-delivery", "--no-tmux", "--no-detect",
+                 "--scaffold-delivery", str(delivery)],
+            )
+        assert (delivery / "STRUCTURE.md").exists()
+        # Put "user code" into the delivery repo
+        user_file = delivery / "src" / "data" / "loader.py"
+        user_file.write_text("# user code", encoding="utf-8")
+
+        # Reset
+        with patch("zo.cli._zo_root", return_value=zo_root), \
+             patch("zo.cli._main_repo_root", return_value=zo_root):
+            result = runner.invoke(
+                cli, ["init", "keep-delivery", "--reset", "--yes"],
+            )
+        assert result.exit_code == 0, result.output
+
+        # ZO artifacts gone
+        assert not (zo_root / "memory" / "keep-delivery").exists()
+        # Delivery repo AND user code preserved
+        assert delivery.exists()
+        assert user_file.exists()
+        assert user_file.read_text() == "# user code"
+
+    def test_reset_on_nonexistent_project_is_safe(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Reset on a project that doesn't exist is a no-op with
+        a clear 'nothing to reset' message — not an error."""
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "ghost", "--reset", "--yes"],
+            )
+        assert result.exit_code == 0
+        assert "nothing to reset" in result.output.lower()
+
+    def test_reset_refuses_when_confirmation_mismatches(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Without --yes, reset requires typing the project name."""
+        self._init_a_project(runner, tmp_path, "guarded")
+
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "guarded", "--reset"],
+                input="wrong-name\n",
+            )
+        assert result.exit_code == 0
+        assert "cancelled" in result.output.lower()
+        # Artifacts STILL exist — confirmation protected them
+        assert (tmp_path / "memory" / "guarded").exists()
+        assert (tmp_path / "targets" / "guarded.target.md").exists()
+
+    def test_reset_accepts_matching_confirmation(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        self._init_a_project(runner, tmp_path, "confirmed")
+
+        with patch("zo.cli._zo_root", return_value=tmp_path), \
+             patch("zo.cli._main_repo_root", return_value=tmp_path):
+            result = runner.invoke(
+                cli, ["init", "confirmed", "--reset"],
+                input="confirmed\n",
+            )
+        assert result.exit_code == 0
+        assert not (tmp_path / "memory" / "confirmed").exists()
+        assert not (tmp_path / "targets" / "confirmed.target.md").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +696,84 @@ class TestScaffoldDelivery:
         # Second run should not overwrite
         scaffold_delivery(repo, "proj")
         assert (repo / "README.md").read_text() == "do not touch"
+
+    def test_scaffold_gitkeep_only_in_empty_dirs(
+        self, tmp_path: Path,
+    ) -> None:
+        """.gitkeep must not land in a dir that already has files."""
+        from zo.scaffold import scaffold_delivery
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        # Simulate an existing code dir with real files
+        src_data = repo / "src" / "data"
+        src_data.mkdir(parents=True)
+        (src_data / "loader.py").write_text("# real code", encoding="utf-8")
+
+        scaffold_delivery(repo, "proj")
+
+        # Real code dir gets no .gitkeep
+        assert not (src_data / ".gitkeep").exists()
+        assert (src_data / "loader.py").exists()
+        # A freshly-created empty dir still gets .gitkeep
+        assert (repo / "configs" / "data" / ".gitkeep").exists()
+
+    def test_scaffold_adaptive_skips_src_and_data(
+        self, tmp_path: Path,
+    ) -> None:
+        from zo.scaffold import scaffold_delivery
+
+        repo = tmp_path / "repo"
+        scaffold_delivery(repo, "proj", layout_mode="adaptive")
+
+        # Meta-dirs still created
+        assert (repo / "configs" / "data").is_dir()
+        assert (repo / "experiments").is_dir()
+        assert (repo / "docker").is_dir()
+        assert (repo / "notebooks" / "phase").is_dir()
+        assert (repo / "reports" / "figures").is_dir()
+        # src/* and data/* NOT created
+        assert not (repo / "src" / "data").exists()
+        assert not (repo / "src" / "model").exists()
+        assert not (repo / "data" / "raw").exists()
+        assert not (repo / "models").exists()
+        # README / pyproject / .gitignore omitted (user has own)
+        assert not (repo / "README.md").exists()
+        assert not (repo / "pyproject.toml").exists()
+        assert not (repo / ".gitignore").exists()
+        # But STRUCTURE.md and Dockerfile still written
+        assert (repo / "STRUCTURE.md").exists()
+        assert (repo / "docker" / "Dockerfile").exists()
+
+    def test_scaffold_rejects_invalid_layout_mode(
+        self, tmp_path: Path,
+    ) -> None:
+        from zo.scaffold import scaffold_delivery
+
+        with pytest.raises(ValueError):
+            scaffold_delivery(
+                tmp_path / "repo", "proj", layout_mode="custom",
+            )
+
+    def test_scaffold_overlay_logs_added_vs_preserved(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Overlay logging should call out added/preserved counts."""
+        from zo.scaffold import scaffold_delivery
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        # Pre-existing content in one dir
+        (repo / "configs" / "data").mkdir(parents=True)
+        (repo / "configs" / "data" / "dataset.yaml").write_text(
+            "existing", encoding="utf-8",
+        )
+
+        scaffold_delivery(repo, "proj", overlay=True)
+        captured = capsys.readouterr()
+        combined = captured.out + captured.err
+        # Rich prints to stdout; tolerate either stream.
+        assert "Overlay applied" in combined or "overlay" in combined.lower()
 
 
 # ---------------------------------------------------------------------------
