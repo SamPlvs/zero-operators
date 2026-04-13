@@ -1,0 +1,63 @@
+---
+---
+
+<section id="quickstart" data-animate>
+  <div class="container">
+    <div class="section-label">GET STARTED</div>
+    <h2>Five commands to launch</h2>
+
+    <div class="terminal" data-animate>
+      <div class="terminal-line terminal-prompt">git clone https://github.com/SamPlvs/zero-operators.git</div>
+      <div class="terminal-line terminal-prompt">cd zero-operators && ./setup.sh</div>
+      <div class="terminal-line terminal-comment"># Set up environment</div>
+      <div class="terminal-line terminal-prompt">zo init my-project</div>
+      <div class="terminal-line terminal-comment"># Scaffold project files</div>
+      <div class="terminal-line terminal-prompt">zo draft --project my-project</div>
+      <div class="terminal-line terminal-comment"># Generate plan.md from your data</div>
+      <div class="terminal-line terminal-prompt">zo build plans/my-project.md</div>
+      <div class="terminal-line terminal-comment"># Launch the agent team</div>
+    </div>
+
+    <p class="qs-note">Requires Python 3.11+, Claude Code CLI. See setup.sh for details.</p>
+  </div>
+</section>
+
+<style>
+  h2 {
+    margin-bottom: 40px;
+  }
+
+  .terminal {
+    max-width: 640px;
+  }
+
+  .terminal-line {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 2;
+  }
+
+  .terminal-comment {
+    color: var(--amber-dim);
+    padding-left: 24px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .qs-note {
+    color: var(--amber-dim);
+    font-size: 12px;
+    margin-top: 32px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 640px) {
+    .terminal-line {
+      font-size: 11px;
+    }
+
+    .terminal-comment {
+      font-size: 10px;
+    }
+  }
+</style>

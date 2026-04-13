@@ -1,0 +1,115 @@
+---
+import comparisons from '../data/comparisons.json';
+
+const items = comparisons.whatItsNot;
+---
+
+<section id="boundaries" data-animate>
+  <div class="container">
+    <div class="section-label">BOUNDARIES</div>
+    <h2>What Zero Operators is not</h2>
+
+    <div class="boundary-list">
+      {items.map((item) => (
+        <div class="boundary-row" data-animate>
+          <div class="boundary-not">
+            <span class="boundary-prefix">It is NOT</span>
+            <span class="strike-animate">{item.not}</span>
+          </div>
+          <div class="boundary-is">
+            <span class="boundary-prefix">It IS</span>
+            <span class="boundary-value">{item.is}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <p class="boundary-closing" data-animate>
+      ZO is a digital research and engineering team that happens to express itself in code, models, reports, and data artifacts.
+    </p>
+  </div>
+</section>
+
+<style>
+  h2 {
+    margin-bottom: 48px;
+  }
+
+  .boundary-list {
+    max-width: 860px;
+  }
+
+  .boundary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: baseline;
+  }
+
+  .boundary-row:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .boundary-not {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--amber-dim);
+    opacity: 0.7;
+  }
+
+  .boundary-is {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .boundary-prefix {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    opacity: 0.5;
+  }
+
+  .boundary-not .strike-animate {
+    font-size: 15px;
+    font-weight: 600;
+    position: relative;
+    display: inline-block;
+  }
+
+  .boundary-value {
+    color: var(--amber);
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .boundary-closing {
+    color: var(--amber-dim);
+    font-style: italic;
+    text-align: center;
+    margin-top: 48px;
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @media (max-width: 640px) {
+    .boundary-row {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 16px 0;
+    }
+
+    .boundary-not .strike-animate,
+    .boundary-value {
+      font-size: 14px;
+    }
+  }
+</style>
