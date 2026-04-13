@@ -61,6 +61,7 @@
       <a href="#quickstart" class="btn btn-primary">Get Started</a>
       <a href="https://github.com/SamPlvs/zero-operators" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">View on GitHub</a>
     </div>
+    <a href="https://samtukra.com" target="_blank" rel="noopener noreferrer" class="hero-creator hero-animate hero-animate-delay-4">Created by Samyakh (Sam) Tukra</a>
     <div class="hero-animate hero-animate-delay-4 scroll-indicator-wrap">
       <svg class="scroll-indicator" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"/>
@@ -125,6 +126,22 @@
     display: flex;
     gap: 16px;
     margin-top: 12px;
+  }
+
+  .hero-creator {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--amber-dim);
+    text-decoration: none;
+    opacity: 0.5;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+  }
+
+  .hero-creator:hover {
+    opacity: 0.9;
+    color: var(--amber);
   }
 
   .scroll-indicator-wrap {
