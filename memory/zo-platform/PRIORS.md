@@ -567,3 +567,35 @@ This pattern generalises: any time a CLI ergonomics gap suggests "just add a fla
 
 Plan schema extension: `AgentAdaptation` pydantic model, `AgentConfig.adaptations` field, `adaptation_for(name)` lookup. Parser: `_ADAPTATIONS_RE` + `_parse_adaptations` supports single-line and multi-line entries, blank-line-separated. Orchestrator: `_adaptation_for`, `_prompt_adaptations` dedicated section in lead prompt, inline adaptation inside each agent contract in `_prompt_contracts`. Protocol: Plan Architect tells its scouts' findings become adaptation text; Lead Orchestrator tells the Lead to append adaptations to spawn prompts. 23 new tests (7 parser + 9 orchestrator + 7 integration covering core + custom agent adaptations, plans without adaptations, contracts inline, lead prompt dedicated section) bring total to 476 passing.
 
+---
+
+## PR-021: Rich Markup + User Content — Use `Text` Objects, Not Inline Tags
+**Source:** Session 015 (2026-04-13), branded `zo --help` implementation
+**Root cause category:** novel_case
+**Failure:** When rendering the `DESCRIPTION` section of `zo init --help`, shell-continuation backslashes at line ends (from the `init` docstring's `zo init ivl-f5 --no-tmux \`) rendered as `\\` (two backslashes). Separately, the `[standard|adaptive]` Choice metavar for `--layout-mode` disappeared entirely from the `OPTIONS` section — Rich consumed it as an invalid markup tag `[standard|adaptive]`. Both failures traced to mixing user-provided content with Rich's markup parser inside f-strings.
+
+### Rules
+
+1. **Rich interprets `[...]` in any string passed to `Console.print()` as markup.**
+   `"[bold]hello[/]"` renders `hello` in bold. But so does `"[standard|adaptive]"` — Rich tries to parse it, fails, and silently drops the text (treated as an unrecognized tag). Click's `get_help_record(ctx)` returns option decls like `--layout-mode [standard|adaptive]` where the brackets are literal, not markup — feeding that into an f-string with `[bold]...[/]` wrappers destroys the metavar.
+   - *Failure ref:* First pass of `_render_help` used `rc.print(f"  [bold]{decl.ljust(w)}[/]  [{_DIM}]{help_msg}[/]")`. `[standard|adaptive]` vanished from the output.
+
+2. **`rich.markup.escape()` doubles trailing backslashes, even when no `[...]` follows.**
+   The intent of `escape()` is to neutralize `[tag]` patterns so brackets render literally. As a safety measure it also doubles any `\` that precedes `[` — including the degenerate case of a `\` at the end of a string (no following character). For docstrings that use `\` as shell line-continuation, this doubles them in the rendered output (`\\` instead of `\`). Using `escape()` to sanitize user content before interpolating into markup strings is therefore NOT safe for arbitrary text.
+   - *Failure ref:* Second pass replaced raw interpolation with `escape(decl)` and `escape(help_msg)`. The metavar problem resolved, but every shell-continuation `\` in the `init` docstring became `\\`.
+
+3. **For sections that mix Rich styling with user-provided content, build Rich `Text` objects and apply `style=` programmatically.**
+   `Text("  ").append(decl.ljust(w), style="bold").append("  ").append(help_msg, style=_DIM)` keeps the text verbatim — brackets, backslashes, unicode dashes — while still colorizing the segments. `rc.print(text_obj)` renders without re-parsing markup. For plain user content with no per-segment styling (the `DESCRIPTION` body), use `rc.print(line, markup=False, highlight=False)` — equivalent outcome, less construction overhead.
+   - *Applies to:* Any help renderer, banner content from config files, logs of user input, agent output echoed to console.
+
+4. **Reserve inline `[tag]…[/]` markup strings for Rich-authored content only.**
+   Section headers (`f"[{_AMBER}]USAGE[/]"`), the footer hint (`f"[{_DIM}]Run[/] [bold]zo COMMAND --help[/] …"`), and fixed brand copy in the banner (the tagline) are safe — the content is literal and under our control. Any time the content comes from `command.help`, `get_help_record`, or another source we didn't author, stop the markup at the string boundary and switch to `Text` objects.
+
+### Verified Solution
+
+`_render_help` in `src/zo/cli.py` uses two patterns side-by-side:
+- **Rich-authored content (section headers, footer, banner tagline):** inline markup is fine — `rc.print(f"[{_AMBER}]USAGE[/]")`.
+- **User/Click-provided content (command/option decls, help text, metavars, docstrings):** build a `Text` object, apply styles via `append(segment, style=…)`, then print the `Text`. For multi-line docstring bodies with no per-segment styling, `rc.print(line, markup=False, highlight=False)` is the simpler shortcut.
+
+This separation fixed both failures in one pass: `[standard|adaptive]` renders verbatim in the `OPTIONS` column (because `Text.append("--layout-mode [standard|adaptive]", style="bold")` never touches Rich's markup parser), and shell-continuation backslashes in the `DESCRIPTION` render as single `\` (because `markup=False` bypasses both parsing and escape-expansion). Validated by `tests/unit/test_cli.py::test_help_output` plus visual inspection of `zo --help`, `zo init --help`, `zo gates set --help`.
+

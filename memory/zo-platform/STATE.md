@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent adaptations**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, and now **`**Agent adaptations:**` block** — Plan Architect proposes domain-specific prompt additions for existing agents (xai-agent, domain-evaluator, custom agents) during draft; orchestrator injects them into spawn prompts at build time. 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29 merged.
+ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent adaptations + branded CLI help**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, `**Agent adaptations:**` block (Plan Architect proposes domain-specific prompt additions during draft; orchestrator injects at build time), and now a **branded `zo --help`** — Rich-rendered orbital-mark panel, `QUICK START` sequence (init→draft→preflight→build→continue), sectioned headers in brand palette; propagates to every subcommand via `ZoGroup`/`ZoCommand`. 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29 merged.
 
 ## Completed
 
@@ -89,6 +89,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent ad
 - [x] v1.0.2-pre: `zo init --reset` — deletes memory/{project}/, targets/{project}.target.md, plans/{project}.md; refuses without --yes unless user types project name; NEVER touches delivery repo
 - [x] v1.0.2-pre: Init Architect partial-match + semantic-alias guidance — default to standard for partial src/ dirs (idempotent fill-in), adaptive + map for semantic aliases (src/data_loading → src/data)
 - [x] v1.0.2-pre: Per-project agent adaptations — `**Agent adaptations:**` block in plan.md; Plan Architect populates during draft based on scout findings; orchestrator injects into spawn prompts at build time; works for both core (xai-agent, domain-evaluator) and custom agents; appended not replaced (agent `.md` files stay reusable)
+- [x] v1.0.2-pre: Branded `zo --help` — `ZoGroup`/`ZoCommand` override `get_help()` to render a Rich-formatted banner (orbital mark ◎ + `ZERO OPERATORS` + version in brand amber) with sectioned headers (USAGE, QUICK START, COMMANDS, OPTIONS) and an init→draft→preflight→build→continue quick-start sequence; propagates to every subcommand and nested group automatically via `command_class`/`group_class`
 
 ## Known Issues
 
@@ -120,10 +121,10 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent ad
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-13T15:00:00Z
-last_session: session-014
-branch: worktree-adapt-agents (worktree)
+last_checkpoint: 2026-04-13T16:30:00Z
+last_session: session-015
+branch: claude/silly-shirley (worktree)
 test_count: 476 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
-prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), pending (init-architect + IVL F5 readiness)
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), pending (init-architect + IVL F5 readiness), pending (branded `zo --help`)

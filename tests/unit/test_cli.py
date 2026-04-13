@@ -40,7 +40,23 @@ class TestCliGroup:
     def test_help_output(self, runner: click.testing.CliRunner) -> None:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        assert "Zero Operators" in result.output
+        # Branded banner uses uppercase "ZERO OPERATORS" to match the brand SVG.
+        assert "zero operators" in result.output.lower()
+        # Branded help should include the sectioned headers and the footer hint.
+        assert "USAGE" in result.output
+        assert "QUICK START" in result.output
+        assert "COMMANDS" in result.output
+        assert "OPTIONS" in result.output
+        assert "--help" in result.output
+        # Quick-start sequence must be in the right order (init → draft →
+        # preflight → build → continue): preflight validates a plan, so it
+        # cannot run until a plan exists.
+        init_idx = result.output.index("zo init")
+        draft_idx = result.output.index("zo draft")
+        pre_idx = result.output.index("zo preflight")
+        build_idx = result.output.index("zo build")
+        cont_idx = result.output.index("zo continue")
+        assert init_idx < draft_idx < pre_idx < build_idx < cont_idx
 
 
 # ---------------------------------------------------------------------------
