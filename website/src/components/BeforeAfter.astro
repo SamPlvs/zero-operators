@@ -1,0 +1,154 @@
+---
+import comparisons from '../data/comparisons.json';
+
+const items = comparisons.beforeAfter;
+---
+
+<section id="before-after" data-animate>
+  <div class="container">
+    <div class="section-label">WHAT CHANGES</div>
+    <h2>The difference</h2>
+
+    <div class="ba-columns" data-animate-stagger>
+      <div class="ba-col ba-without">
+        <div class="ba-header ba-header--dim">WITHOUT ZO</div>
+        {items.map((item) => (
+          <div class="ba-row">
+            <div class="ba-title-row">
+              <svg class="ba-icon ba-icon--cross" viewBox="0 0 14 14" fill="none" aria-hidden="true"><line x1="3" y1="3" x2="11" y2="11" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round"/><line x1="11" y1="3" x2="3" y2="11" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <strong class="ba-title">{item.without}</strong>
+            </div>
+            <em class="ba-detail">{item.withoutDetail}</em>
+          </div>
+        ))}
+      </div>
+      <div class="ba-divider" aria-hidden="true"></div>
+      <div class="ba-col ba-with">
+        <div class="ba-header ba-header--amber">WITH ZO</div>
+        {items.map((item) => (
+          <div class="ba-row">
+            <div class="ba-title-row">
+              <svg class="ba-icon ba-icon--check" viewBox="0 0 14 14" fill="none" aria-hidden="true"><polyline points="3,7 6,10 11,4" stroke="var(--amber)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <strong class="ba-title">{item.with}</strong>
+            </div>
+            <span class="ba-detail">{item.withDetail}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  h2 {
+    margin-bottom: 48px;
+  }
+
+  .ba-columns {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    gap: 0;
+  }
+
+  .ba-divider {
+    background: var(--rule);
+  }
+
+  .ba-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ba-without {
+    background: var(--void);
+  }
+
+  .ba-with {
+    background: var(--surface);
+  }
+
+  .ba-header {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ba-header--dim {
+    color: var(--amber-dim);
+  }
+
+  .ba-header--amber {
+    color: var(--amber);
+    text-shadow: 0 0 20px var(--amber-glow);
+  }
+
+  .ba-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ba-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ba-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .ba-icon--cross {
+    opacity: 0.6;
+  }
+
+  .ba-icon--check {
+    opacity: 0.8;
+  }
+
+  .ba-without .ba-title {
+    color: var(--amber-dim);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .ba-without .ba-detail {
+    color: var(--amber-dim);
+    font-style: italic;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .ba-with .ba-title {
+    color: var(--amber);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .ba-with .ba-detail {
+    color: var(--amber);
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    .ba-columns {
+      grid-template-columns: 1fr;
+    }
+
+    .ba-divider {
+      display: none;
+    }
+
+    .ba-with {
+      margin-top: 24px;
+    }
+  }
+</style>

@@ -1,0 +1,144 @@
+---
+import agents from '../data/agents.json';
+
+const projectAgents = agents.filter((a) => a.team === 'project');
+const platformAgents = agents.filter((a) => a.team === 'platform');
+
+function badgeClass(model: string): string {
+  if (model === 'opus') return 'badge badge-opus';
+  if (model === 'sonnet') return 'badge badge-sonnet';
+  return 'badge badge-haiku';
+}
+---
+
+<section id="team" data-animate>
+  <div class="container">
+    <div class="section-label">THE TEAM</div>
+    <h2>20 agents. 3 tiers. Coordinated.</h2>
+    <p class="subheadline">Plus a custom agent library — create domain-specific specialists from your plan.</p>
+
+    <div class="agent-grid" data-animate-stagger>
+      {projectAgents.map((agent) => (
+        <div class="card card-accent agent-card">
+          <div class="agent-header">
+            <h3>{agent.name}</h3>
+            <span class={badgeClass(agent.model)}>{agent.model}</span>
+          </div>
+          <p class="agent-role">{agent.role}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="platform-section" data-animate>
+      <h3 class="platform-heading">Platform Build Team</h3>
+      <div class="platform-grid" data-animate-stagger>
+        {platformAgents.map((agent) => (
+          <div class="card platform-card">
+            <div class="agent-header">
+              <span class="platform-name">{agent.name}</span>
+              <span class={badgeClass(agent.model)}>{agent.model}</span>
+            </div>
+            <p class="agent-role">{agent.role}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  h2 {
+    margin-bottom: 8px;
+  }
+
+  .subheadline {
+    color: var(--amber-dim);
+    font-size: 14px;
+    margin-bottom: 48px;
+    max-width: 480px;
+  }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 56px;
+  }
+
+  .agent-card {
+    padding: 20px;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .agent-header h3 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--amber);
+    margin: 0;
+  }
+
+  .agent-role {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber-dim);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Platform section */
+  .platform-section {
+    border-top: 1px solid var(--rule);
+    padding-top: 40px;
+  }
+
+  .platform-heading {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--amber-dim);
+    margin-bottom: 24px;
+  }
+
+  .platform-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .platform-card {
+    padding: 16px;
+  }
+
+  .platform-name {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--amber-dim);
+  }
+
+  .platform-card .agent-role {
+    font-size: 11px;
+  }
+
+  @media (max-width: 1024px) {
+    .agent-grid,
+    .platform-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .agent-grid,
+    .platform-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
