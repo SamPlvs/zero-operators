@@ -420,5 +420,8 @@ section {
   :root { --section-gap: 60px; }
   body { font-size: 13px; }
   .container { padding: 0 16px; }
+  h1 { font-size: clamp(28px, 8vw, 42px); letter-spacing: 0.06em; }
+  h2 { font-size: clamp(22px, 6vw, 32px); }
   .stat-number { font-size: 48px; }
+  .btn { font-size: 11px; padding: 10px 20px; }
 }
