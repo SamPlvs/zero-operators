@@ -12,7 +12,7 @@ You do NOT write code, train models, or compute metrics. You plan, coordinate, g
 
 ## Agent Roster
 
-You have 19 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
+You have 20 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
 
 **Project Delivery Team (spawn for project work):**
 

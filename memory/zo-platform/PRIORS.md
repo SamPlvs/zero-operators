@@ -448,3 +448,94 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
    repo at a default location) without flags. `--scaffold-delivery`
    is an override for non-default paths, not the only way to get a
    delivery repo.
+
+---
+
+## PR-017: Conversational Interview > Flag Proliferation When Decisions Need Context
+**Source:** Session 013 (2026-04-13), `zo init` redesign for IVL F5 readiness
+**Root cause category:** missing_rule
+**Failure:** Original `zo init` was a programmatic one-shot — fine for fresh demo projects (CIFAR-10) but accumulated five distinct gaps when faced with a real production project (IVL F5): hardcoded `target_branch: main`, no `Environment` section, no overlay-vs-scaffold mode, no remote-data handling, target template's `agent_working_dirs` mismatched the new responsibility-based scaffold layout. Each gap could be patched with a flag, but the gaps themselves arose from *decisions that need context to make correctly* — context that lives in the user's head and the existing repo, not in defaults.
+
+### Rules
+
+1. **When a decision requires inspecting the target environment, prefer a conversational agent over a flag.**
+   Adding `--branch`, `--existing-repo`, `--base-image`, `--gpu-host`, `--data-path`, `--layout-mode` etc. would have worked syntactically but pushed inspection-and-decision burden onto the user. The Init Architect inspects the repo (Glob/Read/Bash) and asks targeted questions; the user makes 5-6 confirmations instead of crafting a 7-flag CLI invocation.
+   - *Failure ref:* IVL F5 setup needed `target_branch: samtukra` (manual edit), Environment section (manual fill-in), overlay vs scaffold (no mode existed), STRUCTURE.md customization for src-layout (no mechanism). Five sequential gaps from one root cause.
+
+2. **The conversational agent must ROUTE WRITES through the headless CLI, not write files itself.**
+   Two layers: (a) Agent collects answers + inspects context, (b) CLI does deterministic file writes. Keeps tests easy (CLI tested standalone), keeps writes consistent across conversational and CI invocations, lets the agent be replaced or improved without touching write logic. Single source of truth for filesystem effects.
+   - *Pattern:* Agent calls `zo init project --no-tmux --branch X --existing-repo Y ...` via Bash. Same code path as `zo init project --no-tmux ...` from a CI script.
+
+3. **The conversational mode must have a `--no-tmux` escape hatch for CI/scripts.**
+   Mirror `zo draft --no-tmux`. Default is conversational (best human UX); `--no-tmux` is the universal headless mode (best for automation). Detect tmux availability up front and give a clear actionable error if it's missing — never silently fail in the wrapper.
+   - *Failure ref:* If tmux is uninstalled, the wrapper would have errored deep in tmux command execution. Pre-check at CLI boundary catches this with a one-line fix-it message.
+
+4. **Conversational agents must enumerate failure modes explicitly in their .md.**
+   The Init Architect's protocol covers ~25 specific failure modes across 7 categories (path/repo, branch, environment, layout, user interaction, CLI, post-scaffold). Without enumeration, the agent improvises and fails inconsistently. *List the failures, list the recoveries, name the actions.*
+   - *Failure ref:* "Full adaptability" requested by user (session 013). Adaptability without enumeration = unpredictability.
+
+### Verified Solution
+
+`zo init`:
+- Default: `zo init project` → tmux pane with Init Architect (Opus). Agent interviews, inspects, calls CLI.
+- Headless: `zo init project --no-tmux --branch X --existing-repo Y --base-image Z --gpu-host H --data-path P --layout-mode {standard,adaptive} --no-detect`. Same code path; agent uses this internally.
+- Guardrails at CLI boundary: tmux availability check, mutually-exclusive flags (`--existing-repo` xor `--scaffold-delivery`), `--layout-mode=adaptive` requires `--existing-repo`, `--existing-repo` must contain `.git/`, branch existence warning via `git rev-parse`.
+- Init Architect protocol enumerates failure modes explicitly (path, branch, env, layout, user interaction, CLI invocation, post-scaffold drift, rollback).
+
+This pattern generalises: any time a CLI ergonomics gap suggests "just add a flag", check first whether the answer requires *context* (inspection of the user's repo / environment / preferences). If yes, a conversational agent backed by a headless CLI is the better shape.
+
+---
+
+## PR-018: Scaffold Adaptive Mode — Preserve Existing Code Layouts
+**Source:** Session 013 (2026-04-13), IVL F5 readiness analysis
+**Root cause category:** novel_case
+**Failure:** Not a runtime failure — proactive design. The existing scaffold (`scaffold_delivery`) was designed for greenfield projects and assumed a responsibility-based layout (`src/data/`, `src/model/`, etc.). Real production repos have their own established layouts (src-layout with single nested package, django-style, monorepo, notebook-first). Naively running scaffold on these creates *both* ZO's dirs AND leaves the user's, producing a confused two-layout repo.
+
+### Rules
+
+1. **Distinguish ZO infrastructure dirs from code-layout dirs.**
+   `configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/` are ZO infrastructure that every project needs regardless of code layout. `src/data/`, `src/model/`, `src/engineering/`, `data/raw/`, `models/`, `tests/unit/` are *one possible* code layout. Treat them differently.
+   - *Implementation:* `_META_DIRECTORIES` list (always created) vs `_STANDARD_DIRECTORIES` list (only in `layout_mode=standard`).
+
+2. **`.gitkeep` placeholders only belong in truly empty directories.**
+   Writing `.gitkeep` into a dir that already has files is pollution — it adds a tracked file the user didn't ask for, and it's confusing in code review. Check `if not any(d.iterdir())` after `mkdir -p`, and only then `touch .gitkeep`.
+   - *Failure ref:* Original behavior added `.gitkeep` unconditionally; in overlay mode this would have polluted every existing code dir.
+
+3. **In adaptive mode, skip template files the user almost certainly already has.**
+   `README.md`, `pyproject.toml`, `.gitignore` — existing repos always have these and ZO's templates would either no-op (existing files preserved by idempotency) or, worse, drift expectations. Omit them entirely from `_FILE_TEMPLATES` in adaptive mode.
+
+4. **Layout adaptation requires project-specific writes that the agent must own.**
+   `STRUCTURE.md` and the target file's `agent_working_dirs` describe *this project's* layout. Only the Init Architect (with its inspection of the actual repo) has the context to fill these correctly. This is the one allowed direct-write exception in the Init Architect's protocol — narrowly scoped, post-CLI, with validation.
+
+### Verified Solution
+
+`scaffold_delivery(path, project_name, *, overlay=False, layout_mode="standard"|"adaptive")`. CLI surface: `zo init --layout-mode={standard,adaptive}` with adaptive requiring `--existing-repo`. Tests cover empty-dir gitkeep behavior, adaptive skipping src/data, standard creating both meta + standard dirs, README/pyproject preservation in adaptive mode, invalid layout mode rejection, overlay logging.
+
+---
+
+## PR-019: Conversational Commands Need Preview + Reversal, Not Just Confirmation
+**Source:** Session 013 (2026-04-13), follow-up question on `zo init` adaptability
+**Root cause category:** missing_rule
+**Failure:** Not a runtime failure — a design gap exposed by user challenge. After making `zo init` conversational (PR-017), the user asked: "will the Init Architect adapt if the repo is partial or mismatched?" Investigation showed that while the agent could inspect the repo and pick a layout mode, the user had no way to (a) see exactly what would land on disk before it happened, or (b) undo it cleanly if the agent chose wrong. Text summaries are not previews; idempotent re-runs don't remove earlier wrong writes. Conversational commands with real side effects need the full loop: preview → commit → reverse.
+
+### Rules
+
+1. **Conversational commands must have a `--dry-run` that prints the exact effect without any filesystem writes.**
+   Text summaries like "I'll use adaptive mode, branch X, base-image Y" describe intent, not outcome. `--dry-run` prints the actual directory tree that will appear, the actual target.md content, the actual plan.md Environment block. The agent runs `--dry-run` before every commit; the user approves against concrete output, not paraphrased intent.
+   - *Failure ref:* PR-017 had the user confirm decisions in natural language. Without file-tree preview, they couldn't catch a wrong layout-mode pick before it hit disk.
+
+2. **Any command that writes artifacts needs a `--reset` that reverses its writes — but only its own writes.**
+   `zo init --reset` deletes `memory/{project}/`, target, and plan. It refuses to touch the delivery repo, even though it wrote into it (scaffold operations only add files, and user code may have been added alongside). The invariant is: *reset removes what the ZO side wrote to its own directories; user code and project-side artifacts are never ZO's to delete.*
+   - *Failure ref:* Without --reset, the recovery path was `rm -rf memory/{project} targets/{project}.target.md plans/{project}.md` — user has to type those paths correctly under pressure, easy to hit the wrong `memory/` on the wrong repo.
+
+3. **Destructive commands must require active confirmation, not passive acknowledgment.**
+   `--reset` asks the user to *type the project name* as confirmation. Y/N prompts train users to reflexively press Enter; typing the project name forces attention on which project they're about to wipe. For scripts, `--yes` / `-y` opts out explicitly.
+   - *Failure ref:* Passive Y/N prompts are muscle memory; projects with similar names can be mistakenly reset.
+
+4. **Protocols for adaptive agents must explicitly cover `partial match` and `semantic alias` cases.**
+   "Adaptive mode" and "standard mode" aren't enough — real repos sit between them. A repo with `src/data/` but no `src/model/` is partial; default to **standard** mode (idempotent fill-in). A repo with `src/data_loading/` (semantic alias for `src/data/`) goes **adaptive** with an explicit path mapping in `agent_working_dirs`. Enumerate these cases in the agent protocol, don't let the agent improvise.
+   - *Failure ref:* Partial and alias cases weren't explicit in PR-017. Agent would have guessed, producing inconsistent results.
+
+### Verified Solution
+
+`zo init --dry-run` and `zo init --reset [--yes]` added to CLI surface. Init Architect protocol updated with: dry-run as mandatory step before commit, partial-match guidance (standard mode default for partial src/), semantic alias guidance (adaptive + explicit mapping), `--reset` as the canonical rollback path. 10 new tests covering: dry-run writes nothing, dry-run shows branch + layout, dry-run rejected without --no-tmux, reset deletes ZO artifacts, reset preserves delivery repo + user code, reset no-ops on nonexistent project, reset refuses on name mismatch, reset accepts matching name.

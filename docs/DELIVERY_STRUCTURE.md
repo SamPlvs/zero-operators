@@ -1,6 +1,6 @@
 # Delivery Repo Structure
 
-Reference for the delivery repo layout created by `zo init --scaffold-delivery`.
+Reference for the delivery repo layout created by `zo init` (or, for an existing repo, `zo init --no-tmux --existing-repo PATH [--layout-mode adaptive]`). When the conversational Init Architect runs, it inspects the target repo first and may pick `adaptive` mode automatically — in which case only the ZO meta-dirs (`configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`, `STRUCTURE.md`) are added; your existing `src/` and `data/` layout is preserved.
 
 ---
 

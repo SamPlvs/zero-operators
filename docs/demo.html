@@ -997,11 +997,11 @@
 
     <div class="stat-block">
       <div class="stat-item scanlines">
-        <div class="stat-num">17<span class="stat-unit">agents</span></div>
+        <div class="stat-num">20<span class="stat-unit">agents</span></div>
         <div class="stat-label">Defined</div>
       </div>
       <div class="stat-item scanlines">
-        <div class="stat-num">296<span class="stat-unit">tests</span></div>
+        <div class="stat-num">451<span class="stat-unit">tests</span></div>
         <div class="stat-label">Passing</div>
       </div>
       <div class="stat-item scanlines">
@@ -1255,13 +1255,12 @@
     </div>
 
     <h1>AGENT TEAMS</h1>
-    <div class="subtitle">17 agents across project delivery and platform build</div>
+    <div class="subtitle">20 agents across project delivery, platform build, draft scouts, and init</div>
 
     <div class="section-label">Project Delivery Team -- Launch Agents</div>
 
     <div class="agent-grid" id="agent-grid-launch">
     <div class="agent-card" onclick="selectAgent(this, 'lead-orchestrator')" data-agent="lead-orchestrator">
-  'research-scout': { model: 'Opus', team: 'Project Delivery', role: 'Surveys literature for relevant approaches, identifies SOTA and analogous benchmarks, catalogs open-source implementations, designs experiment plans with baselines. Handles customer projects with no published benchmarks.', owns: 'research/', when: 'Phase 0 (Literature Review) and Phase 3 (Model Design)' },
       <div class="agent-badge launch">launch</div>
       <div class="agent-name">Lead Orchestrator</div>
       <div class="agent-model opus">Opus</div>
@@ -1303,12 +1302,6 @@
       <div class="agent-model sonnet">Sonnet</div>
       <div class="agent-role">Unit, integration, and regression test suites</div>
     </div>
-    <div class="agent-card" onclick="selectAgent(this, 'research-scout')" data-agent="research-scout">
-      <div class="agent-badge launch">launch</div>
-      <div class="agent-name">Research Scout</div>
-      <div class="agent-model opus">Opus</div>
-      <div class="agent-role">Surveys literature, finds SOTA, designs experiment plans</div>
-    </div>
   </div>
 
   <div class="section-label">Project Delivery Team -- Phase-in Agents</div>
@@ -1337,6 +1330,34 @@
       <div class="agent-name">Infra Engineer</div>
       <div class="agent-model haiku">Haiku</div>
       <div class="agent-role">Environment setup, packaging, deployment, CI/CD</div>
+    </div>
+  </div>
+
+  <div class="section-label">Draft Scout Team -- spawned by `zo draft`</div>
+
+  <div class="agent-grid" id="agent-grid-draft">
+    <div class="agent-card" onclick="selectAgent(this, 'plan-architect')" data-agent="plan-architect">
+      <div class="agent-badge launch">draft</div>
+      <div class="agent-name">Plan Architect</div>
+      <div class="agent-model opus">Opus</div>
+      <div class="agent-role">Conversational plan drafting -- spawns scouts, weaves their findings into plan.md</div>
+    </div>
+    <div class="agent-card" onclick="selectAgent(this, 'data-scout')" data-agent="data-scout">
+      <div class="agent-badge launch">draft</div>
+      <div class="agent-name">Data Scout</div>
+      <div class="agent-model sonnet">Sonnet</div>
+      <div class="agent-role">Inspects data paths -- schema, distributions, quality flags, complexity signals</div>
+    </div>
+  </div>
+
+  <div class="section-label">Init Team -- spawned by `zo init`</div>
+
+  <div class="agent-grid" id="agent-grid-init">
+    <div class="agent-card" onclick="selectAgent(this, 'init-architect')" data-agent="init-architect">
+      <div class="agent-badge launch">init</div>
+      <div class="agent-name">Init Architect</div>
+      <div class="agent-model opus">Opus</div>
+      <div class="agent-role">Interviews user, inspects target repo, runs --dry-run preview, routes writes through CLI</div>
     </div>
   </div>
 
@@ -1834,7 +1855,9 @@
 
   <h3>1. Setup &amp; Initialize</h3>
   <pre class="code-block"><code>./setup.sh                    # auto-fixes missing deps (uv, Claude CLI, zo)
-zo init cifar10-demo          # scaffolds memory, targets, plans, delivery repo</code></pre>
+zo init cifar10-demo          # conversational by default -- Init Architect interviews,
+                              # previews via --dry-run, commits on your approval.
+                              # CI/scripts: zo init cifar10-demo --no-tmux [flags]</code></pre>
 
   <h3>2. Draft Plan</h3>
   <pre class="code-block"><code>zo draft --project cifar10-demo -d "CIFAR-10 image classification, PyTorch CNN, 90%+ accuracy"
@@ -1942,7 +1965,7 @@ zo gates set full-auto --project cifar10-demo   # full autonomy</code></pre>
 
   <div class="section-label">Delivery Repo Structure</div>
 
-  <p>Created by <code>zo init --scaffold-delivery</code>. Agents populate during execution. See <a href="DELIVERY_STRUCTURE.md" style="color: var(--amber);">full reference</a>.</p>
+  <p>Created by <code>zo init</code> (conversational) or <code>zo init --no-tmux --scaffold-delivery PATH</code>. For an existing repo, <code>--existing-repo PATH</code> overlays only ZO meta-dirs; <code>--layout-mode adaptive</code> preserves your code layout. Agents populate during execution. See <a href="DELIVERY_STRUCTURE.md" style="color: var(--amber);">full reference</a>.</p>
 
   <div class="ba-grid">
     <div class="ba-panel">
@@ -2065,7 +2088,10 @@ const agentData = {
   'xai-agent': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Produces explainability analysis: SHAP values, feature importance rankings, GradCAM visualizations, and interpretability reports.', owns: 'xai/, experiments/explainability/', when: 'Phase 5 (Analysis & Validation)' },
   'domain-evaluator': { model: 'Opus', team: 'Project Delivery', role: 'Validates data and model outputs against domain knowledge. Checks plausibility, extracts domain priors, and flags results that are statistically valid but domain-implausible.', owns: 'PRIORS.md updates, domain validation reports', when: 'Phases 1, 5 (data validation and final domain review)' },
   'ml-engineer': { model: 'Sonnet', team: 'Project Delivery (Phase-in)', role: 'Optimizes the inference pipeline, manages experiment tracking, handles model serving configuration, and ensures production readiness.', owns: 'src/inference.py, experiments/', when: 'Phases 4-6 (Training through Packaging)' },
-  'infra-engineer': { model: 'Haiku', team: 'Project Delivery (Phase-in)', role: 'Handles environment setup, dependency management, packaging (pyproject.toml), deployment configs, and CI/CD pipeline setup.', owns: 'pyproject.toml, setup.sh, CI configs', when: 'Phases 1, 6 (initial setup, final packaging)' }
+  'infra-engineer': { model: 'Haiku', team: 'Project Delivery (Phase-in)', role: 'Handles environment setup, dependency management, packaging (pyproject.toml), deployment configs, and CI/CD pipeline setup.', owns: 'pyproject.toml, setup.sh, CI configs', when: 'Phases 1, 6 (initial setup, final packaging)' },
+  'plan-architect': { model: 'Opus', team: 'Draft Scouts', role: 'Conversational lead for plan drafting. Interviews the human, spawns Data Scout and Research Scout in parallel, weaves their findings into a complete plan.md.', owns: 'plans/{project}.md (during drafting)', when: 'Spawned by `zo draft` -- one session per drafting cycle' },
+  'data-scout': { model: 'Sonnet', team: 'Draft Scouts', role: 'Inspects raw data during plan drafting. Reports schema, shape, distributions, quality flags, and complexity signals back to the Plan Architect via SendMessage.', owns: 'data inspection reports (transient, fed to Plan Architect)', when: 'Spawned by Plan Architect when --data paths are provided' },
+  'init-architect': { model: 'Opus', team: 'Init', role: 'Conducts the project initialization interview. Detects host environment, inspects the target repo, runs `zo init --dry-run` to preview, then commits writes via the headless CLI. Adapts to existing repos via standard or adaptive layout mode.', owns: 'Decisions about layout mode, branch, training host, data location -- never writes files directly (routes through CLI)', when: 'Spawned by `zo init` -- one session per project initialization' }
 };
 
 function selectAgent(el, name) {

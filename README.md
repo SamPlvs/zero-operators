@@ -15,8 +15,8 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-382_passing-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Agents](https://img.shields.io/badge/agents-19_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
+[![Tests](https://img.shields.io/badge/tests-441_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Agents](https://img.shields.io/badge/agents-20_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
 ---
@@ -117,14 +117,17 @@ zo draft -p my-project                                    # fully conversational
 
 Launches a **Plan Architect** (Opus) that drafts `plan.md` conversationally with you. Optionally spawns **Data Scout** (inspects `--data` paths for schema, distributions, quality flags) and **Research Scout** (finds prior art and baselines) in the background. Scout findings are woven into the plan as they arrive. All args are optional — if nothing provided, the architect asks you everything conversationally.
 
-### `zo init` — Scaffold a new project
+### `zo init` — Scaffold a new project (conversational by default)
 
 ```bash
-zo init my-project
-zo init my-project --scaffold-delivery /path/to/delivery-repo
+zo init my-project                                              # conversational (default)
+zo init my-project --no-tmux --branch main --scaffold-delivery /path/to/delivery-repo
+zo init ivl-f5    --no-tmux --branch samtukra --existing-repo ~/code/ivl-f5 --layout-mode adaptive
 ```
 
-Creates: `memory/`, `targets/`, `plans/` with template files for the project. With `--scaffold-delivery`, also creates the delivery repo layout with standard ML directory structure, multi-stage Dockerfile, and docker-compose.yml for GPU compute. See [Delivery Repo Structure](docs/DELIVERY_STRUCTURE.md) for the full layout reference.
+Default behaviour launches the **Init Architect** (Opus) in a tmux pane. The agent interviews you (new vs existing repo, branch, training host, data location, layout mode), inspects the target repo, runs `--dry-run` to preview the file tree, and only commits writes after you confirm. For CI/scripts, pass `--no-tmux` plus the flags you need.
+
+Creates: `memory/{project}/`, `targets/{project}.target.md`, `plans/{project}.md` (with auto-populated `## Environment` section), and a delivery repo scaffold. With `--existing-repo`, adds only ZO infrastructure dirs (`configs/`, `experiments/`, `docker/`) without touching existing code. With `--layout-mode=adaptive`, preserves your code layout entirely. If you need to start over, `zo init {project} --reset` deletes the ZO artifacts (memory, target, plan) without ever touching the delivery repo. See [Delivery Repo Structure](docs/DELIVERY_STRUCTURE.md) and [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full flag surface.
 
 ### `zo preflight` — Validate before launch
 
@@ -312,7 +315,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 │  ├── Agent(name="oracle-qa", team_name="project")           │
 │  └── Agents communicate peer-to-peer via SendMessage        │
 │                                                             │
-│  The Lead knows all 19 agents and creates new ones on the   │
+│  The Lead knows all 20 agents and creates new ones on the   │
 │  fly if the project needs expertise not in the roster.      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -396,7 +399,7 @@ zero-operators/
 │   ├── semantic.py             # fastembed + SQLite semantic search
 │   ├── comms.py                # JSONL event logger (5 event types)
 │   └── evolution.py            # Self-evolving post-mortem protocol
-├── .claude/agents/             # 19 agent definitions
+├── .claude/agents/             # 20 agent definitions
 ├── specs/                      # 8 specification documents
 ├── plans/                      # Project plan files
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
@@ -455,7 +458,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
 
-347 platform tests. ruff clean. 19 agents. 24 slash commands.
+453 platform tests. ruff clean. 20 agents. 24 slash commands.
 
 ---
 

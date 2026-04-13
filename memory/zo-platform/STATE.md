@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir, plan-defined + mid-build), draft scout team, live training dashboard, auto test reports, structured phase report templates. 19 core agents + custom library, 415 tests, ruff clean, validate-docs 10/10. PRs #22-#28.
+ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened**. Conversational `zo init` via Init Architect (interview → CLI), env detection module, adaptive layout mode for existing repos, plan template with auto-populated Environment section, target template with responsibility-based agent_working_dirs + branch flag. 20 core agents + custom library, 443 tests, ruff clean, validate-docs 10/10. PRs #22-#28 + this batch.
 
 ## Completed
 
@@ -77,6 +77,17 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir
 - [x] v1.0.2-pre: Orchestrator auto-creates custom agent .md files from plan at build start
 - [x] v1.0.2-pre: Custom agents available for all phases (not restricted by AGENT_PHASE_MAP)
 - [x] v1.0.2-pre: _prompt_roster scans both core and custom/ directories, labels each
+- [x] v1.0.2-pre: Conversational `zo init` — Init Architect (Opus, 20th agent) interviews user, inspects target repo, routes writes through `zo init --no-tmux`
+- [x] v1.0.2-pre: src/zo/environment.py — host detection (platform, Python, GPU count/names/memory, CUDA, NVIDIA driver, Docker, docker compose) with safe fallbacks
+- [x] v1.0.2-pre: Plan template `## Environment` section auto-populated from detection (host + training target + data layout + Docker mounts)
+- [x] v1.0.2-pre: Target template — `{target_branch}` placeholder + responsibility-based agent_working_dirs (src/data/, src/model/, src/engineering/, ...)
+- [x] v1.0.2-pre: `zo init` headless flags — --no-tmux, --branch, --existing-repo, --base-image, --gpu-host, --data-path, --no-detect, --layout-mode
+- [x] v1.0.2-pre: Scaffold `layout_mode={standard,adaptive}` — adaptive only adds ZO meta-dirs (configs/, experiments/, docker/, notebooks/phase/, reports/), preserves existing src/ + data/ layout
+- [x] v1.0.2-pre: Scaffold .gitkeep only in truly empty dirs — no pollution of existing code dirs in overlay
+- [x] v1.0.2-pre: `zo init` guardrails — --existing-repo must be a git dir, --layout-mode=adaptive requires --existing-repo, mutually-exclusive flag detection, branch existence warning, tmux availability check
+- [x] v1.0.2-pre: `zo init --dry-run` — preview file tree, target/plan content, scaffold plan without writing (Init Architect runs this before every commit)
+- [x] v1.0.2-pre: `zo init --reset` — deletes memory/{project}/, targets/{project}.target.md, plans/{project}.md; refuses without --yes unless user types project name; NEVER touches delivery repo
+- [x] v1.0.2-pre: Init Architect partial-match + semantic-alias guidance — default to standard for partial src/ dirs (idempotent fill-in), adaptive + map for semantic aliases (src/data_loading → src/data)
 
 ## Known Issues
 
@@ -89,19 +100,19 @@ ZO v1.0.2-pre — **CIFAR-10 demo running**. Dynamic agent creation (custom/ dir
 
 ## What's Next
 
-1. **CIFAR-10 demo** — running, plan drafted, zo build in progress
+1. **IVL F5 setup** — run `zo init ivl-f5` (conversational) on the existing repo at branch `samtukra`. Scout team drafts plan; build with auto/supervised gates.
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Domain evaluator refactor — make project-specific via plan.md domain priors
 4. XAI + Domain Evaluator activation for IVL F5 Phase 5
-5. Device detection and user directory paths in plan schema
+5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
 6. IVL F5 project — first production deployment
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-13T01:00:00Z
-last_session: session-012
-branch: claude/charming-lovelace (worktree)
-test_count: 415 passed, 7 skipped
+last_checkpoint: 2026-04-13T12:00:00Z
+last_session: session-013
+branch: claude/confident-wescoff (worktree)
+test_count: 453 passed, 7 skipped
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
-prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents)
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), pending (init-architect + IVL F5 readiness)

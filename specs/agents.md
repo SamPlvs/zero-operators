@@ -6,9 +6,11 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ## Team Philosophy
 
-- **Two teams**: Project delivery (11 agents) and platform build (6 agents)
-- **Project delivery team**: 7 launch agents (research + core loop + code quality) + 4 phase-in agents (validation, optimisation, infrastructure)
-- **Platform build team**: 6 agents for building ZO as software (architect, backend, frontend, test, review, docs)
+- **Four teams** (20 agents total):
+  - **Project delivery (11 agents)**: 7 launch agents (research + core loop + code quality) + 4 phase-in agents (validation, optimisation, infrastructure)
+  - **Platform build (6 agents)**: building ZO as software (architect, backend, frontend, test, review, docs)
+  - **Draft scouts (2 agents)**: `plan-architect` (Opus) + `data-scout` (Sonnet) — spawned by `zo draft` for conversational plan drafting with data + research intelligence
+  - **Init (1 agent)**: `init-architect` (Opus) — spawned by `zo init` to interview the human, inspect the target repo, and route writes through the headless CLI
 - **Agent definitions**: Each agent is a `.md` file in `.claude/agents/` with YAML frontmatter (name, model tier, description, tools, team) and markdown instructions
 - **Modularity**: Agents can be added, removed, or swapped per project without architectural changes
 - **Portability**: Agent personas are templates — the same definition can operate across different projects with minimal context injection
