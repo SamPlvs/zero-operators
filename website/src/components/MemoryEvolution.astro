@@ -1,0 +1,359 @@
+---
+---
+
+<section id="memory" data-animate>
+  <div class="container">
+    <div class="section-label">MEMORY & EVOLUTION</div>
+    <h2>The same mistake never happens twice</h2>
+
+    <div class="memory-grid">
+      <!-- Part A: Memory Timeline -->
+      <div class="memory-timeline">
+        <h4 class="part-heading">Persistent Memory</h4>
+        <div class="timeline" data-animate-stagger>
+          <div class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="entry-badge entry-decision">DECISION</span>
+            <span class="entry-text">Architecture: Hybrid orchestration model</span>
+            <span class="entry-time">T+0:15</span>
+          </div>
+          <div class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="entry-badge entry-gate">GATE</span>
+            <span class="entry-text">Phase 1 complete &mdash; 76 tests passing</span>
+            <span class="entry-time">T+1:30</span>
+          </div>
+          <div class="timeline-entry" data-highlight>
+            <span class="timeline-dot timeline-dot--active" aria-hidden="true"></span>
+            <span class="entry-badge entry-checkpoint">CHECKPOINT</span>
+            <span class="entry-text">Human approved feature selection</span>
+            <span class="entry-time">T+2:45</span>
+          </div>
+          <div class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="entry-badge entry-decision">DECISION</span>
+            <span class="entry-text">CNN architecture, custom loss function</span>
+            <span class="entry-time">T+3:20</span>
+          </div>
+          <div class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="entry-badge entry-gate">GATE</span>
+            <span class="entry-text">Phase 4 &mdash; Oracle: 99% accuracy, PASS</span>
+            <span class="entry-time">T+5:00</span>
+          </div>
+        </div>
+
+        <div class="search-mock" data-animate>
+          <div class="search-bar">
+            <span class="search-icon" aria-hidden="true">&#128269;</span>
+            <span class="search-query">what did we try for feature selection?<span class="typewriter-cursor" aria-hidden="true"></span></span>
+          </div>
+          <div class="search-hint">entries 2 and 3 match</div>
+        </div>
+      </div>
+
+      <!-- Part B: Self-Evolution -->
+      <div class="evolution-flow">
+        <h4 class="part-heading">Self-Evolution Protocol</h4>
+        <div class="evo-steps" data-animate-stagger>
+          <div class="evo-card evo-error">
+            <span class="evo-badge evo-badge-error">ERROR</span>
+            <span class="evo-text">Doc-codebase drift &mdash; 10 files stale</span>
+          </div>
+          <div class="evo-arrow" aria-hidden="true">
+            <svg width="24" height="32" viewBox="0 0 24 32">
+              <line x1="12" y1="0" x2="12" y2="24" stroke="var(--amber)" stroke-width="1.5" opacity="0.5"/>
+              <polygon points="6,24 12,32 18,24" fill="var(--amber)" opacity="0.6"/>
+            </svg>
+          </div>
+          <div class="evo-card evo-cause">
+            <span class="evo-label">ROOT CAUSE</span>
+            <span class="evo-text">missing_rule &mdash; no enforcement mechanism</span>
+          </div>
+          <div class="evo-arrow" aria-hidden="true">
+            <svg width="24" height="32" viewBox="0 0 24 32">
+              <line x1="12" y1="0" x2="12" y2="24" stroke="var(--amber)" stroke-width="1.5" opacity="0.5"/>
+              <polygon points="6,24 12,32 18,24" fill="var(--amber)" opacity="0.6"/>
+            </svg>
+          </div>
+          <div class="evo-card evo-prior">
+            <span class="evo-label">PRIORS.md</span>
+            <code class="evo-code">PR-005: Aspirational rules without enforcement are dead letter</code>
+          </div>
+          <div class="evo-arrow" aria-hidden="true">
+            <svg width="24" height="32" viewBox="0 0 24 32">
+              <line x1="12" y1="0" x2="12" y2="24" stroke="var(--amber)" stroke-width="1.5" opacity="0.5"/>
+              <polygon points="6,24 12,32 18,24" fill="var(--amber)" opacity="0.6"/>
+            </svg>
+          </div>
+          <div class="evo-card evo-resolved">
+            <span class="evo-badge evo-badge-resolved">RESOLVED</span>
+            <span class="evo-text">Three-layer defense: validation script + hooks + cascade mappings</span>
+          </div>
+        </div>
+        <p class="evo-stat">21 priors accumulated. Zero repeated failures.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .memory-grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 48px;
+    margin-top: 48px;
+    align-items: start;
+  }
+
+  .part-heading {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  /* ── Timeline ── */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .timeline-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px 10px 28px;
+    border-left: 2px solid var(--amber-border);
+    transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    position: relative;
+  }
+
+  .timeline-entry[data-highlight] {
+    border-left-color: var(--amber);
+  }
+
+  /* Timeline dots */
+  .timeline-dot {
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1.5px solid var(--amber-border);
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  .timeline-dot--active {
+    border-color: var(--amber);
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber-glow);
+  }
+
+  .entry-badge {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    min-width: 70px;
+    text-align: center;
+  }
+
+  .entry-decision {
+    color: var(--amber);
+    border: 1px solid var(--amber-border);
+  }
+
+  .entry-gate {
+    color: var(--success);
+    border: 1px solid rgba(64, 192, 64, 0.3);
+  }
+
+  .entry-checkpoint {
+    color: var(--amber);
+    border: 1px solid var(--amber);
+    background: var(--amber-ghost);
+  }
+
+  .entry-text {
+    flex: 1;
+    font-size: 12px;
+    color: var(--amber);
+    font-family: var(--font-mono);
+    line-height: 1.5;
+  }
+
+  .entry-time {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--amber-dim);
+    flex-shrink: 0;
+  }
+
+  /* ── Search mockup ── */
+  .search-mock {
+    margin-top: 24px;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--amber-border);
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .search-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .search-query {
+    color: var(--amber);
+    opacity: 0.8;
+  }
+
+  .search-hint {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--amber-dim);
+    margin-top: 8px;
+    padding-left: 14px;
+    font-style: italic;
+  }
+
+  /* ── Evolution flow ── */
+  .evo-steps {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .evo-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .evo-error {
+    border-color: var(--error);
+    box-shadow: 0 0 12px rgba(192, 64, 64, 0.15), inset 0 0 12px rgba(192, 64, 64, 0.05);
+  }
+
+  .evo-cause {
+    border-color: var(--rule);
+  }
+
+  .evo-prior {
+    border-top: 2px solid var(--amber);
+  }
+
+  .evo-resolved {
+    border-color: var(--success);
+    box-shadow: 0 0 12px rgba(64, 192, 64, 0.15), inset 0 0 12px rgba(64, 192, 64, 0.05);
+  }
+
+  .evo-arrow {
+    text-align: center;
+    line-height: 1;
+    padding: 4px 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .evo-arrow svg {
+    display: block;
+  }
+
+  .evo-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    display: inline-block;
+    align-self: flex-start;
+  }
+
+  .evo-badge-error {
+    background: var(--error);
+    color: var(--void);
+  }
+
+  .evo-badge-resolved {
+    background: var(--success);
+    color: var(--void);
+  }
+
+  .evo-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+  }
+
+  .evo-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber);
+    line-height: 1.5;
+  }
+
+  .evo-code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber);
+    line-height: 1.6;
+    background: none;
+    display: block;
+  }
+
+  .evo-stat {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber-dim);
+    font-style: italic;
+    margin-top: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .memory-grid {
+      grid-template-columns: 1fr;
+      gap: 56px;
+    }
+
+    .timeline-entry {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .entry-time {
+      width: 100%;
+      text-align: left;
+      padding-left: 82px;
+    }
+  }
+</style>
