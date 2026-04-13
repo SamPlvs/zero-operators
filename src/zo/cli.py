@@ -107,10 +107,219 @@ def _show_banner(
     ))
 
 
-@click.group()
+# ---------------------------------------------------------------------------
+# Branded help rendering
+# ---------------------------------------------------------------------------
+
+
+def _render_help(ctx: click.Context, command: click.Command) -> str:
+    """Render a ZO-branded --help screen for a Command or Group.
+
+    Replaces Click's default plain-text help with a Rich-formatted
+    output: orbital-mark banner (amber on void), sectioned headers
+    (USAGE / DESCRIPTION / ARGUMENTS / COMMANDS / OPTIONS) in the
+    brand palette, and the version in the banner.
+
+    Returns a string with ANSI codes; Click echoes it and strips
+    codes automatically when stdout is not a TTY (tests, pipes).
+    """
+    import shutil
+    import textwrap
+    from io import StringIO
+
+    from rich.console import Console as _RichConsole
+    from rich.panel import Panel
+    from rich.text import Text
+
+    is_group = isinstance(command, click.Group)
+    is_root = ctx.parent is None
+
+    term_width = shutil.get_terminal_size((100, 24)).columns
+    buf = StringIO()
+    rc = _RichConsole(
+        file=buf,
+        force_terminal=True,
+        color_system="truecolor",
+        width=min(term_width, 100),
+        highlight=False,
+        emoji=False,
+    )
+
+    # --- Branded banner -----------------------------------------------------
+    banner = Text()
+    banner.append("◎  ", style=_AMBER)
+    banner.append("ZERO OPERATORS", style=_AMBER)
+    banner.append("   ")
+    banner.append(f"v{_VERSION}", style=_DIM)
+    if is_root:
+        banner.append("\n\n")
+        banner.append(
+            "Autonomous research and engineering team system.\n", style=_DIM
+        )
+        banner.append(
+            "You input a plan. Agents execute. The oracle verifies.",
+            style=_DIM,
+        )
+    rc.print(Panel(banner, border_style=_AMBER, padding=(0, 2)))
+
+    # --- USAGE --------------------------------------------------------------
+    usage_pieces = command.collect_usage_pieces(ctx)
+    rc.print()
+    rc.print(f"[{_AMBER}]USAGE[/]")
+    usage_line = Text("  ")
+    usage_line.append(ctx.command_path, style="bold")
+    usage_line.append(" ")
+    usage_line.append(" ".join(usage_pieces))
+    rc.print(usage_line)
+
+    # --- QUICK START (root group only) -------------------------------------
+    if is_group and is_root:
+        rc.print()
+        rc.print(f"[{_AMBER}]QUICK START[/]")
+        quickstart = [
+            ("zo init <project>",       "Scaffold memory, targets, and a plan skeleton"),
+            ("zo draft -p <project>",   "Draft plans/<project>.md with a Plan Architect"),
+            ("zo preflight <plan.md>",  "Verify plan, CLI, Docker, GPU — ready to build"),
+            ("zo build <plan.md>",      "Launch the agent team to execute the plan"),
+            ("zo continue <project>",   "Resume a paused project (shorthand for build)"),
+        ]
+        cmdw = max(len(c) for c, _ in quickstart) + 2
+        for i, (cmd, desc) in enumerate(quickstart, 1):
+            row = Text(f"  {i}. ")
+            row.append(cmd.ljust(cmdw), style="bold")
+            row.append("  ")
+            row.append(desc, style=_DIM)
+            rc.print(row)
+
+    # --- DESCRIPTION (skip for root group — banner already says it) ---------
+    # User-provided help text may contain literal "[...]" and "\" — print
+    # with markup=False so Rich treats it as plain text.
+    help_text = (command.help or "").strip()
+    if help_text and not (is_root and is_group):
+        rc.print()
+        rc.print(f"[{_AMBER}]DESCRIPTION[/]")
+        for line in help_text.splitlines():
+            if line.strip():
+                rc.print(f"  {line}", markup=False, highlight=False)
+            else:
+                rc.print()
+
+    # Click adds --help lazily via get_params(ctx); params alone omits it.
+    all_params = command.get_params(ctx)
+
+    # --- ARGUMENTS ----------------------------------------------------------
+    # User-content sections below build Rich ``Text`` objects directly
+    # (rather than inline "[bold]..[/]" markup) so literal "[...]" and
+    # backslashes from docstrings/metavars render verbatim.
+    args = [p for p in all_params if isinstance(p, click.Argument)]
+    if args:
+        rc.print()
+        rc.print(f"[{_AMBER}]ARGUMENTS[/]")
+        for a in args:
+            line = Text("  ")
+            line.append(a.human_readable_name, style="bold")
+            rc.print(line)
+
+    # --- COMMANDS (groups only) --------------------------------------------
+    if is_group:
+        visible: list[tuple[str, str]] = []
+        for name in sorted(command.commands.keys()):
+            sub = command.commands[name]
+            if sub.hidden:
+                continue
+            short = sub.get_short_help_str(limit=80) or ""
+            visible.append((name, short.rstrip(".")))
+        if visible:
+            rc.print()
+            rc.print(f"[{_AMBER}]COMMANDS[/]")
+            namew = max(len(n) for n, _ in visible) + 2
+            for name, desc in visible:
+                line = Text("  ")
+                line.append(name.ljust(namew), style="bold")
+                line.append("  ")
+                line.append(desc, style=_DIM)
+                rc.print(line)
+
+    # --- OPTIONS ------------------------------------------------------------
+    opt_records: list[tuple[str, str]] = []
+    for p in all_params:
+        if not isinstance(p, click.Option) or p.hidden:
+            continue
+        record = p.get_help_record(ctx)
+        if record is None:
+            continue
+        opt_records.append(record)
+    if opt_records:
+        rc.print()
+        rc.print(f"[{_AMBER}]OPTIONS[/]")
+        declw = min(max(len(d) for d, _ in opt_records), 38)
+        wrap_w = max(rc.width - declw - 6, 20)
+        for decl, help_msg in opt_records:
+            help_msg = (help_msg or "").strip()
+            if len(decl) <= declw:
+                wrapped = textwrap.wrap(help_msg, width=wrap_w) or [""]
+                first = Text("  ")
+                first.append(decl.ljust(declw), style="bold")
+                first.append("  ")
+                first.append(wrapped[0], style=_DIM)
+                rc.print(first)
+                pad = " " * (declw + 4)
+                for cont in wrapped[1:]:
+                    cont_line = Text(pad)
+                    cont_line.append(cont, style=_DIM)
+                    rc.print(cont_line)
+            else:
+                long_decl = Text("  ")
+                long_decl.append(decl, style="bold")
+                rc.print(long_decl)
+                if help_msg:
+                    pad = " " * (declw + 4)
+                    for cont in textwrap.wrap(help_msg, width=wrap_w):
+                        cont_line = Text(pad)
+                        cont_line.append(cont, style=_DIM)
+                        rc.print(cont_line)
+
+    # --- Footer hint for the root group ------------------------------------
+    if is_group and is_root:
+        rc.print()
+        rc.print(
+            f"[{_DIM}]Run[/] [bold]zo COMMAND --help[/] "
+            f"[{_DIM}]for details on a specific command.[/]"
+        )
+
+    return buf.getvalue().rstrip("\n")
+
+
+class ZoCommand(click.Command):
+    """Click Command that renders --help with the ZO brand system."""
+
+    def get_help(self, ctx: click.Context) -> str:  # noqa: D401
+        return _render_help(ctx, self)
+
+
+class ZoGroup(click.Group):
+    """Click Group that renders --help with the ZO brand system.
+
+    Propagates ``ZoCommand`` to all registered subcommands and
+    ``ZoGroup`` itself to any nested groups, so the whole CLI tree
+    picks up branded help automatically.
+    """
+
+    command_class = ZoCommand
+    group_class = type  # sentinel: nested groups use the same class
+
+    def get_help(self, ctx: click.Context) -> str:  # noqa: D401
+        return _render_help(ctx, self)
+
+
+@click.group(cls=ZoGroup)
 @click.version_option(version=_VERSION, package_name="zero-operators")
 def cli() -> None:
-    """Zero Operators -- Autonomous AI research and engineering team system."""
+    """Autonomous AI research and engineering team system.
+
+    You input a plan. Agents coordinate to build and deliver code.
+    The oracle verifies the work.
+    """
 
 
 def _show_phase_review(phase, decomp, plan, gate_mode: str) -> None:  # noqa: ANN001
