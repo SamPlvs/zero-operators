@@ -102,6 +102,16 @@ h1 { font-size: clamp(36px, 5vw, 64px); font-weight: 700; letter-spacing: 0.14em
 h2 { font-size: clamp(28px, 3.5vw, 42px); color: var(--accent); }
 h3 { font-size: clamp(20px, 2.5vw, 28px); color: var(--accent); }
 
+/* Subtitles — the line below h2 headings */
+h2 + p, .oracle-sub, .pipeline-sub {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
 p { max-width: 640px; }
 
 a {
