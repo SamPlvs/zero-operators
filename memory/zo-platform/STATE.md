@@ -108,6 +108,16 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
 6. prod-001 project — first production deployment
 
+## Deferred — Post prod-001 First Pass
+
+7. **Experiment Tracker & Autonomous Iteration** — build AFTER prod-001 first pass generates real iteration data. Discussed in session 012. Scope:
+   - Experiment registry (`experiments/registry.json`) — structured lineage: what was tried, why, what was learned, parent experiment
+   - Hypothesis tracking — formal "hypothesis → config → result → conclusion" loop, prevents revisiting dead-ends
+   - Cross-experiment analysis — auto-generated insights (which hyperparams matter, which architectures work for this data)
+   - Plan refinement from results — if experiments reveal wrong assumptions, feed back to update plan/Phase 2 outputs
+   - Budget-aware experiment selection — given N iterations left, pick most informative next experiment
+   - Design from real prod-001 failure patterns, not speculation (PR-005 principle: enforcement from experience)
+
 ## Session Metadata
 
 last_checkpoint: 2026-04-13T15:00:00Z
