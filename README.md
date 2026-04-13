@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-441_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-464_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -116,6 +116,8 @@ zo draft -p my-project                                    # fully conversational
 ```
 
 Launches a **Plan Architect** (Opus) that drafts `plan.md` conversationally with you. Optionally spawns **Data Scout** (inspects `--data` paths for schema, distributions, quality flags) and **Research Scout** (finds prior art and baselines) in the background. Scout findings are woven into the plan as they arrive. All args are optional — if nothing provided, the architect asks you everything conversationally.
+
+The Plan Architect also populates two Agent Configuration knobs based on scout findings: **Custom agents** (new specialist roles the project needs — signal processing, calibration, NLP specialists, etc. — auto-created as `.claude/agents/custom/*.md` at build start) and **Agent adaptations** (domain-specific prompt additions for existing agents like `xai-agent` and `domain-evaluator`, appended at spawn time so the agent's `.md` file stays reusable across projects). Custom agents extend the team; adaptations tailor existing members. Both flow through to the build automatically.
 
 ### `zo init` — Scaffold a new project (conversational by default)
 
@@ -458,7 +460,7 @@ mnist-delivery/          ← delivery repo (clean)
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
 
-453 platform tests. ruff clean. 20 agents. 24 slash commands.
+476 platform tests. ruff clean. 20 agents. 24 slash commands.
 
 ---
 
