@@ -170,21 +170,46 @@ This section is critical. It encodes knowledge that would take agents many itera
 
 ### 7. Agent Configuration
 
-Specifies which agents are active and any project-specific overrides.
+Specifies which agents are active and any project-specific overrides, custom specialists, or adaptations for existing agents.
 
 ```markdown
 ## Agents
 
-**Active agents:** lead-orchestrator, data-engineer, model-builder, oracle-qa
+**Active agents:** lead-orchestrator, data-engineer, model-builder, oracle-qa, xai-agent, domain-evaluator
 **Phase-in agents:** xai-agent, domain-evaluator (activate after Gate 3 passes)
 **Inactive agents:** ml-engineer, infra-engineer (not needed for v1)
 
 **Agent overrides:**
   - model-builder: Use Opus (complex architecture decisions expected)
   - data-engineer: Use Sonnet (standard data pipeline work)
+
+**Custom agents:**
+- signal-analyst: Sonnet — Signal processing specialist for vibration/acoustic FFT analysis
+- calibration-expert: Opus — Sensor calibration and drift correction specialist
+
+**Agent adaptations:**
+
+- xai-agent:
+  Focus on frequency-domain attribution, spectrograms, and vibration-mode
+  decomposition. Generic SHAP/GradCAM is less relevant for time-series
+  signal data. Include bearing failure envelope plots in the Phase 5
+  analysis report.
+
+- domain-evaluator:
+  Apply IVL F5 vibration priors — bearing failure signatures via envelope
+  demodulation, modal frequency ranges 20-2000Hz, known sensor drift
+  patterns. Flag predictions that contradict these priors.
 ```
 
-If unspecified, the orchestrator uses the default team from `specs/agents.md`.
+If the Agent Configuration section is absent, the orchestrator uses the default team from `specs/agents.md`.
+
+**Three independent knobs inside the section:**
+
+1. **Active / phase-in / inactive** — pick which core agents run.
+2. **Custom agents** — add NEW agent roles the project needs (e.g. domain specialists). The orchestrator auto-creates `.claude/agents/custom/{name}.md` from each entry at build start. Reusable across projects.
+3. **Agent adaptations** — tailor EXISTING core or custom agents for this project's domain. The adaptation text is appended to the agent's base spawn prompt at build time; the agent's `.md` file is unchanged. Typically used for `xai-agent` and `domain-evaluator` which are generic by default and need project context to produce meaningful output.
+
+Custom agents and adaptations are complementary: custom agents extend the roster; adaptations tailor existing members. The Plan Architect proposes both during `zo draft` based on Research Scout + Data Scout findings.
 
 ### 8. Constraints
 

@@ -61,6 +61,34 @@ Write custom agents into the plan using this format:
 ```
 The orchestrator auto-creates these as agent definitions at build start.
 
+9. **Agent adaptations** — tailor the existing XAI and Domain Evaluator (and any other agent) to THIS project's domain. Core agents like `xai-agent` and `domain-evaluator` are generic by default — they need project-specific context to be useful. After Research Scout reports, propose adaptations that inject domain priors and relevant techniques.
+
+Write adaptations into the plan using this format:
+```markdown
+**Agent adaptations:**
+
+- xai-agent:
+  Focus on frequency-domain attribution, spectrogram visualisation, and
+  vibration-mode decomposition. Generic SHAP/GradCAM is less relevant for
+  time-series signal data. Include bearing failure envelope plots in the
+  Phase 5 analysis report.
+
+- domain-evaluator:
+  Apply IVL F5 domain priors: vibration modes 1–5 characteristic
+  frequencies (from scope doc), bearing failure signatures via envelope
+  demodulation, known sensor drift patterns (thermal, aging). Flag any
+  prediction that contradicts these priors. Cross-reference Research
+  Scout's catalog of prior art for domain-specific failure modes.
+```
+
+The adaptation text is appended to the agent's base `.md` instructions at spawn time — the agent file itself is unchanged (stays reusable across projects). You SHOULD propose adaptations for at least `xai-agent` and `domain-evaluator` on any domain-specific project; if the project is a generic benchmark (CIFAR-10, MNIST), a one-line "use defaults — generic image classification" is acceptable.
+
+**Rules of thumb:**
+- Adaptations are *additive* (appended to base prompt). Don't contradict the base instructions; augment them.
+- Be specific about techniques and data shapes (e.g. "envelope demodulation for 2048-sample vibration windows") — vague adaptations are worthless.
+- Include references the agent can load at build time (file paths, domain doc sections) when relevant.
+- If Research Scout hasn't reported yet, add a placeholder and refine once findings arrive.
+
 ### 3. Scout Integration
 
 When a scout sends you findings via message:

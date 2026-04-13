@@ -77,12 +77,44 @@ class CustomAgentSpec(BaseModel):
     role: str = ""
 
 
+class AgentAdaptation(BaseModel):
+    """A per-project prompt adaptation for an existing (core or custom) agent.
+
+    Written by the Plan Architect during ``zo draft`` based on scout
+    findings. Applied at build time by appending the adaptation text to
+    the agent's spawn prompt — the agent's base ``.md`` definition is
+    unchanged, so it remains reusable across projects.
+
+    Adaptations *complement* custom agents (which add new roles) rather
+    than replacing them: custom agents cover specialised roles the
+    project needs; adaptations tailor *existing* agents (typically
+    ``xai-agent`` and ``domain-evaluator``) to the project's domain.
+    """
+
+    agent_name: str
+    adaptation: str
+
+
 class AgentConfig(BaseModel):
     """Agent configuration section."""
 
     active_agents: list[str] = Field(default_factory=list)
     custom_agents: list[CustomAgentSpec] = Field(default_factory=list)
+    adaptations: list[AgentAdaptation] = Field(default_factory=list)
     raw_content: str = ""
+
+    def adaptation_for(self, agent_name: str) -> str | None:
+        """Return the adaptation text for *agent_name*, or None if absent.
+
+        Matches on exact ``agent_name`` (e.g. ``"xai-agent"``). The
+        orchestrator calls this when building a spawn prompt so it can
+        inject project-specific instructions on top of the agent's base
+        definition.
+        """
+        for a in self.adaptations:
+            if a.agent_name == agent_name:
+                return a.adaptation
+        return None
 
 
 class Plan(BaseModel):
@@ -345,6 +377,24 @@ _CUSTOM_AGENT_LINE_RE = re.compile(
     r"-\s*(\S+)\s*:\s*(\S+)\s*[—–-]\s*(.+)",
 )
 
+# Agent adaptations block. Grabs everything from the label through the
+# end of the block (a blank line followed by another ``**Foo:**`` label
+# or end-of-body). The captured group is parsed line-by-line with
+# ``_ADAPTATION_ENTRY_RE`` to pull individual adaptations.
+_ADAPTATIONS_RE = re.compile(
+    r"\*\*Agent adaptations:?\*\*\s*:?\s*\n"
+    r"((?:.*\n?)*?)"
+    r"(?=\n\s*\*\*[A-Z][\w ]+:|\Z)",
+    re.IGNORECASE,
+)
+
+# A single adaptation entry opens with a dash, the agent name, and a
+# colon. Subsequent indented lines continue the adaptation until the
+# next dash-agent header or a blank line terminates it.
+_ADAPTATION_HEADER_RE = re.compile(
+    r"^\s*-\s*([A-Za-z][\w-]*)\s*:\s*(.*)$",
+)
+
 _MODEL_ALIASES: dict[str, str] = {
     "opus": "claude-opus-4-6",
     "sonnet": "claude-sonnet-4-6",
@@ -352,16 +402,76 @@ _MODEL_ALIASES: dict[str, str] = {
 }
 
 
+def _parse_adaptations(raw_block: str) -> list[AgentAdaptation]:
+    """Parse the body of the ``**Agent adaptations:**`` block.
+
+    Accepts one or more entries of the form::
+
+        - xai-agent: short one-line adaptation
+
+        - domain-evaluator:
+          Multi-line continuation lines (any indent) are joined into
+          the adaptation body. Blank lines end the entry.
+
+    Entries with an empty body are skipped (no effective adaptation).
+    """
+    entries: list[AgentAdaptation] = []
+    current_name: str | None = None
+    current_lines: list[str] = []
+
+    def _flush() -> None:
+        nonlocal current_name, current_lines
+        if current_name is None:
+            return
+        body = "\n".join(current_lines).strip()
+        if body:
+            entries.append(
+                AgentAdaptation(agent_name=current_name, adaptation=body),
+            )
+        current_name = None
+        current_lines = []
+
+    for raw_line in raw_block.splitlines():
+        line = raw_line.rstrip()
+        if not line.strip():
+            # Blank line — end of the current entry.
+            _flush()
+            continue
+        m = _ADAPTATION_HEADER_RE.match(line)
+        if m:
+            _flush()
+            current_name = m.group(1).strip()
+            first = m.group(2).strip()
+            current_lines = [first] if first else []
+        elif current_name is not None:
+            # Continuation line (any indent level).
+            current_lines.append(line.strip())
+    _flush()
+    return entries
+
+
 def _parse_agents(body: str) -> AgentConfig:
     """Parse the Agents section.
 
-    Supports both active agents and custom agent declarations::
+    Supports active agents, custom agent declarations, and per-project
+    agent adaptations::
 
-        **Active agents:** data-engineer, model-builder, oracle-qa
+        **Active agents:** data-engineer, model-builder, oracle-qa, xai-agent
 
         **Custom agents:**
         - signal-analyst: Sonnet — Signal processing for vibration data
         - calibration-expert: Sonnet — Sensor calibration specialist
+
+        **Agent adaptations:**
+
+        - xai-agent:
+          Focus on frequency-domain attribution, spectrograms, and
+          vibration-mode decomposition. Generic SHAP/GradCAM is less
+          relevant for time-series signals.
+
+        - domain-evaluator:
+          Apply IVL F5 vibration priors — bearing failure signatures,
+          known sensor drift patterns, modal frequency ranges.
     """
     agents: list[str] = []
     m = _ACTIVE_AGENTS_RE.search(body)
@@ -383,8 +493,16 @@ def _parse_agents(body: str) -> AgentConfig:
                     name=name, model=model, role=role,
                 ))
 
+    adaptations: list[AgentAdaptation] = []
+    am = _ADAPTATIONS_RE.search(body)
+    if am:
+        adaptations = _parse_adaptations(am.group(1))
+
     return AgentConfig(
-        active_agents=agents, custom_agents=custom, raw_content=body,
+        active_agents=agents,
+        custom_agents=custom,
+        adaptations=adaptations,
+        raw_content=body,
     )
 
 
