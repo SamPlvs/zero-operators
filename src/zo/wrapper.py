@@ -425,30 +425,41 @@ class LifecycleWrapper:
         timeout: float | None,
         on_status: Any | None,
     ) -> LeadProcess:
-        """Wait for the tmux pane to close (session complete)."""
+        """Wait for Claude to exit in the tmux pane, then clean up.
+
+        Checks two conditions each poll cycle:
+        1. Pane disappeared entirely (user killed the window) → done.
+        2. Pane alive but Claude is no longer the foreground process
+           (user typed /exit, Claude exited) → kill the window → done.
+        """
         start_time = time.monotonic()
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
+        pane_id = process.tmux_pane_id or ""
 
         while True:
             self._check_gate_mode_change()
             self._maybe_open_training_pane()
 
-            if not self._tmux_pane_alive(process.tmux_pane_id or ""):
+            pane_exists = self._tmux_pane_alive(pane_id)
+            claude_running = pane_exists and self._tmux_claude_running(pane_id)
+
+            if not pane_exists or not claude_running:
+                # Claude exited — clean up the leftover shell window.
+                if pane_exists:
+                    self._kill_tmux_window(pane_id)
                 process = process.model_copy(update={
                     "exit_code": 0, "completed_at": datetime.now(UTC),
                     "status": AgentStatus.COMPLETED,
                 })
                 self._comms.log_checkpoint(
                     agent="wrapper", phase="lifecycle", subtask="completion",
-                    progress="Lead session tmux pane closed",
+                    progress="Lead session completed, agent window closed",
                 )
                 return process
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
-                pane_snapshot = self._capture_tmux_pane(
-                    process.tmux_pane_id or "", lines=5,
-                )
+                pane_snapshot = self._capture_tmux_pane(pane_id, lines=5)
                 on_status(team_status, pane_snapshot)
 
             if timeout and (time.monotonic() - start_time) > timeout:
@@ -629,6 +640,46 @@ class LifecycleWrapper:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return False
         return pane_id in result.stdout.splitlines()
+
+    @staticmethod
+    def _tmux_claude_running(pane_id: str) -> bool:
+        """Check if Claude Code is the active process in a tmux pane.
+
+        When the user types /exit in Claude Code, the process exits but
+        the tmux pane's shell remains.  ``_tmux_pane_alive`` would still
+        return True.  This method checks the *current command* running
+        in the pane — if it's ``claude``, the session is active; if it
+        has fallen back to the shell (``bash``, ``zsh``, ``fish``, etc.),
+        Claude has exited.
+        """
+        if not pane_id:
+            return False
+        try:
+            result = subprocess.run(
+                ["tmux", "display-message", "-t", pane_id,
+                 "-p", "#{pane_current_command}"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+        if result.returncode != 0:
+            return False
+        cmd = result.stdout.strip().lower()
+        # Claude Code runs as "claude" or "node" (the underlying runtime).
+        # When it exits, the pane falls back to the user's shell.
+        shells = {"bash", "zsh", "fish", "sh", "dash", "tcsh", "csh"}
+        return cmd not in shells and len(cmd) > 0
+
+    @staticmethod
+    def _kill_tmux_window(pane_id: str) -> None:
+        """Kill the tmux window containing a pane (cleanup after exit)."""
+        if not pane_id:
+            return
+        with contextlib.suppress(FileNotFoundError, subprocess.TimeoutExpired):
+            subprocess.run(
+                ["tmux", "kill-window", "-t", pane_id],
+                capture_output=True, timeout=5,
+            )
 
     @staticmethod
     def _is_in_tmux() -> bool:
