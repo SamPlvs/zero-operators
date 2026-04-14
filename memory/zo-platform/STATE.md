@@ -91,6 +91,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent ad
 - [x] v1.0.2-pre: Per-project agent adaptations — `**Agent adaptations:**` block in plan.md; Plan Architect populates during draft based on scout findings; orchestrator injects into spawn prompts at build time; works for both core (xai-agent, domain-evaluator) and custom agents; appended not replaced (agent `.md` files stay reusable)
 - [x] v1.0.2-pre: Branded `zo --help` — `ZoGroup`/`ZoCommand` override `get_help()` to render a Rich-formatted banner (orbital mark ◎ + `ZERO OPERATORS` + version in brand amber) with sectioned headers (USAGE, QUICK START, COMMANDS, OPTIONS) and an init→draft→preflight→build→continue quick-start sequence; propagates to every subcommand and nested group automatically via `command_class`/`group_class`
 - [x] v1.0.2-pre: Tmux TUI paste timing fix — increased wait from 3s to 8s, Enter delay from 0.5s to 1s; fixes blank-session bug where zo init/draft/build launched Claude but never submitted the prompt on cold starts
+- [x] v1.0.2-pre: Agent session auto-cleanup — `_tmux_claude_running()` detects Claude exit via `pane_current_command`, `_kill_tmux_window()` closes leftover shell, `_generate_session_summary()` prints Haiku bullet summary before returning control to terminal
 
 ## Known Issues
 

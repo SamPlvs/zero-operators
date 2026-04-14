@@ -639,3 +639,39 @@ This separation fixed both failures in one pass: `[standard|adaptive]` renders v
 
 `time.sleep(8)` before `tmux load-buffer` + `paste-buffer`. `time.sleep(1)` before `send-keys Enter` (was 0.5s). If 8s proves insufficient on even slower machines, the user can manually paste the prompt from `logs/wrapper/{team}-prompt.txt` — it's always written before the tmux launch.
 
+---
+
+## PR-023: Tmux Agent Sessions Must Auto-Cleanup When Claude Exits
+**Source:** Session 016 (2026-04-14), first `zo init ivl-f5` run — post-session
+**Root cause category:** missing_rule
+**Failure:** After typing `/exit` in the Init Architect's Claude session: (a) the tmux agent window stayed open (shell still running after Claude exited), (b) the invoking terminal showed only elapsed-time ticks with no summary or next steps, (c) the `_wait_tmux` monitoring loop never terminated because `_tmux_pane_alive()` only checked pane existence, not whether Claude was the active process.
+
+### Rules
+
+1. **Check the running process, not just the pane.**
+   `tmux display-message -t PANE -p "#{pane_current_command}"` returns
+   the foreground command (e.g. `claude`, `node`). When Claude exits,
+   this falls back to the shell (`bash`, `zsh`). Checking pane existence
+   alone will hang forever because the shell never exits on its own.
+   - *Failure ref:* Monitoring loop ran indefinitely after user typed /exit.
+
+2. **Kill the agent window on session completion.**
+   The tmux window was created by ZO for the agent — ZO should clean it
+   up. Leaving orphan shell windows after every `zo init`/`zo draft`/
+   `zo build` accumulates clutter the user has to manually close.
+
+3. **Print a summary and next steps in the invoking terminal.**
+   The invoking terminal (where `zo init` was run) is the user's
+   home base. When the agent finishes, this terminal should show:
+   what happened (Haiku summary of events), what's next (the next
+   pipeline step), and return the shell prompt. Just printing
+   "Session completed" with no context wastes the buffered events.
+
+### Verified Solution
+
+Three additions to `wrapper.py` + `cli.py`:
+1. `_tmux_claude_running(pane_id)` — checks `#{pane_current_command}`, returns False if it's a shell
+2. `_kill_tmux_window(pane_id)` — kills the window containing the pane
+3. `_wait_tmux()` uses both conditions: pane exists AND Claude running; kills window on exit
+4. `_generate_session_summary(events, team_name)` — Haiku 2-3 bullet summary printed post-completion
+

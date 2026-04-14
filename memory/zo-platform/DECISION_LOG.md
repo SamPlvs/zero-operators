@@ -581,3 +581,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** First live `zo init ivl-f5` run opened a blank Claude Code session — the TUI rendered but no prompt was submitted. The 3s wait was insufficient for Claude Code's cold start (loading extensions, hooks, CLAUDE.md, memory files). The paste-buffer arrived before the input field was ready, so the prompt was silently dropped. 8s covers observed cold start times (5-10s) with margin. This is the same tmux paste-buffer approach validated in PR-001, but the timing assumption was wrong.
 **Alternatives considered:** (1) Poll-based wait (check tmux pane content for ready indicator) — fragile, depends on TUI rendering internals. (2) Retry with double-paste — risks submitting the prompt twice if the first paste succeeded. (3) Increase fixed wait to 8s (chosen) — simple, covers the range, no double-paste risk.
 **Outcome:** PR #34. 476 tests pass, 7 skipped. Fix applied to both worktree and main repo `src/zo/wrapper.py`. PR-022 prior added.
+
+---
+
+## Decision: 2026-04-14T12:45:00Z
+**Type:** UX
+**Title:** Agent session auto-cleanup — kill tmux window, Haiku summary, return control
+**Decision:** Three changes to the post-session flow: (1) `_tmux_claude_running()` checks `#{pane_current_command}` to detect when Claude exits but the shell remains — replaces the previous check that only tested pane existence. (2) `_kill_tmux_window()` closes the leftover shell window when Claude exits. (3) `_generate_session_summary()` asks Haiku for a 2-3 bullet summary of buffered events, printed in the invoking terminal before returning control.
+**Rationale:** After `zo init ivl-f5`, user typed `/exit` in the Claude session but: (a) the tmux agent window stayed open (shell still running), (b) the invoking terminal showed only elapsed-time ticks with no summary, (c) the monitoring loop never terminated. The user had to manually kill windows and got no feedback on what happened. The fix makes the end-of-session experience match the beginning: automatic, informative, clean.
+**Alternatives considered:** (1) Require user to kill the tmux window manually — poor UX, the whole point is automation. (2) Send SIGTERM to the pane — risks killing Claude mid-work if called too early. (3) Check `pane_current_command` for shell fallback (chosen) — safe, detects the natural /exit flow.
+**Outcome:** PR #34 updated. `_tmux_claude_running()`, `_kill_tmux_window()`, `_generate_session_summary()` added. `_wait_tmux()` uses two-condition check (pane exists AND Claude running). 476 tests pass.
