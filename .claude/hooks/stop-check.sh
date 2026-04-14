@@ -38,10 +38,7 @@ fi
 if [[ -n "$DIRTY_TRIGGERS" ]]; then
     cat <<EOF
 {
-  "hookSpecificOutput": {
-    "hookEventName": "Stop",
-    "additionalContext": "Uncommitted changes detected in cascade-trigger files:${DIRTY_TRIGGERS}. Before committing or ending the session, run: ./scripts/validate-docs.sh and update all cascade files per CLAUDE.md protocol."
-  }
+  "stopReason": "Uncommitted changes in cascade-trigger files:${DIRTY_TRIGGERS}. Run ./scripts/validate-docs.sh and update cascade files per CLAUDE.md before committing."
 }
 EOF
 fi
