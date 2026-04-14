@@ -104,7 +104,7 @@ def _check_plan(plan_path: Path) -> CheckResult:
     try:
         plan = parse_plan(plan_path)
         report = validate_plan(plan)
-        if report.is_valid:
+        if report.valid:
             return CheckResult("Plan", True, "All 8 sections valid")
         issues = "; ".join(f"{i.field}: {i.message}" for i in report.issues[:3])
         return CheckResult("Plan", False, f"Validation failed: {issues}")
