@@ -877,11 +877,11 @@ def init(
     With ``--no-tmux``, writes files directly from the flags. Use this
     in CI/scripts or when you know exactly what you want:
 
-        zo init prod-001 --no-tmux \\
-            --existing-repo ~/code/prod-001 \\
-            --branch samtukra \\
+        zo init my-project --no-tmux \\
+            --existing-repo ~/code/my-project \\
+            --branch feature-branch \\
             --gpu-host gpu-server-01 \\
-            --data-path /mnt/data/prod-001/f5
+            --data-path /mnt/data/project/raw
 
     Either mode creates:
       - memory/{project}/ — STATE, DECISION_LOG, PRIORS, sessions/

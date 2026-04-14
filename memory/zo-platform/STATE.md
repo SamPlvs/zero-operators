@@ -104,7 +104,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## What's Next
 
-1. **prod-001 setup** — run `zo init prod-001` (conversational) on the existing repo at branch `samtukra`. Scout team drafts plan; build with auto/supervised gates.
+1. **prod-001 setup** — run `zo init prod-001` (conversational) on the existing repo at the target branch. Scout team drafts plan; build with auto/supervised gates.
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Domain evaluator refactor — make project-specific via plan.md domain priors
 4. ~~XAI + Domain Evaluator activation for prod-001 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
