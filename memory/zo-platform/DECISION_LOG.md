@@ -186,7 +186,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Decision:** ZO platform validated. Ready for real projects.
 **Rationale:** MNIST digit classifier built autonomously across 5 phases. 99.00% test accuracy (Tier 1 threshold: 95%). Agent team produced model, inference script, oracle evaluation, GradCAM/saliency XAI, ablation study, significance testing, reproducibility verification. 98 tests in delivery repo. Zero ZO artifacts. 4 clean git commits. Total cost ~$11.
 **Known issues:** (1) Phase state not persisted between zo build calls — lead session re-discovers resume point from delivery repo. (2) Blocking gates cause repeated sessions in auto mode. Both are hardening items, not blockers.
-**Outcome:** ZO is production-ready for real projects. IVL F5 is next.
+**Outcome:** ZO is production-ready for real projects. prod-001 is next.
 
 ---
 
@@ -195,7 +195,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Title:** 23 slash commands added for Claude Code
 **Decision:** Implement full command vocabulary: project lifecycle (connect/import/plan/launch), memory (recall/prime/priors/session-summary), gates (approve/reject/gates), observability (watch/logs/decisions/history), documentation (code-docs/validation-report/model-card/retrospective), agent management (agents/spawn/create-agent), utility (commit).
 **Rationale:** Inspired by coleam00/habit-tracker .claude/commands pattern. ZO needs its own vocabulary mapping to the plan→execute→verify→evolve loop. Commands provide the interface between human and ZO inside Claude Code sessions.
-**Outcome:** 23 command files in .claude/commands/, COMMANDS.md reference, interactive HTML demo. Session closed — ready for IVL F5.
+**Outcome:** 23 command files in .claude/commands/, COMMANDS.md reference, interactive HTML demo. Session closed — ready for prod-001.
 
 ---
 
@@ -312,7 +312,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Auto-detected fields:** platform (uname), gpu_available (nvidia-smi), cuda_version, gpu_count, gpu_memory, python_version, docker_available, docker_compose_available.
 **User-provided fields:** data_paths (where raw data lives), docker_mounts (if non-standard paths needed).
 **Alternatives considered:** (1) User manually fills Environment — error-prone, unnecessary. (2) Fully automatic with no review — risky, user should confirm. (3) Auto-detect + user review (chosen) — correct defaults, user can override.
-**Outcome:** Design captured. Implementation during IVL F5 plan setup. Detection logic will extend `zo preflight` (already detects GPU/Docker) into the planning phase.
+**Outcome:** Design captured. Implementation during prod-001 plan setup. Detection logic will extend `zo preflight` (already detects GPU/Docker) into the planning phase.
 
 ---
 
@@ -470,7 +470,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Auto test reports at phase gates via JUnit XML
 **Decision:** Orchestrator generates `reports/test_report.md` at every phase gate by running pytest with `--junitxml`, parsing the XML, and rendering a structured markdown report. Triggered in both `advance_phase()` (automated gates) and `apply_human_decision()` (human gates). Handles missing tests/pytest gracefully with a placeholder report.
-**Rationale:** User found no test report artifact during CIFAR-10 build. For production projects (IVL F5), every gate needs a test report showing pass/fail, per-module breakdown, failures with tracebacks. Auto-generation means the test-engineer writes tests, the infra produces the report — separation of concerns.
+**Rationale:** User found no test report artifact during CIFAR-10 build. For production projects (prod-001), every gate needs a test report showing pass/fail, per-module breakdown, failures with tracebacks. Auto-generation means the test-engineer writes tests, the infra produces the report — separation of concerns.
 **Alternatives considered:** (1) Manual `zo test-report` command — requires user to remember. (2) Auto at gates only (chosen) — always current, zero manual steps. (3) Both — unnecessary complexity.
 **Outcome:** PR #26. 18 new tests, CaseResult/SuiteResult models, JUnit XML parser, markdown renderer.
 
@@ -480,7 +480,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Structured phase report templates — specs/report_templates.md
 **Decision:** Created comprehensive report templates for Phase 1 (Data Quality, 10 sections) and Phase 5 (Analysis, 7 sections) in `specs/report_templates.md`. Agent contracts (data-engineer, oracle-qa, test-engineer) reference these templates. Reports are the primary artifacts reviewed at gate checkpoints.
-**Rationale:** User noted existing data quality reports were too thin for production data (IVL F5). CIFAR-10 is clean and simple; IVL F5 has messy, complex, domain-specific data requiring comprehensive quality assessment. Templates ensure agents produce production-grade reports with statistical tests, per-feature breakdowns, and actionable recommendations.
+**Rationale:** User noted existing data quality reports were too thin for production data (prod-001). CIFAR-10 is clean and simple; prod-001 has messy, complex, domain-specific data requiring comprehensive quality assessment. Templates ensure agents produce production-grade reports with statistical tests, per-feature breakdowns, and actionable recommendations.
 **Alternatives considered:** (1) Inline templates in agent contracts — bloats agent definitions. (2) Separate spec file (chosen) — reusable, single source of truth, agents reference it. (3) Auto-generated reports from code — too rigid, can't capture domain-specific analysis.
 **Outcome:** PR #26. specs/report_templates.md, 3 agent contracts updated.
 
@@ -490,7 +490,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Draft scout team — multi-agent plan drafting with data and research intelligence
 **Decision:** Upgraded `zo draft` from a single Sonnet session to a 3-agent scout team: Plan Architect (Opus, lead), Data Scout (Sonnet), Research Scout (existing, Opus). The Plan Architect converses with the human in tmux while scouts gather intelligence in the background. Data Scout inspects raw data (schema, distributions, quality flags). Research Scout finds prior art and baselines. Findings arrive via Claude Code native peer messaging and are woven into the plan.
-**Rationale:** Single-session draft works for toy datasets (CIFAR-10) but not for production data (IVL F5). Plans written without data inspection or research are uninformed — the plan.md quality directly determines build quality. The scout team grounds the plan in data reality and domain knowledge. User wanted to keep the conversational UX — the architect chats, scouts work in background. Same monitoring UX as zo build (team status feed in terminal).
+**Rationale:** Single-session draft works for toy datasets (CIFAR-10) but not for production data (prod-001). Plans written without data inspection or research are uninformed — the plan.md quality directly determines build quality. The scout team grounds the plan in data reality and domain knowledge. User wanted to keep the conversational UX — the architect chats, scouts work in background. Same monitoring UX as zo build (team status feed in terminal).
 **Alternatives considered:** (1) Full preliminary analysis (mini Phase 1) — too expensive, risk of doing Phase 1 twice. (2) Keep single session, evolve plan after Phase 1 — plan starts uninformed. (3) Lightweight scout team (chosen) — quick (10-15 min), grounded, conversational.
 **Outcome:** PR #27. 2 new agents (plan-architect, data-scout), CLI redesigned (--docs, --data, -d all optional), _launch_and_monitor shared between build and draft.
 
@@ -510,7 +510,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Dynamic agent creation — custom/ directory, plan-defined + mid-build
 **Decision:** Custom agents live in `.claude/agents/custom/` (separate from 19 core agents). Two creation paths: (1) plan.md declares custom agents via `**Custom agents:**` block — orchestrator auto-creates `.md` files at build start. (2) Lead orchestrator creates agents mid-build when it discovers unplanned expertise gaps — full-auto, logged to DECISION_LOG. Custom agents persist across projects and are reusable. `_agents_for_phase()` treats unknown agents as available for ALL phases (lead decides when to spawn). `_prompt_roster()` scans both core and custom/ directories.
-**Rationale:** Static 19-agent roster doesn't scale to production projects with domain-specific needs (IVL F5: signal processing, sensor calibration, etc.). Custom agents can be any role — researchers, data scientists, testers, QA — not limited to domain specialists. The agent library grows as ZO encounters new problem types.
+**Rationale:** Static 19-agent roster doesn't scale to production projects with domain-specific needs (prod-001: signal processing, sensor calibration, etc.). Custom agents can be any role — researchers, data scientists, testers, QA — not limited to domain specialists. The agent library grows as ZO encounters new problem types.
 **Alternatives considered:** (1) All agents in flat directory — mixes core with project-specific, hard to tell apart. (2) Agents in delivery repo — doesn't persist across projects. (3) Custom subdirectory (chosen) — clean separation, reusable, visible in roster.
 **Outcome:** PR #28. CustomAgentSpec in plan parser, _ensure_custom_agents + _render_custom_agent in orchestrator, 16 new tests.
 
@@ -530,7 +530,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Scaffold `layout_mode=adaptive` — preserve existing code layout in overlay mode
 **Decision:** Split scaffold directories into `_META_DIRECTORIES` (always created: `configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`) and `_STANDARD_DIRECTORIES` (only created in standard mode: `src/*`, `data/*`, `models/`, human notebooks, tests). Adaptive mode also skips `README.md`, `pyproject.toml`, `.gitignore` template files (the existing repo has these). `.gitkeep` writes are restricted to dirs that are truly empty after creation — no pollution of pre-existing code dirs.
-**Rationale:** IVL F5 (and any serious existing project) has its own src-layout, e.g. `src/ivl_f5/data/`. Naively running scaffold would create both `src/data/` AND leave `src/ivl_f5/data/` — agents get confused about where code lives. Adaptive mode preserves the user's layout; the Init Architect then writes a project-specific `STRUCTURE.md` and updates `agent_working_dirs` in the target file to point at real paths (the one allowed direct-write exception, since only the agent has the project context to do this correctly).
+**Rationale:** prod-001 (and any serious existing project) has its own src-layout, e.g. `src/prod-001/data/`. Naively running scaffold would create both `src/data/` AND leave `src/prod-001/data/` — agents get confused about where code lives. Adaptive mode preserves the user's layout; the Init Architect then writes a project-specific `STRUCTURE.md` and updates `agent_working_dirs` in the target file to point at real paths (the one allowed direct-write exception, since only the agent has the project context to do this correctly).
 **Alternatives considered:** (1) Always run full scaffold — pollutes existing repos. (2) Skip scaffold entirely on existing repos — loses ZO's `configs/`, `experiments/`, `docker/` infrastructure that agents depend on. (3) Two layout modes (chosen) — clean separation of "ZO infrastructure" vs "code layout".
 **Outcome:** scaffold.py refactor with `layout_mode` param + `_META_DIRECTORIES`/`_STANDARD_DIRECTORIES` split. CLI guardrail: adaptive requires --existing-repo. 5 new tests covering empty-dir gitkeep, adaptive mode skipping src/, README/pyproject preservation, invalid layout mode rejection, overlay logging.
 
@@ -540,7 +540,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Plan template `## Environment` section + auto-detection
 **Decision:** Plan template (`_PLAN_TEMPLATE` in cli.py) gains an `## Environment` section with three blocks: **Host** (where ZO runs — platform, Python, Docker, GPU count, CUDA), **Training target** (where Docker runs — gpu_host, base_image, train_cuda), **Data** (data_layout, data_path, docker_mounts). At `zo init` time, `src/zo/environment.py` runs detection probes (subprocess to nvidia-smi + docker + python version + uname) and the values are interpolated into the template. User-supplied flags (`--gpu-host`, `--base-image`, `--data-path`) override detection. `--no-detect` produces TODO placeholders.
-**Rationale:** Resolves known issue #6. Manual Environment specification was error-prone. Distinguishing host (where ZO runs) from training target (where Docker runs) is essential because IVL F5 dev happens on Mac but training runs on a Linux GPU server with different CUDA. Auto-detection captures host correctly; explicit flags capture training target.
+**Rationale:** Resolves known issue #6. Manual Environment specification was error-prone. Distinguishing host (where ZO runs) from training target (where Docker runs) is essential because prod-001 dev happens on Mac but training runs on a Linux GPU server with different CUDA. Auto-detection captures host correctly; explicit flags capture training target.
 **Alternatives considered:** (1) Single `Environment` block conflating host + training — wrong abstraction for remote-GPU setups. (2) Defer to `zo draft` — but draft happens after init, and Environment should be in the plan from the start. (3) Three-block Environment (chosen) — explicit separation matches reality.
 **Outcome:** _render_plan_template() in cli.py builds the populated section. Environment.suggest_base_image() picks a sensible PyTorch image from detected CUDA (12.4 / 12.1 / 11.8 with safe fallback).
 
@@ -551,7 +551,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Title:** `zo init` dry-run + reset — mid-flight adaptability for the Init Architect
 **Decision:** Added two CLI affordances that make the conversational init safely reversible: (1) `--dry-run` prints the exact file tree, directory preserved/added counts, target.md content, and plan.md Environment section WITHOUT any filesystem writes. Init Architect runs dry-run before every commit and shows the user what will happen. (2) `--reset` deletes `memory/{project}/`, `targets/{project}.target.md`, and `plans/{project}.md`; prompts for the project name as confirmation (or `--yes` to skip); NEVER touches the delivery repo. Init Architect mentions reset in its closing message only when the user seemed uncertain.
 **Rationale:** The first pass made init conversational but the user asked: "will the agent adapt mid-flight?" The answer revealed gaps: no preview before commit (user commits blind), no rollback after commit (user has to rm-rf manually, risky if they confuse ZO paths with delivery paths). Dry-run + reset close the loop: agent can preview, user can undo, without any path-sensitive shell commands. Mirrors the "plan before action, action if approved" pattern from the rest of ZO.
-**Alternatives considered:** (1) Leave as-is — real IVL F5 friction would catch issues, but expensive when you're mid-session and unsure. (2) Separate `zo reset` command — cleaner surface but adds another command to cascade across docs; init+reset on same command is more discoverable ("how do I undo init? init --reset"). (3) Agent writes files directly with Write tool so it can re-edit — breaks the "single source of truth for writes" rule and is harder to test.
+**Alternatives considered:** (1) Leave as-is — real prod-001 friction would catch issues, but expensive when you're mid-session and unsure. (2) Separate `zo reset` command — cleaner surface but adds another command to cascade across docs; init+reset on same command is more discoverable ("how do I undo init? init --reset"). (3) Agent writes files directly with Write tool so it can re-edit — breaks the "single source of truth for writes" rule and is harder to test.
 **Outcome:** 3 new classes (TestInitDryRun, TestInitReset) + 10 tests. Total 451 passing. PR-019 added (preview-before-commit principle). COMMANDS.md updated with --dry-run / --reset / --yes. Init Architect protocol gets explicit partial-match guidance (default standard for partial src/) and semantic-alias guidance (adaptive + map for src/data_loading → src/data), closing the layout adaptability gap the user raised.
 
 ---
@@ -560,7 +560,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** ARCHITECTURE
 **Title:** Per-project agent adaptations — `**Agent adaptations:**` block in plan.md
 **Decision:** Introduced a third Agent Configuration knob (alongside Active agents and Custom agents): `**Agent adaptations:**` maps an agent name to a project-specific prompt addition. Plan Architect proposes adaptations during `zo draft` based on Research Scout + Data Scout findings — typically for `xai-agent` and `domain-evaluator` which are generic by default and need domain context to produce useful output. At build time, the orchestrator reads the plan's adaptations and (a) injects each into the relevant agent contract inline within `_prompt_contracts`, and (b) emits a dedicated top-level `# Per-project Agent Adaptations` section in the Lead Orchestrator's prompt. The Lead Orchestrator's protocol tells it to append the adaptation text to the spawn prompt when spawning the adapted agent — the agent's base `.md` file is unchanged, so it remains reusable across projects. Adaptations work for both core agents and plan-declared custom agents.
-**Rationale:** Static `xai-agent.md` and `domain-evaluator.md` files produce the same generic output for CIFAR-10 images as for IVL F5 vibration signals — defeats the point of having these agents. User flagged this when reviewing the scorecard for original IVL F5 gaps: XAI
+**Rationale:** Static `xai-agent.md` and `domain-evaluator.md` files produce the same generic output for CIFAR-10 images as for prod-001 vibration signals — defeats the point of having these agents. User flagged this when reviewing the scorecard for original prod-001 gaps: XAI
 
 ---
 
@@ -578,7 +578,7 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** BUGFIX
 **Title:** Tmux TUI paste timing — 3s wait too short for cold starts
 **Decision:** Increased `time.sleep(3)` to `time.sleep(8)` in `_launch_tmux()` for the TUI initialization wait before paste-buffer. Also increased Enter key delay from 0.5s to 1s.
-**Rationale:** First live `zo init ivl-f5` run opened a blank Claude Code session — the TUI rendered but no prompt was submitted. The 3s wait was insufficient for Claude Code's cold start (loading extensions, hooks, CLAUDE.md, memory files). The paste-buffer arrived before the input field was ready, so the prompt was silently dropped. 8s covers observed cold start times (5-10s) with margin. This is the same tmux paste-buffer approach validated in PR-001, but the timing assumption was wrong.
+**Rationale:** First live `zo init prod-001` run opened a blank Claude Code session — the TUI rendered but no prompt was submitted. The 3s wait was insufficient for Claude Code's cold start (loading extensions, hooks, CLAUDE.md, memory files). The paste-buffer arrived before the input field was ready, so the prompt was silently dropped. 8s covers observed cold start times (5-10s) with margin. This is the same tmux paste-buffer approach validated in PR-001, but the timing assumption was wrong.
 **Alternatives considered:** (1) Poll-based wait (check tmux pane content for ready indicator) — fragile, depends on TUI rendering internals. (2) Retry with double-paste — risks submitting the prompt twice if the first paste succeeded. (3) Increase fixed wait to 8s (chosen) — simple, covers the range, no double-paste risk.
 **Outcome:** PR #34. 476 tests pass, 7 skipped. Fix applied to both worktree and main repo `src/zo/wrapper.py`. PR-022 prior added.
 
@@ -588,6 +588,6 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Type:** UX
 **Title:** Agent session auto-cleanup — kill tmux window, Haiku summary, return control
 **Decision:** Three changes to the post-session flow: (1) `_tmux_claude_running()` checks `#{pane_current_command}` to detect when Claude exits but the shell remains — replaces the previous check that only tested pane existence. (2) `_kill_tmux_window()` closes the leftover shell window when Claude exits. (3) `_generate_session_summary()` asks Haiku for a 2-3 bullet summary of buffered events, printed in the invoking terminal before returning control.
-**Rationale:** After `zo init ivl-f5`, user typed `/exit` in the Claude session but: (a) the tmux agent window stayed open (shell still running), (b) the invoking terminal showed only elapsed-time ticks with no summary, (c) the monitoring loop never terminated. The user had to manually kill windows and got no feedback on what happened. The fix makes the end-of-session experience match the beginning: automatic, informative, clean.
+**Rationale:** After `zo init prod-001`, user typed `/exit` in the Claude session but: (a) the tmux agent window stayed open (shell still running), (b) the invoking terminal showed only elapsed-time ticks with no summary, (c) the monitoring loop never terminated. The user had to manually kill windows and got no feedback on what happened. The fix makes the end-of-session experience match the beginning: automatic, informative, clean.
 **Alternatives considered:** (1) Require user to kill the tmux window manually — poor UX, the whole point is automation. (2) Send SIGTERM to the pane — risks killing Claude mid-work if called too early. (3) Check `pane_current_command` for shell fallback (chosen) — safe, detects the natural /exit flow.
 **Outcome:** PR #34 updated. `_tmux_claude_running()`, `_kill_tmux_window()`, `_generate_session_summary()` added. `_wait_tmux()` uses two-condition check (pane exists AND Claude running). 476 tests pass.

@@ -405,7 +405,7 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
 ### Rules
 
 1. **Phase defaults must handle the hardest case, not the easiest.**
-   CIFAR-10 is clean, balanced, well-known. IVL F5 data is messy,
+   CIFAR-10 is clean, balanced, well-known. prod-001 data is messy,
    domain-specific, potentially imbalanced. Defaults should be
    production-grade — users can simplify via plan.md overrides.
 
@@ -452,15 +452,15 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
 ---
 
 ## PR-017: Conversational Interview > Flag Proliferation When Decisions Need Context
-**Source:** Session 013 (2026-04-13), `zo init` redesign for IVL F5 readiness
+**Source:** Session 013 (2026-04-13), `zo init` redesign for prod-001 readiness
 **Root cause category:** missing_rule
-**Failure:** Original `zo init` was a programmatic one-shot — fine for fresh demo projects (CIFAR-10) but accumulated five distinct gaps when faced with a real production project (IVL F5): hardcoded `target_branch: main`, no `Environment` section, no overlay-vs-scaffold mode, no remote-data handling, target template's `agent_working_dirs` mismatched the new responsibility-based scaffold layout. Each gap could be patched with a flag, but the gaps themselves arose from *decisions that need context to make correctly* — context that lives in the user's head and the existing repo, not in defaults.
+**Failure:** Original `zo init` was a programmatic one-shot — fine for fresh demo projects (CIFAR-10) but accumulated five distinct gaps when faced with a real production project (prod-001): hardcoded `target_branch: main`, no `Environment` section, no overlay-vs-scaffold mode, no remote-data handling, target template's `agent_working_dirs` mismatched the new responsibility-based scaffold layout. Each gap could be patched with a flag, but the gaps themselves arose from *decisions that need context to make correctly* — context that lives in the user's head and the existing repo, not in defaults.
 
 ### Rules
 
 1. **When a decision requires inspecting the target environment, prefer a conversational agent over a flag.**
    Adding `--branch`, `--existing-repo`, `--base-image`, `--gpu-host`, `--data-path`, `--layout-mode` etc. would have worked syntactically but pushed inspection-and-decision burden onto the user. The Init Architect inspects the repo (Glob/Read/Bash) and asks targeted questions; the user makes 5-6 confirmations instead of crafting a 7-flag CLI invocation.
-   - *Failure ref:* IVL F5 setup needed `target_branch: samtukra` (manual edit), Environment section (manual fill-in), overlay vs scaffold (no mode existed), STRUCTURE.md customization for src-layout (no mechanism). Five sequential gaps from one root cause.
+   - *Failure ref:* prod-001 setup needed `target_branch: samtukra` (manual edit), Environment section (manual fill-in), overlay vs scaffold (no mode existed), STRUCTURE.md customization for src-layout (no mechanism). Five sequential gaps from one root cause.
 
 2. **The conversational agent must ROUTE WRITES through the headless CLI, not write files itself.**
    Two layers: (a) Agent collects answers + inspects context, (b) CLI does deterministic file writes. Keeps tests easy (CLI tested standalone), keeps writes consistent across conversational and CI invocations, lets the agent be replaced or improved without touching write logic. Single source of truth for filesystem effects.
@@ -487,7 +487,7 @@ This pattern generalises: any time a CLI ergonomics gap suggests "just add a fla
 ---
 
 ## PR-018: Scaffold Adaptive Mode — Preserve Existing Code Layouts
-**Source:** Session 013 (2026-04-13), IVL F5 readiness analysis
+**Source:** Session 013 (2026-04-13), prod-001 readiness analysis
 **Root cause category:** novel_case
 **Failure:** Not a runtime failure — proactive design. The existing scaffold (`scaffold_delivery`) was designed for greenfield projects and assumed a responsibility-based layout (`src/data/`, `src/model/`, etc.). Real production repos have their own established layouts (src-layout with single nested package, django-style, monorepo, notebook-first). Naively running scaffold on these creates *both* ZO's dirs AND leaves the user's, producing a confused two-layout repo.
 
@@ -543,9 +543,9 @@ This pattern generalises: any time a CLI ergonomics gap suggests "just add a fla
 ---
 
 ## PR-020: Generic Agents Need a Per-Project Adaptation Mechanism
-**Source:** Session 014 (2026-04-13), IVL F5 readiness review
+**Source:** Session 014 (2026-04-13), prod-001 readiness review
 **Root cause category:** missing_rule
-**Failure:** The user asked for XAI and Domain Evaluator to adapt per project, but there was no mechanism — the agent `.md` files were static. For CIFAR-10 (generic image classification) the defaults worked; for IVL F5 (rotating-machinery vibration signals) they were useless. The "custom agents" feature (PR #28) adds NEW roles but doesn't modify existing ones. This left `xai-agent` and `domain-evaluator` producing generic SHAP/GradCAM output for a project that needed frequency-domain attribution, envelope-demodulation plots, and rotating-machinery domain priors (BPFO/BPFI/BSF/FTF bearing defect frequencies).
+**Failure:** The user asked for XAI and Domain Evaluator to adapt per project, but there was no mechanism — the agent `.md` files were static. For CIFAR-10 (generic image classification) the defaults worked; for prod-001 (rotating-machinery vibration signals) they were useless. The "custom agents" feature (PR #28) adds NEW roles but doesn't modify existing ones. This left `xai-agent` and `domain-evaluator` producing generic SHAP/GradCAM output for a project that needed frequency-domain attribution, envelope-demodulation plots, and rotating-machinery domain priors (BPFO/BPFI/BSF/FTF bearing defect frequencies).
 
 ### Rules
 
@@ -572,7 +572,7 @@ Plan schema extension: `AgentAdaptation` pydantic model, `AgentConfig.adaptation
 ## PR-021: Rich Markup + User Content — Use `Text` Objects, Not Inline Tags
 **Source:** Session 015 (2026-04-13), branded `zo --help` implementation
 **Root cause category:** novel_case
-**Failure:** When rendering the `DESCRIPTION` section of `zo init --help`, shell-continuation backslashes at line ends (from the `init` docstring's `zo init ivl-f5 --no-tmux \`) rendered as `\\` (two backslashes). Separately, the `[standard|adaptive]` Choice metavar for `--layout-mode` disappeared entirely from the `OPTIONS` section — Rich consumed it as an invalid markup tag `[standard|adaptive]`. Both failures traced to mixing user-provided content with Rich's markup parser inside f-strings.
+**Failure:** When rendering the `DESCRIPTION` section of `zo init --help`, shell-continuation backslashes at line ends (from the `init` docstring's `zo init prod-001 --no-tmux \`) rendered as `\\` (two backslashes). Separately, the `[standard|adaptive]` Choice metavar for `--layout-mode` disappeared entirely from the `OPTIONS` section — Rich consumed it as an invalid markup tag `[standard|adaptive]`. Both failures traced to mixing user-provided content with Rich's markup parser inside f-strings.
 
 ### Rules
 
@@ -602,9 +602,9 @@ This separation fixed both failures in one pass: `[standard|adaptive]` renders v
 ---
 
 ## PR-022: Tmux Paste Timing Must Account for Cold Start Latency
-**Source:** Session 016 (2026-04-14), first `zo init ivl-f5` run
+**Source:** Session 016 (2026-04-14), first `zo init prod-001` run
 **Root cause category:** incomplete_rule
-**Failure:** `zo init ivl-f5` opened a blank Claude Code session — the TUI rendered but the prompt was never submitted. The paste-buffer arrived 3 seconds after `claude` was launched, but the TUI wasn't ready for input yet (cold start with extensions, hooks, CLAUDE.md loading takes 5-10s).
+**Failure:** `zo init prod-001` opened a blank Claude Code session — the TUI rendered but the prompt was never submitted. The paste-buffer arrived 3 seconds after `claude` was launched, but the TUI wasn't ready for input yet (cold start with extensions, hooks, CLAUDE.md loading takes 5-10s).
 
 ### Rules
 
@@ -613,7 +613,7 @@ This separation fixed both failures in one pass: `[standard|adaptive]` renders v
    before the input field accepts text. 3s was based on warm-start testing
    (Claude already running, new window). Cold starts (first launch in a
    session, or after machine sleep) take significantly longer.
-   - *Failure ref:* First IVL F5 init. User saw Claude TUI but no prompt.
+   - *Failure ref:* First prod-001 init. User saw Claude TUI but no prompt.
 
 2. **tmux paste-buffer is fire-and-forget — no error if the target isn't ready.**
    `tmux paste-buffer -t %5` succeeds even if the pane is showing a
@@ -642,7 +642,7 @@ This separation fixed both failures in one pass: `[standard|adaptive]` renders v
 ---
 
 ## PR-023: Tmux Agent Sessions Must Auto-Cleanup When Claude Exits
-**Source:** Session 016 (2026-04-14), first `zo init ivl-f5` run — post-session
+**Source:** Session 016 (2026-04-14), first `zo init prod-001` run — post-session
 **Root cause category:** missing_rule
 **Failure:** After typing `/exit` in the Init Architect's Claude session: (a) the tmux agent window stayed open (shell still running after Claude exited), (b) the invoking terminal showed only elapsed-time ticks with no summary or next steps, (c) the `_wait_tmux` monitoring loop never terminated because `_tmux_pane_alive()` only checked pane existence, not whether Claude was the active process.
 
@@ -674,4 +674,43 @@ Three additions to `wrapper.py` + `cli.py`:
 2. `_kill_tmux_window(pane_id)` — kills the window containing the pane
 3. `_wait_tmux()` uses both conditions: pane exists AND Claude running; kills window on exit
 4. `_generate_session_summary(events, team_name)` — Haiku 2-3 bullet summary printed post-completion
+
+---
+
+## PR-024: Public Repos Must Never Contain Client Project Data
+**Source:** Session 016 (2026-04-14), preparing first production project
+**Root cause category:** missing_rule
+**Failure:** ZO is a public repository. Plans, targets, memory, custom agents, and logs for client projects were being tracked by git. Platform memory (`memory/zo-platform/`) referenced a client project by name in 59 instances across DECISION_LOG, PRIORS, STATE.md, and session summaries. Commit messages and PR descriptions also referenced the client name. Any of these could constitute a breach of client confidentiality if pushed to the public repo.
+
+### Rules
+
+1. **Project-specific files are ALWAYS gitignored.**
+   `plans/*`, `targets/*`, `memory/*` (except `memory/zo-platform/`),
+   `.claude/agents/custom/*`, and `logs/` are in `.gitignore`.
+   Only ZO platform files (its own build plan, platform memory) are tracked.
+
+2. **Platform memory uses project aliases, never client names.**
+   Convention: `prod-001`, `prod-002` for production projects;
+   `demo-mnist`, `demo-cifar10` for demos. The alias→name mapping
+   lives only in the gitignored `memory/{project}/` directory.
+
+3. **Commits, PRs, and branch names use aliases only.**
+   "feat: add adaptive scaffold for prod-001 readiness" — not the client name.
+   PR descriptions reference "first production project", not the client.
+
+4. **Domain-specific details that identify the client are confidential.**
+   Process chemistry, product names, plant locations, tag naming
+   conventions — none of these belong in platform memory. Platform
+   memory captures what ZO learned (e.g., "conversational init works
+   better than flag proliferation"), not what the project contained.
+
+5. **If a client name appears in a tracked file, remove it immediately.**
+   This is a legal obligation. Do not wait for the next session.
+
+### Verified Solution
+
+1. `.gitignore` updated with project-specific paths and ZO-platform exceptions
+2. 59 instances of client references replaced with `prod-001` alias
+3. CLAUDE.md gains "Client Project Confidentiality" section (NON-NEGOTIABLE)
+4. All existing tracked project files (MNIST targets, logs) untracked via `git rm --cached`
 
