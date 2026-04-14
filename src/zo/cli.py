@@ -396,6 +396,29 @@ def _ask_additional_instructions(gate_mode: str) -> str:
     return user_input
 
 
+def _print_next_steps(team_name: str, zo_root: Path) -> None:
+    """Print context-aware next steps after a session completes."""
+    console.print(f"\n[{_AMBER}]Next steps:[/]")
+    if team_name.startswith("init-"):
+        project = team_name.removeprefix("init-")
+        console.print(f"  1. Review targets/{project}.target.md and plans/{project}.md")
+        console.print(f"  2. Run [bold]zo draft -p {project}[/] to refine the plan with scouts")
+    elif team_name.startswith("draft-"):
+        project = team_name.removeprefix("draft-")
+        plan_path = zo_root / "plans" / f"{project}.md"
+        if plan_path.exists():
+            size_kb = plan_path.stat().st_size // 1024
+            console.print(f"  Plan ready: plans/{project}.md ({size_kb}KB)")
+        console.print(f"  1. Review [bold]plans/{project}.md[/] — edit if needed")
+        console.print(f"  2. Run [bold]zo preflight plans/{project}.md[/] to validate")
+        console.print(f"  3. Run [bold]zo build plans/{project}.md[/] to start the agent team")
+    elif team_name.startswith("zo-"):
+        project = team_name.removeprefix("zo-")
+        console.print(f"  1. Check [bold]zo status {project}[/] for current phase")
+        console.print(f"  2. Run [bold]zo build plans/{project}.md[/] to continue")
+    console.print()
+
+
 def _generate_session_summary(events: list[str], team_name: str) -> None:
     """Ask Haiku for a 2-3 line session summary and print next steps."""
     events_text = "\n".join(events[-30:])
@@ -433,6 +456,7 @@ def _launch_and_monitor(
     gate_mode_file: Path | None = None,
     project_name: str = "",
     delivery_repo: Path | None = None,
+    add_dirs: list[str] | None = None,
 ) -> None:
     """Shared launch → monitor → end-session flow for build and draft."""
     use_tmux = not no_tmux
@@ -440,6 +464,7 @@ def _launch_and_monitor(
     process = wrapper.launch_lead_session(
         prompt, cwd=str(zo_root), team_name=team_name,
         model=model, max_turns=max_turns, use_tmux=use_tmux,
+        add_dirs=add_dirs or [],
     )
 
     if process.tmux_pane_id:
@@ -598,6 +623,9 @@ def _launch_and_monitor(
     if _headline_buffer:
         _generate_session_summary(_headline_buffer, team_name)
 
+    # Always print next steps based on what command just ran.
+    _print_next_steps(team_name, zo_root)
+
     if orchestrator:
         orchestrator.end_session()
     if semantic:
@@ -725,6 +753,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         gate_mode_file=memory.memory_root / "gate_mode",
         project_name=project_name,
         delivery_repo=Path(target.target_repo),
+        add_dirs=[str(Path(target.target_repo).resolve())],
     )
 
 
@@ -1402,6 +1431,12 @@ def _launch_init_architect(*, project: str, hints: dict) -> None:
     )
 
     prompt = _build_init_architect_prompt(project=project, hints=hints)
+    # Grant access to existing repo if provided in hints
+    extra_dirs: list[str] = []
+    if hints.get("existing_repo"):
+        extra_dirs.append(hints["existing_repo"])
+    if hints.get("data_path"):
+        extra_dirs.append(hints["data_path"])
     _launch_and_monitor(
         wrapper=wrapper,
         prompt=prompt,
@@ -1410,6 +1445,7 @@ def _launch_init_architect(*, project: str, hints: dict) -> None:
         no_tmux=False,
         model="opus",
         max_turns=60,
+        add_dirs=extra_dirs,
     )
 
 
@@ -1772,6 +1808,24 @@ def draft(
             zo_root=zo_root,
         )
 
+        # Grant Claude access to doc/data dirs + delivery repo so agents
+        # don't trigger directory permission prompts mid-session.
+        extra_dirs: list[str] = []
+        for dp in docs:
+            extra_dirs.append(str(dp.resolve()))
+        for dp in data:
+            extra_dirs.append(str(dp.resolve()))
+        # Also grant access to delivery repo if target file exists
+        target_path = (main_root / "targets" / f"{project}.target.md")
+        if target_path.exists():
+            try:
+                from zo.target import parse_target
+                tgt = parse_target(target_path)
+                if tgt.target_repo:
+                    extra_dirs.append(str(Path(tgt.target_repo).resolve()))
+            except Exception:
+                pass  # Non-critical
+
         _launch_and_monitor(
             wrapper=wrapper,
             prompt=draft_prompt,
@@ -1780,6 +1834,7 @@ def draft(
             no_tmux=False,
             model="opus",
             max_turns=100,
+            add_dirs=extra_dirs,
         )
 
     drafter.close()
