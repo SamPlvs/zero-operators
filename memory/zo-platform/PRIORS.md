@@ -675,3 +675,42 @@ Three additions to `wrapper.py` + `cli.py`:
 3. `_wait_tmux()` uses both conditions: pane exists AND Claude running; kills window on exit
 4. `_generate_session_summary(events, team_name)` — Haiku 2-3 bullet summary printed post-completion
 
+---
+
+## PR-024: Public Repos Must Never Contain Client Project Data
+**Source:** Session 016 (2026-04-14), preparing first production project
+**Root cause category:** missing_rule
+**Failure:** ZO is a public repository. Plans, targets, memory, custom agents, and logs for client projects were being tracked by git. Platform memory (`memory/zo-platform/`) referenced a client project by name in 59 instances across DECISION_LOG, PRIORS, STATE.md, and session summaries. Commit messages and PR descriptions also referenced the client name. Any of these could constitute a breach of client confidentiality if pushed to the public repo.
+
+### Rules
+
+1. **Project-specific files are ALWAYS gitignored.**
+   `plans/*`, `targets/*`, `memory/*` (except `memory/zo-platform/`),
+   `.claude/agents/custom/*`, and `logs/` are in `.gitignore`.
+   Only ZO platform files (its own build plan, platform memory) are tracked.
+
+2. **Platform memory uses project aliases, never client names.**
+   Convention: `prod-001`, `prod-002` for production projects;
+   `demo-mnist`, `demo-cifar10` for demos. The alias→name mapping
+   lives only in the gitignored `memory/{project}/` directory.
+
+3. **Commits, PRs, and branch names use aliases only.**
+   "feat: add adaptive scaffold for prod-001 readiness" — not the client name.
+   PR descriptions reference "first production project", not the client.
+
+4. **Domain-specific details that identify the client are confidential.**
+   Process chemistry, product names, plant locations, tag naming
+   conventions — none of these belong in platform memory. Platform
+   memory captures what ZO learned (e.g., "conversational init works
+   better than flag proliferation"), not what the project contained.
+
+5. **If a client name appears in a tracked file, remove it immediately.**
+   This is a legal obligation. Do not wait for the next session.
+
+### Verified Solution
+
+1. `.gitignore` updated with project-specific paths and ZO-platform exceptions
+2. 59 instances of client references replaced with `prod-001` alias
+3. CLAUDE.md gains "Client Project Confidentiality" section (NON-NEGOTIABLE)
+4. All existing tracked project files (MNIST targets, logs) untracked via `git rm --cached`
+

@@ -14,3 +14,18 @@ build/
 website/node_modules/
 website/dist/
 website/.astro/
+
+# Project-specific artifacts — never commit client/project data to public repo.
+# ZO platform's own files are explicitly preserved below.
+plans/*
+!plans/zero-operators-build.md
+!plans/mnist-digit-classifier.md
+targets/*
+!targets/.gitkeep
+logs/
+.claude/agents/custom/*
+!.claude/agents/custom/README.md
+
+# Per-project memory (keep ZO platform memory, ignore everything else)
+memory/*
+!memory/zo-platform/
