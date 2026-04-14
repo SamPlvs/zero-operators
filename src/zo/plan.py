@@ -277,7 +277,12 @@ def _parse_oracle(body: str) -> OracleDefinition:
     for m in _ORACLE_FIELD_RE.finditer(body):
         raw_key = m.group(1).strip().lower()
         value = m.group(2).strip()
+        # Try exact match first, then strip parenthetical suffixes
+        # e.g. "target threshold (per-tag rmse)" → "target threshold"
         canonical = _ORACLE_FIELD_ALIASES.get(raw_key)
+        if not canonical:
+            base_key = re.sub(r"\s*\(.*?\)\s*$", "", raw_key).strip()
+            canonical = _ORACLE_FIELD_ALIASES.get(base_key)
         if canonical:
             fields[canonical] = value
 

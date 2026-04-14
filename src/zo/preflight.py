@@ -106,7 +106,7 @@ def _check_plan(plan_path: Path) -> CheckResult:
         report = validate_plan(plan)
         if report.valid:
             return CheckResult("Plan", True, "All 8 sections valid")
-        issues = "; ".join(f"{i.field}: {i.message}" for i in report.issues[:3])
+        issues = "; ".join(f"{i.section}: {i.message}" for i in report.issues[:3])
         return CheckResult("Plan", False, f"Validation failed: {issues}")
     except Exception as exc:  # noqa: BLE001
         return CheckResult("Plan", False, f"Parse error: {exc}")
