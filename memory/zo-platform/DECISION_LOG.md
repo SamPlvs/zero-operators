@@ -591,3 +591,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** After `zo init prod-001`, user typed `/exit` in the Claude session but: (a) the tmux agent window stayed open (shell still running), (b) the invoking terminal showed only elapsed-time ticks with no summary, (c) the monitoring loop never terminated. The user had to manually kill windows and got no feedback on what happened. The fix makes the end-of-session experience match the beginning: automatic, informative, clean.
 **Alternatives considered:** (1) Require user to kill the tmux window manually — poor UX, the whole point is automation. (2) Send SIGTERM to the pane — risks killing Claude mid-work if called too early. (3) Check `pane_current_command` for shell fallback (chosen) — safe, detects the natural /exit flow.
 **Outcome:** PR #34 updated. `_tmux_claude_running()`, `_kill_tmux_window()`, `_generate_session_summary()` added. `_wait_tmux()` uses two-condition check (pane exists AND Claude running). 476 tests pass.
+
+---
+
+## Decision: 2026-04-14T14:00:00Z
+**Type:** EVOLUTION
+**Title:** Preflight integration tests — prevent untested interface mismatches
+**Decision:** Added `tests/integration/test_preflight.py` with 9 tests that run preflight checks against real fixture plans and real parser output. No mocks on `ValidationReport` or `ValidationIssue`. Also fixed three stacked bugs: `report.is_valid` → `report.valid`, `i.field` → `i.section`, oracle parser now strips parenthetical suffixes before alias lookup.
+**Rationale:** First `zo preflight` against a production plan failed with `AttributeError`. Investigation found THREE bugs — all present since the module was written, all invisible because (a) preflight had zero tests and (b) mocked tests would have used the same wrong attribute names. Self-evolution protocol: fix the symptom (3 bugs) AND fix the rule (add integration tests that use real objects, add PR-025 prior).
+**Alternatives considered:** (1) Just fix the bugs — violates self-evolution principle. (2) Add unit tests with mocks — would have caught `is_valid` if written correctly, but mocks can perpetuate the same misconception. (3) Integration tests with real objects (chosen) — catches interface mismatches by definition.
+**Outcome:** PR #39. 485 tests pass (was 476). PR-025 prior added. The parenthetical oracle field test specifically guards against the exact production plan format that triggered this bug.
