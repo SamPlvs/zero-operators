@@ -243,12 +243,12 @@ class TestInitHeadlessFlags:
              patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(
                 cli,
-                ["init", "ivl-f5", "--no-tmux", "--no-detect",
-                 "--branch", "samtukra"],
+                ["init", "acme-proj", "--no-tmux", "--no-detect",
+                 "--branch", "feature-branch"],
             )
         assert result.exit_code == 0
-        target = (tmp_path / "targets" / "ivl-f5.target.md").read_text()
-        assert "target_branch: samtukra" in target
+        target = (tmp_path / "targets" / "acme-proj.target.md").read_text()
+        assert "target_branch: feature-branch" in target
 
     def test_init_existing_repo_requires_path_to_exist(
         self, runner: click.testing.CliRunner, tmp_path: Path
@@ -318,16 +318,16 @@ class TestInitHeadlessFlags:
         existing.mkdir()
         (existing / ".git").mkdir()
         # Pretend the user already has a src-layout
-        (existing / "src" / "ivl_f5").mkdir(parents=True)
-        (existing / "src" / "ivl_f5" / "__init__.py").touch()
+        (existing / "src" / "acme_proj").mkdir(parents=True)
+        (existing / "src" / "acme_proj" / "__init__.py").touch()
         with patch("zo.cli._zo_root", return_value=tmp_path), \
              patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(
                 cli,
-                ["init", "ivl-f5", "--no-tmux", "--no-detect",
+                ["init", "acme-proj", "--no-tmux", "--no-detect",
                  "--existing-repo", str(existing),
                  "--layout-mode", "adaptive",
-                 "--branch", "samtukra"],
+                 "--branch", "feature-branch"],
             )
         assert result.exit_code == 0, result.output
         # Meta-dirs created
@@ -339,7 +339,7 @@ class TestInitHeadlessFlags:
         assert not (existing / "src" / "data").exists()
         assert not (existing / "src" / "model").exists()
         # Existing code dir preserved
-        assert (existing / "src" / "ivl_f5" / "__init__.py").exists()
+        assert (existing / "src" / "acme_proj" / "__init__.py").exists()
         # Adaptive also should NOT clobber README / pyproject / .gitignore
         # (skipped in adaptive mode even if missing)
         assert not (existing / "README.md").exists()
@@ -352,14 +352,14 @@ class TestInitHeadlessFlags:
         existing = tmp_path / "real-repo"
         existing.mkdir()
         (existing / ".git").mkdir()
-        code_dir = existing / "src" / "ivl_f5"
+        code_dir = existing / "src" / "acme_proj"
         code_dir.mkdir(parents=True)
         (code_dir / "trainer.py").write_text("x = 1", encoding="utf-8")
         with patch("zo.cli._zo_root", return_value=tmp_path), \
              patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(
                 cli,
-                ["init", "ivl-f5", "--no-tmux", "--no-detect",
+                ["init", "acme-proj", "--no-tmux", "--no-detect",
                  "--existing-repo", str(existing),
                  "--layout-mode", "adaptive"],
             )
@@ -457,27 +457,27 @@ class TestInitArchitectPrompt:
         from zo.cli import _build_init_architect_prompt
 
         prompt = _build_init_architect_prompt(
-            project="ivl-f5", hints={},
+            project="acme-proj", hints={},
         )
-        assert "ivl-f5" in prompt
+        assert "acme-proj" in prompt
         assert "init-architect.md" in prompt
 
     def test_prompt_surfaces_non_none_hints(self) -> None:
         from zo.cli import _build_init_architect_prompt
 
         prompt = _build_init_architect_prompt(
-            project="ivl-f5",
+            project="acme-proj",
             hints={
-                "branch": "samtukra",
-                "existing_repo": "/code/ivl-f5",
+                "branch": "feature-branch",
+                "existing_repo": "/code/acme-proj",
                 "gpu_host": None,  # None should be omitted
                 "base_image": None,
                 "data_path": None,
                 "layout_mode": "adaptive",
             },
         )
-        assert "branch: samtukra" in prompt
-        assert "existing_repo: /code/ivl-f5" in prompt
+        assert "branch: feature-branch" in prompt
+        assert "existing_repo: /code/acme-proj" in prompt
         assert "layout_mode: adaptive" in prompt
         # None values must NOT appear
         assert "gpu_host: None" not in prompt
@@ -528,17 +528,17 @@ class TestInitDryRun:
              patch("zo.cli._main_repo_root", return_value=tmp_path):
             result = runner.invoke(
                 cli,
-                ["init", "ivl-f5", "--no-tmux", "--no-detect", "--dry-run",
+                ["init", "acme-proj", "--no-tmux", "--no-detect", "--dry-run",
                  "--existing-repo", str(existing),
-                 "--branch", "samtukra",
+                 "--branch", "feature-branch",
                  "--layout-mode", "adaptive"],
             )
         assert result.exit_code == 0, result.output
         # Key decisions surface in the preview
-        assert "samtukra" in result.output
+        assert "feature-branch" in result.output
         assert "adaptive" in result.output
         # Still nothing written
-        assert not (tmp_path / "targets" / "ivl-f5.target.md").exists()
+        assert not (tmp_path / "targets" / "acme-proj.target.md").exists()
 
     def test_dry_run_rejected_in_conversational_mode(
         self, runner: click.testing.CliRunner, tmp_path: Path,

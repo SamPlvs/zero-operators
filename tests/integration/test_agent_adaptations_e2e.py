@@ -27,11 +27,11 @@ from zo.target import parse_target
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "test-project"
 
-# A realistic plan: IVL-F5-flavoured project with custom agents AND
+# A realistic plan: production-style project with custom agents AND
 # adaptations. Exercises both features simultaneously.
 _PLAN = """\
 ---
-project_name: "ivl-f5-like"
+project_name: "prod-example"
 version: "1.0"
 created: "2026-04-13"
 last_modified: "2026-04-13"

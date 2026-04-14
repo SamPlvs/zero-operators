@@ -470,7 +470,7 @@ def _parse_agents(body: str) -> AgentConfig:
           relevant for time-series signals.
 
         - domain-evaluator:
-          Apply IVL F5 vibration priors — bearing failure signatures,
+          Apply project-specific domain priors — bearing failure signatures,
           known sensor drift patterns, modal frequency ranges.
     """
     agents: list[str] = []

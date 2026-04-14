@@ -460,7 +460,7 @@ pip one-at-a-time installs, source builds in single stage, 80+ apt packages.
 
 1. **When a decision requires inspecting the target environment, prefer a conversational agent over a flag.**
    Adding `--branch`, `--existing-repo`, `--base-image`, `--gpu-host`, `--data-path`, `--layout-mode` etc. would have worked syntactically but pushed inspection-and-decision burden onto the user. The Init Architect inspects the repo (Glob/Read/Bash) and asks targeted questions; the user makes 5-6 confirmations instead of crafting a 7-flag CLI invocation.
-   - *Failure ref:* prod-001 setup needed `target_branch: samtukra` (manual edit), Environment section (manual fill-in), overlay vs scaffold (no mode existed), STRUCTURE.md customization for src-layout (no mechanism). Five sequential gaps from one root cause.
+   - *Failure ref:* prod-001 setup needed `target_branch: feature-branch` (manual edit), Environment section (manual fill-in), overlay vs scaffold (no mode existed), STRUCTURE.md customization for src-layout (no mechanism). Five sequential gaps from one root cause.
 
 2. **The conversational agent must ROUTE WRITES through the headless CLI, not write files itself.**
    Two layers: (a) Agent collects answers + inspects context, (b) CLI does deterministic file writes. Keeps tests easy (CLI tested standalone), keeps writes consistent across conversational and CI invocations, lets the agent be replaced or improved without touching write logic. Single source of truth for filesystem effects.

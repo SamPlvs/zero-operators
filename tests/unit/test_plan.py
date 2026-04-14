@@ -550,7 +550,7 @@ class TestAgentAdaptations:
             "  Focus on frequency-domain attribution.\n"
             "\n"
             "- domain-evaluator:\n"
-            "  Apply IVL F5 vibration priors.\n"
+            "  Apply project-specific domain priors.\n"
             "  Flag predictions contradicting bearing failure signatures.",
         )
         plan = parse_plan(_write_plan(tmp_path, content))
@@ -561,7 +561,7 @@ class TestAgentAdaptations:
         assert "domain-evaluator" in names
         dom = plan.agents.adaptation_for("domain-evaluator")
         assert dom is not None
-        assert "IVL F5" in dom
+        assert "project-specific" in dom
         assert "bearing failure" in dom
 
     def test_adaptation_for_missing_agent_returns_none(

@@ -90,8 +90,8 @@ The conversational mode requires `tmux`. If tmux is missing, the command exits w
 **Resetting a project:**
 
 ```
-zo init ivl-f5 --reset           # confirms, deletes ZO artifacts only
-zo init ivl-f5 --reset --yes     # no confirmation (for scripts)
+zo init my-project --reset           # confirms, deletes ZO artifacts only
+zo init my-project --reset --yes     # no confirmation (for scripts)
 ```
 
 ### zo status

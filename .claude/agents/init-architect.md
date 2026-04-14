@@ -28,12 +28,12 @@ In `--layout-mode=adaptive`, you MAY use `Edit` on two files **after** the CLI c
 
 1. `{delivery_repo}/STATE_STRUCTURE.md` — a custom layout map for the agent team.
    Actually, the file is `STRUCTURE.md` at the delivery repo root. Tailor its
-   content to the real directories you found (e.g. `src/ivl_f5/data/` instead
+   content to the real directories you found (e.g. `src/my_project/data/` instead
    of `src/data/`).
 
 2. `{zo_root}/targets/{project}.target.md` — update `agent_working_dirs` so
    each role points at the actual code path (e.g.
-   `data-engineer: src/ivl_f5/data/` instead of `src/data/`).
+   `data-engineer: src/my_project/data/` instead of `src/data/`).
 
 These are the two places where layout mapping has to happen with project
 context, and you are the only entity in the init flow with that context.
@@ -67,7 +67,7 @@ Walk through these in order. Confirm defaults rather than asking open questions 
 2. **Layout mode** — only relevant in overlay mode; decide by inspection:
    - Use `Glob` to look for `src/`, `src/{project}/`, `{package_name}/`, flat `*.py` at root.
    - If there's **no existing code layout** (empty repo, just README/docs) → `layout_mode=standard`. ZO creates `src/data/`, `src/model/`, etc.
-   - If there's **an established code layout** (e.g. `src/ivl_f5/`, `ivl_f5/`, django-style) → `layout_mode=adaptive`. ZO only adds meta-dirs (`configs/`, `experiments/`, `docker/`, `reports/`, `notebooks/phase/`). After the CLI runs, YOU edit `STRUCTURE.md` and `targets/{project}.target.md` `agent_working_dirs` to point at the real paths.
+   - If there's **an established code layout** (e.g. `src/my_project/`, `my_project/`, django-style) → `layout_mode=adaptive`. ZO only adds meta-dirs (`configs/`, `experiments/`, `docker/`, `reports/`, `notebooks/phase/`). After the CLI runs, YOU edit `STRUCTURE.md` and `targets/{project}.target.md` `agent_working_dirs` to point at the real paths.
    - Show the user what you found and your recommendation. They can override.
 
 3. **Git branch** — which branch on the delivery repo? For existing repos, run `git -C <path> branch --show-current` and offer that as the default.
@@ -90,12 +90,12 @@ with `--dry-run`. This is mandatory — it shows the exact file tree the
 user is about to accept before any writes happen:
 
 ```bash
-zo init ivl-f5 --no-tmux --dry-run \
-    --existing-repo /Users/sam/code/ivl-f5 \
-    --branch samtukra \
+zo init my-project --no-tmux --dry-run \
+    --existing-repo /Users/sam/code/my-project \
+    --branch feature-branch \
     --base-image pytorch/pytorch:2.4.0-cuda12.4-cudnn9-runtime \
     --gpu-host gpu-server-01 \
-    --data-path gpu-server-01:/mnt/data/ivl/f5 \
+    --data-path gpu-server-01:/mnt/data/project/raw \
     --layout-mode adaptive
 ```
 
@@ -106,8 +106,8 @@ Show the dry-run output to the user. Ask: "Proceed? (yes to commit, or tell me w
 On confirmation, re-run the same command WITHOUT `--dry-run`:
 
 ```bash
-zo init ivl-f5 --no-tmux \
-    --existing-repo /Users/sam/code/ivl-f5 \
+zo init my-project --no-tmux \
+    --existing-repo /Users/sam/code/my-project \
     ...
 ```
 
@@ -199,7 +199,7 @@ Never paper over an error by writing files yourself.
 - **Legacy layout** (`lib/`, `bin/`, `app/`) — go adaptive. Write
   `STRUCTURE.md` reflecting the actual layout and map
   `agent_working_dirs` to real paths.
-- **`src/` exists but with one nested package** (e.g. `src/ivl_f5/`) —
+- **`src/` exists but with one nested package** (e.g. `src/my_project/`) —
   classic src-layout. Go adaptive. Point agents at `src/{package}/data/`,
   `src/{package}/model/`, etc.
 

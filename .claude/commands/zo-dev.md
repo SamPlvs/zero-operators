@@ -26,7 +26,7 @@ Show the user a concise summary:
 ## 3. Ask what to work on
 
 After the briefing, ask the user what they'd like to work on. Common tasks:
-- **IVL F5** — first production project (plan drafting, source docs)
+- **prod-001** — first production project (plan drafting, source docs)
 - **Bug fixes** — from the known issues list
 - **New features** — agent improvements, CLI enhancements, workflow changes
 - **Testing** — running MNIST again, testing a specific mode

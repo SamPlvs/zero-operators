@@ -29,3 +29,6 @@ logs/
 # Per-project memory (keep ZO platform memory, ignore everything else)
 memory/*
 !memory/zo-platform/
+
+# Design source files contain project-specific examples (client-identifying)
+docs/source-design/
