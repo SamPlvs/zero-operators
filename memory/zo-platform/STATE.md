@@ -92,6 +92,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 - [x] v1.0.2-pre: Branded `zo --help` — `ZoGroup`/`ZoCommand` override `get_help()` to render a Rich-formatted banner (orbital mark ◎ + `ZERO OPERATORS` + version in brand amber) with sectioned headers (USAGE, QUICK START, COMMANDS, OPTIONS) and an init→draft→preflight→build→continue quick-start sequence; propagates to every subcommand and nested group automatically via `command_class`/`group_class`
 - [x] v1.0.2-pre: Tmux TUI paste timing fix — increased wait from 3s to 8s, Enter delay from 0.5s to 1s; fixes blank-session bug where zo init/draft/build launched Claude but never submitted the prompt on cold starts
 - [x] v1.0.2-pre: Agent session auto-cleanup — `_tmux_claude_running()` detects Claude exit via `pane_current_command`, `_kill_tmux_window()` closes leftover shell, `_generate_session_summary()` prints Haiku bullet summary before returning control to terminal
+- [x] v1.0.2-pre: Preflight integration tests (9 tests) — fixture plan validation, parenthetical oracle fields, error formatting, full pipeline. Fixed 3 stacked bugs: `report.is_valid`→`.valid`, `i.field`→`.section`, oracle alias lookup strips parenthetical suffixes. Test count 476→485.
 
 ## Known Issues
 

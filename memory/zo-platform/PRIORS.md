@@ -714,3 +714,28 @@ Three additions to `wrapper.py` + `cli.py`:
 3. CLAUDE.md gains "Client Project Confidentiality" section (NON-NEGOTIABLE)
 4. All existing tracked project files (MNIST targets, logs) untracked via `git rm --cached`
 
+---
+
+## PR-025: Mocked Tests Hide Interface Mismatches — Integration Tests Catch Them
+**Source:** Session 016 (2026-04-14), `zo preflight` against first production plan
+**Root cause category:** missing_rule
+**Failure:** `zo preflight` failed with three stacked bugs: (1) `report.is_valid` → `report.valid`, (2) `i.field` → `i.section`, (3) oracle parser couldn't match parenthetical suffixes in field names. All survived because preflight had ZERO tests and no integration test ever created real `ValidationReport`/`ValidationIssue` objects.
+
+### Rules
+
+1. **Every module that reads another module's models needs an integration test with real objects, not mocks.**
+   Mocks use whatever attribute names the test author writes — they don't validate the real interface.
+
+2. **Test against the fixture plan, not just synthetic data.**
+   `tests/fixtures/test-project/plan.md` exists for this. One `_check_plan(FIXTURE_PLAN)` call catches all attribute mismatches.
+
+3. **When a parser uses alias lookups, test with real-world decorated variants.**
+   Parenthetical qualifiers, extra whitespace, mixed case — all must work.
+
+4. **Preflight is the last gate before `zo build` — it must be tested end-to-end.**
+   A buggy preflight that gives false PASSes leads to expensive build failures.
+
+### Verified Solution
+
+`tests/integration/test_preflight.py` — 9 tests covering: fixture plan validation, parenthetical oracle fields, validation error formatting, full `run_preflight()` pipeline, edge cases. All use real parser output, no mocks. Test count: 476 → 485.
+
