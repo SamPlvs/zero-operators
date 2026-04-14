@@ -118,7 +118,7 @@ See `specs/agents.md` for full contract template.
 
 Many projects are proprietary — no published RMSE to compare against. In these cases:
 
-1. **Find analogous problems** — search for the problem CLASS, not the exact dataset. "Soft sensor for chemical purity" has literature even if IVL's specific reactor doesn't.
+1. **Find analogous problems** — search for the problem CLASS, not the exact dataset. "Soft sensor for chemical purity" has literature even if the client's specific reactor doesn't.
 2. **First experiments become the baseline** — PLS or Random Forest results establish the benchmark that subsequent models must beat.
 3. **Report typical ranges** — "In published work on similar problems, RMSE ranges from X to Y" gives the team calibration even without an exact target.
 4. **Identify transferable architectures** — if LSTMs consistently outperform tree models on process time series, that's useful even without matching datasets.

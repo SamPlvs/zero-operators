@@ -74,11 +74,11 @@ Write adaptations into the plan using this format:
   Phase 5 analysis report.
 
 - domain-evaluator:
-  Apply IVL F5 domain priors: vibration modes 1–5 characteristic
-  frequencies (from scope doc), bearing failure signatures via envelope
-  demodulation, known sensor drift patterns (thermal, aging). Flag any
-  prediction that contradicts these priors. Cross-reference Research
-  Scout's catalog of prior art for domain-specific failure modes.
+  Apply project-specific domain priors: known physical constraints,
+  characteristic signatures (from scope doc), expected failure modes,
+  known sensor drift patterns (thermal, aging). Flag any prediction
+  that contradicts these priors. Cross-reference Research Scout's
+  catalog of prior art for domain-specific failure modes.
 ```
 
 The adaptation text is appended to the agent's base `.md` instructions at spawn time — the agent file itself is unchanged (stays reusable across projects). You SHOULD propose adaptations for at least `xai-agent` and `domain-evaluator` on any domain-specific project; if the project is a generic benchmark (CIFAR-10, MNIST), a one-line "use defaults — generic image classification" is acceptable.

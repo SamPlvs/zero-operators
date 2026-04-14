@@ -702,7 +702,7 @@ Vibration spectral features dominate.
   decomposition. Generic SHAP/GradCAM is less relevant for time-series data.
 
 - domain-evaluator:
-  Apply IVL F5 vibration priors: bearing failure signatures via envelope
+  Apply project-specific domain priors: bearing failure signatures via envelope
   demodulation, modal frequency ranges 20-2000Hz, known sensor drift patterns.
 
 - signal-analyst:

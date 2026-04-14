@@ -196,7 +196,7 @@ Specifies which agents are active and any project-specific overrides, custom spe
   analysis report.
 
 - domain-evaluator:
-  Apply IVL F5 vibration priors — bearing failure signatures via envelope
+  Apply project-specific domain priors — bearing failure signatures via envelope
   demodulation, modal frequency ranges 20-2000Hz, known sensor drift
   patterns. Flag predictions that contradict these priors.
 ```
@@ -256,7 +256,7 @@ Milestones are informational. Agents do not skip work to meet deadlines. If a mi
 ```markdown
 ## Delivery
 
-**Target repo:** ../ivl_f5/
+**Target repo:** ../my_project/
 **Target branch:** main
 **Delivery structure:**
   - src/models/ — trained model checkpoint

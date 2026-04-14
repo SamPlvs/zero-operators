@@ -14,6 +14,37 @@ The human edits the plan; agents execute the plan; the oracle verifies the work.
 - **Repo separation**: ZO code never touches the delivery repo
 
 
+## Client Project Confidentiality (NON-NEGOTIABLE)
+
+ZO is a **public repository**. Client/project-specific information MUST NEVER appear in any tracked file — this is a legal requirement.
+
+### What is confidential
+- Client or company names, project names, locations, domain-specific terminology that identifies the client
+- Plan contents, data descriptions, oracle thresholds, domain priors
+- Delivery repo paths, branch names that reference clients
+- Any information from documents provided during `zo draft` or `zo build`
+
+### Alias convention
+In platform memory (`memory/zo-platform/`), commits, PRs, and branch names, refer to projects by sequential alias:
+- `prod-001`, `prod-002`, ... for production projects
+- `demo-mnist`, `demo-cifar10`, ... for demos/validation
+
+The alias mapping lives ONLY in the gitignored `memory/{project}/` directory.
+
+### What is gitignored (automatically)
+- `plans/*` (except ZO's own: `zero-operators-build.md`, `mnist-digit-classifier.md`)
+- `targets/*`
+- `memory/*` (except `memory/zo-platform/`)
+- `.claude/agents/custom/*` (except README.md)
+- `logs/`
+
+### Enforcement
+- `.gitignore` blocks project-specific paths
+- All commits, PR titles, and descriptions use aliases only
+- `memory/zo-platform/` entries describe what ZO learned generically, never name the client
+- If you notice a client name in a tracked file, remove it immediately
+
+
 ## Specs Reference
 
 | File | What it covers | When to read |

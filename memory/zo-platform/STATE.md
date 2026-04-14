@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent adaptations + branded CLI help + tmux paste timing fix**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, `**Agent adaptations:**` block (Plan Architect proposes domain-specific prompt additions during draft; orchestrator injects at build time), branded `zo --help`, and **tmux TUI paste wait 3s→8s** (fixes blank-session bug on cold starts). 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29, #33-#34 merged.
+ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent adaptations + branded CLI help + tmux paste timing fix**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, `**Agent adaptations:**` block (Plan Architect proposes domain-specific prompt additions during draft; orchestrator injects at build time), branded `zo --help`, and **tmux TUI paste wait 3s→8s** (fixes blank-session bug on cold starts). 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29, #33-#34 merged.
 
 ## Completed
 
@@ -104,22 +104,22 @@ ZO v1.0.2-pre — **CIFAR-10 done, IVL F5 setup tightened + per-project agent ad
 
 ## What's Next
 
-1. **IVL F5 setup** — run `zo init ivl-f5` (conversational) on the existing repo at branch `samtukra`. Scout team drafts plan; build with auto/supervised gates.
+1. **prod-001 setup** — run `zo init prod-001` (conversational) on the existing repo at the target branch. Scout team drafts plan; build with auto/supervised gates.
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Domain evaluator refactor — make project-specific via plan.md domain priors
-4. ~~XAI + Domain Evaluator activation for IVL F5 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
+4. ~~XAI + Domain Evaluator activation for prod-001 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
 5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
-6. IVL F5 project — first production deployment
+6. prod-001 project — first production deployment
 
-## Deferred — Post IVL F5 First Pass
+## Deferred — Post prod-001 First Pass
 
-7. **Experiment Tracker & Autonomous Iteration** — build AFTER IVL F5 first pass generates real iteration data. Discussed in session 012. Scope:
+7. **Experiment Tracker & Autonomous Iteration** — build AFTER prod-001 first pass generates real iteration data. Discussed in session 012. Scope:
    - Experiment registry (`experiments/registry.json`) — structured lineage: what was tried, why, what was learned, parent experiment
    - Hypothesis tracking — formal "hypothesis → config → result → conclusion" loop, prevents revisiting dead-ends
    - Cross-experiment analysis — auto-generated insights (which hyperparams matter, which architectures work for this data)
    - Plan refinement from results — if experiments reveal wrong assumptions, feed back to update plan/Phase 2 outputs
    - Budget-aware experiment selection — given N iterations left, pick most informative next experiment
-   - Design from real IVL F5 failure patterns, not speculation (PR-005 principle: enforcement from experience)
+   - Design from real prod-001 failure patterns, not speculation (PR-005 principle: enforcement from experience)
 
 ## Session Metadata
 

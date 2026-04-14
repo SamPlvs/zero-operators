@@ -8,11 +8,10 @@ Exercises the full loop a real user (or the Init Architect) walks through:
     4. reset                                 (deletes ZO artifacts only)
     5. re-init with different flags          (clean fresh start)
 
-The test simulates the production scenario the user asked about:
-"existing IVL F5 repo on branch samtukra, training on a remote GPU host,
-data path on that GPU host, src-layout already in place." It verifies the
-agent's adaptive-mode path produces a working scaffold without polluting
-the existing src/ tree.
+The test simulates a production scenario: "existing repo on a feature
+branch, training on a remote GPU host, data path on that GPU host,
+src-layout already in place." It verifies the agent's adaptive-mode path
+produces a working scaffold without polluting the existing src/ tree.
 """
 
 from __future__ import annotations
@@ -34,18 +33,18 @@ def runner() -> click.testing.CliRunner:
 @pytest.fixture()
 def existing_repo(tmp_path: Path) -> Path:
     """A pre-existing local git repo with src-layout and user code."""
-    repo = tmp_path / "ivl-f5-repo"
+    repo = tmp_path / "acme-proj-repo"
     repo.mkdir()
     (repo / ".git").mkdir()
-    pkg = repo / "src" / "ivl_f5"
+    pkg = repo / "src" / "acme_proj"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("__version__ = '0.1.0'\n")
     (pkg / "trainer.py").write_text(
         "def train():\n    return 'real user code'\n", encoding="utf-8",
     )
-    (repo / "README.md").write_text("# IVL F5\n", encoding="utf-8")
+    (repo / "README.md").write_text("# Acme Project\n", encoding="utf-8")
     (repo / "pyproject.toml").write_text(
-        '[project]\nname = "ivl-f5"\nversion = "0.1.0"\n',
+        '[project]\nname = "acme-proj"\nversion = "0.1.0"\n',
         encoding="utf-8",
     )
     return repo
@@ -78,26 +77,26 @@ class TestInitLifecycle:
         # ------------------------------------------------------------------
         dry = self._run(
             runner, zo_root,
-            "init", "ivl-f5",
+            "init", "acme-proj",
             "--no-tmux", "--no-detect", "--dry-run",
             "--existing-repo", str(existing_repo),
-            "--branch", "samtukra",
+            "--branch", "feature-branch",
             "--layout-mode", "adaptive",
             "--gpu-host", "gpu-server-01",
-            "--data-path", "gpu-server-01:/mnt/data/ivl/f5",
+            "--data-path", "gpu-server-01:/mnt/data/project/raw",
         )
         assert dry.exit_code == 0, dry.output
         assert "DRY RUN" in dry.output.upper()
-        assert "samtukra" in dry.output
+        assert "feature-branch" in dry.output
         assert "adaptive" in dry.output
         assert "gpu-server-01" in dry.output  # in plan Environment preview
         # ZO artifacts NOT yet on disk
-        assert not (zo_root / "memory" / "ivl-f5").exists()
-        assert not (zo_root / "targets" / "ivl-f5.target.md").exists()
-        assert not (zo_root / "plans" / "ivl-f5.md").exists()
+        assert not (zo_root / "memory" / "acme-proj").exists()
+        assert not (zo_root / "targets" / "acme-proj.target.md").exists()
+        assert not (zo_root / "plans" / "acme-proj.md").exists()
         # Existing repo NOT touched
         assert not (existing_repo / "configs").exists()
-        assert (existing_repo / "src" / "ivl_f5" / "trainer.py").read_text() \
+        assert (existing_repo / "src" / "acme_proj" / "trainer.py").read_text() \
             == "def train():\n    return 'real user code'\n"
 
         # ------------------------------------------------------------------
@@ -105,24 +104,24 @@ class TestInitLifecycle:
         # ------------------------------------------------------------------
         commit = self._run(
             runner, zo_root,
-            "init", "ivl-f5",
+            "init", "acme-proj",
             "--no-tmux", "--no-detect",
             "--existing-repo", str(existing_repo),
-            "--branch", "samtukra",
+            "--branch", "feature-branch",
             "--layout-mode", "adaptive",
             "--gpu-host", "gpu-server-01",
-            "--data-path", "gpu-server-01:/mnt/data/ivl/f5",
+            "--data-path", "gpu-server-01:/mnt/data/project/raw",
         )
         assert commit.exit_code == 0, commit.output
 
         # Memory + target + plan landed in ZO repo
-        assert (zo_root / "memory" / "ivl-f5" / "STATE.md").exists()
-        assert (zo_root / "memory" / "ivl-f5" / "DECISION_LOG.md").exists()
-        assert (zo_root / "memory" / "ivl-f5" / "PRIORS.md").exists()
-        target_text = (zo_root / "targets" / "ivl-f5.target.md").read_text()
-        assert "target_branch: samtukra" in target_text
+        assert (zo_root / "memory" / "acme-proj" / "STATE.md").exists()
+        assert (zo_root / "memory" / "acme-proj" / "DECISION_LOG.md").exists()
+        assert (zo_root / "memory" / "acme-proj" / "PRIORS.md").exists()
+        target_text = (zo_root / "targets" / "acme-proj.target.md").read_text()
+        assert "target_branch: feature-branch" in target_text
         assert str(existing_repo) in target_text
-        plan_text = (zo_root / "plans" / "ivl-f5.md").read_text()
+        plan_text = (zo_root / "plans" / "acme-proj.md").read_text()
         assert "## Environment" in plan_text
         assert "gpu-server-01" in plan_text
         assert "data_layout: remote" in plan_text
@@ -133,13 +132,13 @@ class TestInitLifecycle:
         assert (existing_repo / "docker" / "Dockerfile").exists()
         assert (existing_repo / "STRUCTURE.md").exists()
         # Adaptive mode preserved user code AND skipped src/* dirs
-        assert (existing_repo / "src" / "ivl_f5" / "trainer.py").read_text() \
+        assert (existing_repo / "src" / "acme_proj" / "trainer.py").read_text() \
             == "def train():\n    return 'real user code'\n"
         assert not (existing_repo / "src" / "data").exists()
         assert not (existing_repo / "src" / "model").exists()
         # Adaptive mode skipped pyproject/README (user already has them)
         assert (existing_repo / "pyproject.toml").read_text().startswith(
-            "[project]\nname = \"ivl-f5\""
+            "[project]\nname = \"acme-proj\""
         )
 
         # ------------------------------------------------------------------
@@ -147,10 +146,10 @@ class TestInitLifecycle:
         # ------------------------------------------------------------------
         dry2 = self._run(
             runner, zo_root,
-            "init", "ivl-f5",
+            "init", "acme-proj",
             "--no-tmux", "--no-detect", "--dry-run",
             "--existing-repo", str(existing_repo),
-            "--branch", "samtukra",
+            "--branch", "feature-branch",
             "--layout-mode", "adaptive",
         )
         assert dry2.exit_code == 0, dry2.output
@@ -165,17 +164,17 @@ class TestInitLifecycle:
         # ------------------------------------------------------------------
         reset = self._run(
             runner, zo_root,
-            "init", "ivl-f5", "--reset", "--yes",
+            "init", "acme-proj", "--reset", "--yes",
         )
         assert reset.exit_code == 0, reset.output
 
         # ZO-side artifacts gone
-        assert not (zo_root / "memory" / "ivl-f5").exists()
-        assert not (zo_root / "targets" / "ivl-f5.target.md").exists()
-        assert not (zo_root / "plans" / "ivl-f5.md").exists()
+        assert not (zo_root / "memory" / "acme-proj").exists()
+        assert not (zo_root / "targets" / "acme-proj.target.md").exists()
+        assert not (zo_root / "plans" / "acme-proj.md").exists()
         # Delivery repo, user code, and the meta-dirs ZO added are ALL preserved
         # (reset never touches the delivery repo)
-        assert (existing_repo / "src" / "ivl_f5" / "trainer.py").exists()
+        assert (existing_repo / "src" / "acme_proj" / "trainer.py").exists()
         assert (existing_repo / "configs" / "data").is_dir()
         assert (existing_repo / "STRUCTURE.md").exists()
         assert (existing_repo / "pyproject.toml").exists()
@@ -185,19 +184,19 @@ class TestInitLifecycle:
         # ------------------------------------------------------------------
         reinit = self._run(
             runner, zo_root,
-            "init", "ivl-f5",
+            "init", "acme-proj",
             "--no-tmux", "--no-detect",
             "--existing-repo", str(existing_repo),
             "--branch", "feature/different",
             "--layout-mode", "adaptive",
         )
         assert reinit.exit_code == 0, reinit.output
-        target_text2 = (zo_root / "targets" / "ivl-f5.target.md").read_text()
+        target_text2 = (zo_root / "targets" / "acme-proj.target.md").read_text()
         # New branch landed on the second pass — confirms reset gave a true
         # blank slate (target file was rewritten, not appended-to).
         assert "target_branch: feature/different" in target_text2
         # Memory was re-initialised cleanly
-        assert (zo_root / "memory" / "ivl-f5" / "STATE.md").exists()
+        assert (zo_root / "memory" / "acme-proj" / "STATE.md").exists()
 
     def test_dry_run_then_commit_match(
         self,

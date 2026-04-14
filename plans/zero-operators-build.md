@@ -41,7 +41,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 18. Python lifecycle wrapper captures agent spawn/completion events and pipes them to JSONL comms logger
 
 **Target threshold:**
-- Tier 1: All 18 verification checks pass, test suite >80% line coverage, first real project (IVL F5) executes Phases 1-2 successfully
+- Tier 1: All 18 verification checks pass, test suite >80% line coverage, first real project (prod-001) executes Phases 1-2 successfully
 - Tier 2: 14/18 verification checks pass, test suite >70% coverage, test project completes
 - Tier 3: 10/18 verification checks pass, core modules functional, manual orchestration required
 
@@ -91,7 +91,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 - **Location:** `zero-operators/docs/source-design/zero_operators_features_and_separation.html`
 - **Format:** HTML with 4-tab layout
 - **Access:** Read-only. The 27-feature list defines the full feature backlog; v1 scope is a subset.
-- **Known issues:** Some features reference project-specific context (IVL F5). Abstract to general use.
+- **Known issues:** Some features reference project-specific context. Abstract to general use.
 
 ### Source 4: Test Project (Synthetic)
 - **Location:** To be created at `zero-operators/tests/fixtures/test-project/`
