@@ -692,8 +692,19 @@ class Orchestrator:
     def _prompt_plan_context(self) -> str:
         p = self._plan
         oracle_text = p.oracle.raw_content if p.oracle else "Not defined"
+        plan_path = (
+            self._zo_root / "plans"
+            / f"{p.frontmatter.project_name}.md"
+        )
         return dedent(f"""\
             # Plan Context
+
+            **CRITICAL — Read the full plan first:**
+            Before doing ANYTHING else, read the complete plan file at
+            `{plan_path}`. It contains data source paths, domain priors,
+            environment config, agent adaptations, and delivery structure
+            that you MUST know before starting work. The summary below is
+            not sufficient — read the file.
 
             **Objective:** {p.objective}
 
