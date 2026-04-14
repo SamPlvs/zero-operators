@@ -329,12 +329,39 @@ class Orchestrator:
         """Build the full prompt for the Claude Code lead session."""
         sections = [
             self._prompt_role(), self._prompt_plan_context(),
+            self._prompt_autonomy(),
             self._prompt_phase(phase), self._prompt_contracts(phase),
             self._prompt_adaptations(), self._prompt_roster(),
             self._prompt_memory(), self._prompt_coordination(),
             self._prompt_gate_criteria(phase), self._prompt_constraints(),
         ]
         return "\n\n---\n\n".join(s for s in sections if s)
+
+    def _prompt_autonomy(self) -> str:
+        """Tell the agent how much autonomy it has based on gate mode."""
+        if self._gate_mode == GateMode.FULL_AUTO:
+            return dedent("""\
+                # Autonomy Level: FULL AUTO
+
+                You have FULL AUTONOMY. Do NOT ask the human for permission
+                or confirmation. Execute all subtasks, make all decisions,
+                and advance through gates without pausing. Log decisions to
+                DECISION_LOG.md. Only stop if you hit an unrecoverable error.""")
+        if self._gate_mode == GateMode.AUTO:
+            return dedent("""\
+                # Autonomy Level: AUTO
+
+                You have HIGH AUTONOMY. Execute subtasks and make decisions
+                WITHOUT asking the human for confirmation. Do not ask
+                "should I proceed?" or "do you want me to continue?" — just
+                do the work. The only time you pause is at BLOCKING gates
+                (human review required). Automated gates advance on their own.
+                Log all decisions to DECISION_LOG.md.""")
+        return dedent("""\
+            # Autonomy Level: SUPERVISED
+
+            Ask the human before major decisions. Present your plan,
+            get approval, then execute. All gates require human review.""")
 
     def _prompt_adaptations(self) -> str:
         """Render the plan's agent adaptations as a dedicated section.
@@ -692,8 +719,19 @@ class Orchestrator:
     def _prompt_plan_context(self) -> str:
         p = self._plan
         oracle_text = p.oracle.raw_content if p.oracle else "Not defined"
+        plan_path = (
+            self._zo_root / "plans"
+            / f"{p.frontmatter.project_name}.md"
+        )
         return dedent(f"""\
             # Plan Context
+
+            **CRITICAL — Read the full plan first:**
+            Before doing ANYTHING else, read the complete plan file at
+            `{plan_path}`. It contains data source paths, domain priors,
+            environment config, agent adaptations, and delivery structure
+            that you MUST know before starting work. The summary below is
+            not sufficient — read the file.
 
             **Objective:** {p.objective}
 

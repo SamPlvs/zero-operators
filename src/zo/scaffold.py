@@ -8,7 +8,7 @@ The structure separates concerns into:
 - ``configs/`` — YAML configuration (never hardcode in code)
 - ``src/`` — source code by responsibility (data, model, engineering, inference, utils)
 - ``experiments/`` — context trail (config snapshots, results, notes per experiment)
-- ``notebooks/`` — human exploration (data/, model/, analysis/) + ZO auto-generated (phase/)
+- ``notebooks/`` — phase-sequenced notebooks (01_data_pipeline, 02_feature_engineering, etc.)
 - ``tests/`` — unit tests (code correctness) + ML tests (oracle thresholds, benchmarks)
 - ``docker/`` — containerisation (Dockerfile, compose, .dockerignore)
 - ``reports/`` — agent-generated analysis and figures
@@ -63,10 +63,7 @@ _STANDARD_DIRECTORIES: list[str] = [
     "data/processed",
     # Artifacts
     "models",
-    # Human-authored notebooks
-    "notebooks/data",
-    "notebooks/model",
-    "notebooks/analysis",
+    # Notebooks — no extra subdirs; phase/ is in _META_DIRECTORIES
     # Tests — code correctness vs ML validation
     "tests/unit",
     "tests/ml",
@@ -143,10 +140,7 @@ Agent-generated analysis (read-only for humans).
 - `reports/validation_report.md` — Phase 6 output
 
 ## notebooks/
-- `notebooks/data/` — Data exploration (human-authored)
-- `notebooks/model/` — Architecture experiments (human-authored)
-- `notebooks/analysis/` — Explainability, error analysis (human-authored)
-- `notebooks/phase/` — ZO auto-generated per-phase notebooks
+- `notebooks/phase/` — Sequentially numbered per-phase notebooks (01_data_pipeline, 02_feature_engineering, etc.)
 
 ## tests/
 - `tests/unit/` — Code correctness (does the code run?)

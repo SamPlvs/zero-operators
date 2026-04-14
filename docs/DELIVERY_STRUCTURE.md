@@ -9,7 +9,7 @@ Reference for the delivery repo layout created by `zo init` (or, for an existing
 - **Configs separate from code** -- agents edit YAML configs, not source files. Experiments freeze config snapshots for reproducibility.
 - **Experiments as context trail** -- `experiments/README.md` indexes all runs; each `exp-NNN/` is a self-contained record of what was tried and why.
 - **Tests split by concern** -- `tests/unit/` for code correctness, `tests/ml/` for oracle thresholds and benchmarks.
-- **Notebooks split by audience** -- `notebooks/data|model|analysis/` for human exploration, `notebooks/phase/` for ZO auto-generated phase summaries.
+- **Notebooks by phase** -- `notebooks/phase/` contains sequentially numbered notebooks (one per pipeline phase), combining exploration and auto-generated summaries.
 - **Docker-first training** -- `docker/` provides a multi-stage build with GPU support; agents run training inside the container.
 
 ---
@@ -40,10 +40,7 @@ Reference for the delivery repo layout created by `zo init` (or, for an existing
 │   ├── figures/                  — plots, charts
 │   └── *.md                      — phase reports, model card, validation report
 ├── notebooks/
-│   ├── data/                     — human data exploration
-│   ├── model/                    — human architecture experiments
-│   ├── analysis/                 — human explainability work
-│   └── phase/                    — ZO auto-generated per-phase notebooks
+│   └── phase/                    — sequentially numbered notebooks (01_data_pipeline, 02_feature_engineering, etc.)
 ├── tests/
 │   ├── unit/                     — code correctness tests
 │   ├── ml/                       — oracle threshold checks, benchmarks
@@ -78,8 +75,7 @@ Reference for the delivery repo layout created by `zo init` (or, for an existing
 | `models/` | Model Builder | 4 | Trained checkpoints |
 | `experiments/` | Lead Orchestrator | 3+ | Experiment context trail |
 | `reports/` | Oracle/QA, XAI | 1-6 | Phase reports, figures |
-| `notebooks/phase/` | ZO (auto) | 1-6 | Auto-generated phase notebooks |
-| `notebooks/data/` | Human | Any | Manual data exploration |
+| `notebooks/phase/` | ZO + Human | 1-6 | Per-phase notebooks (NN_description.ipynb) |
 | `tests/unit/` | Test Engineer | 4-6 | Code correctness tests |
 | `tests/ml/` | Oracle/QA | 4-6 | Metric threshold tests, benchmarks |
 | `docker/` | Data Engineer | 1 | Container config (agents customize) |
@@ -125,15 +121,14 @@ configs/
 
 ```
 notebooks/
-├── data/       — human data exploration (EDA, distributions, outliers)
-├── model/      — human architecture experiments (prototyping, ablations)
-├── analysis/   — human explainability work (SHAP, feature importance)
-└── phase/      — ZO auto-generated per-phase summaries
+└── phase/      — sequentially numbered per-phase notebooks
+    ├── 01_data_pipeline.ipynb
+    ├── 02_feature_engineering.ipynb
+    ├── 03_baseline_models.ipynb
+    └── ...
 ```
 
-**Human notebooks** (`data/`, `model/`, `analysis/`) are for interactive exploration. ZO does not write to these directories.
-
-**ZO notebooks** (`phase/`) are auto-generated at the end of each phase. They summarize what the agent team did, key metrics, and artifacts produced. Named `phase_N_<description>.ipynb`.
+All notebooks live in `notebooks/phase/` with sequential numbering matching the pipeline phases. Each notebook combines data exploration, analysis, and auto-generated summaries for its phase. Named `NN_<description>.ipynb`.
 
 ---
 
