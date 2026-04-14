@@ -396,6 +396,29 @@ def _ask_additional_instructions(gate_mode: str) -> str:
     return user_input
 
 
+def _generate_session_summary(events: list[str], team_name: str) -> None:
+    """Ask Haiku for a 2-3 line session summary and print next steps."""
+    events_text = "\n".join(events[-30:])
+    try:
+        result = __import__("subprocess").run(
+            ["claude", "-p", "--model", "haiku",
+             f"Summarise this agent session in 2-3 short bullet points "
+             f"(what was accomplished, what's ready). No preamble, just "
+             f"bullets:\n\n{events_text}"],
+            capture_output=True, text=True, timeout=20,
+        )
+        summary = result.stdout.strip()
+        if summary:
+            console.print(f"\n[{_AMBER}]Session summary:[/]")
+            for line in summary.split("\n"):
+                line = line.strip()
+                if line:
+                    console.print(f"  {line}")
+    except Exception:
+        pass  # Non-critical — skip if Haiku unavailable
+    console.print()
+
+
 def _launch_and_monitor(
     *,
     wrapper,  # noqa: ANN001
@@ -565,10 +588,15 @@ def _launch_and_monitor(
         project_name=project_name, delivery_repo=delivery_repo,
     )
 
+    console.print()
     if process.status == "completed":
-        console.print("[green bold]Session completed successfully.[/]")
+        console.print(f"[green bold]Session completed.[/]")
     else:
         console.print(f"[red bold]Session ended with status:[/] {process.status}")
+
+    # Generate a Haiku summary of the session from buffered events.
+    if _headline_buffer:
+        _generate_session_summary(_headline_buffer, team_name)
 
     if orchestrator:
         orchestrator.end_session()
