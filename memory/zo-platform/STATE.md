@@ -93,6 +93,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 - [x] v1.0.2-pre: Tmux TUI paste timing fix — increased wait from 3s to 8s, Enter delay from 0.5s to 1s; fixes blank-session bug where zo init/draft/build launched Claude but never submitted the prompt on cold starts
 - [x] v1.0.2-pre: Agent session auto-cleanup — `_tmux_claude_running()` detects Claude exit via `pane_current_command`, `_kill_tmux_window()` closes leftover shell, `_generate_session_summary()` prints Haiku bullet summary before returning control to terminal
 - [x] v1.0.2-pre: Preflight integration tests (9 tests) — fixture plan validation, parenthetical oracle fields, error formatting, full pipeline. Fixed 3 stacked bugs: `report.is_valid`→`.valid`, `i.field`→`.section`, oracle alias lookup strips parenthetical suffixes. Test count 476→485.
+- [x] v1.0.2-pre: Lead prompt includes explicit "read full plan.md" instruction + autonomy level section based on gate mode
 
 ## Known Issues
 
@@ -124,7 +125,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-14T12:30:00Z
+last_checkpoint: 2026-04-14T16:00:00Z
 last_session: session-016
 branch: claude/elated-hellman (worktree)
 test_count: 476 passed, 7 skipped
