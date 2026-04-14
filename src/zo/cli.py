@@ -433,6 +433,7 @@ def _launch_and_monitor(
     gate_mode_file: Path | None = None,
     project_name: str = "",
     delivery_repo: Path | None = None,
+    add_dirs: list[str] | None = None,
 ) -> None:
     """Shared launch → monitor → end-session flow for build and draft."""
     use_tmux = not no_tmux
@@ -440,6 +441,7 @@ def _launch_and_monitor(
     process = wrapper.launch_lead_session(
         prompt, cwd=str(zo_root), team_name=team_name,
         model=model, max_turns=max_turns, use_tmux=use_tmux,
+        add_dirs=add_dirs or [],
     )
 
     if process.tmux_pane_id:
@@ -725,6 +727,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         gate_mode_file=memory.memory_root / "gate_mode",
         project_name=project_name,
         delivery_repo=Path(target.target_repo),
+        add_dirs=[str(Path(target.target_repo).resolve())],
     )
 
 
@@ -1402,6 +1405,12 @@ def _launch_init_architect(*, project: str, hints: dict) -> None:
     )
 
     prompt = _build_init_architect_prompt(project=project, hints=hints)
+    # Grant access to existing repo if provided in hints
+    extra_dirs: list[str] = []
+    if hints.get("existing_repo"):
+        extra_dirs.append(hints["existing_repo"])
+    if hints.get("data_path"):
+        extra_dirs.append(hints["data_path"])
     _launch_and_monitor(
         wrapper=wrapper,
         prompt=prompt,
@@ -1410,6 +1419,7 @@ def _launch_init_architect(*, project: str, hints: dict) -> None:
         no_tmux=False,
         model="opus",
         max_turns=60,
+        add_dirs=extra_dirs,
     )
 
 
@@ -1772,6 +1782,24 @@ def draft(
             zo_root=zo_root,
         )
 
+        # Grant Claude access to doc/data dirs + delivery repo so agents
+        # don't trigger directory permission prompts mid-session.
+        extra_dirs: list[str] = []
+        for dp in docs:
+            extra_dirs.append(str(dp.resolve()))
+        for dp in data:
+            extra_dirs.append(str(dp.resolve()))
+        # Also grant access to delivery repo if target file exists
+        target_path = (main_root / "targets" / f"{project}.target.md")
+        if target_path.exists():
+            try:
+                from zo.target import parse_target
+                tgt = parse_target(target_path)
+                if tgt.target_repo:
+                    extra_dirs.append(str(Path(tgt.target_repo).resolve()))
+            except Exception:
+                pass  # Non-critical
+
         _launch_and_monitor(
             wrapper=wrapper,
             prompt=draft_prompt,
@@ -1780,6 +1808,7 @@ def draft(
             no_tmux=False,
             model="opus",
             max_turns=100,
+            add_dirs=extra_dirs,
         )
 
     drafter.close()

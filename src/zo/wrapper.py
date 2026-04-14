@@ -93,18 +93,27 @@ class LifecycleWrapper:
         model: str = "opus",
         max_turns: int = 200,
         use_tmux: bool = True,
+        add_dirs: list[str] | None = None,
     ) -> LeadProcess:
         """Launch one Claude Code session as the Lead Orchestrator.
 
         When inside tmux (and ``use_tmux`` is True), spawns Claude Code
         in a visible tmux pane so the user can watch the interactive TUI.
         Otherwise falls back to headless mode with ``--print``.
+
+        Args:
+            add_dirs: Extra directories to grant Claude Code access to
+                via ``--add-dir``.  Use for delivery repos, data paths,
+                and other directories agents need to read/write.
         """
+        extra = add_dirs or []
         if use_tmux and self._is_in_tmux():
             return self._launch_tmux(prompt, cwd=cwd, team_name=team_name,
-                                     model=model, max_turns=max_turns)
+                                     model=model, max_turns=max_turns,
+                                     add_dirs=extra)
         return self._launch_headless(prompt, cwd=cwd, team_name=team_name,
-                                     model=model, max_turns=max_turns)
+                                     model=model, max_turns=max_turns,
+                                     add_dirs=extra)
 
     def _launch_tmux(
         self,
@@ -114,6 +123,7 @@ class LifecycleWrapper:
         team_name: str,
         model: str,
         max_turns: int,
+        add_dirs: list[str] | None = None,
     ) -> LeadProcess:
         """Launch Claude Code interactively in a visible tmux window.
 
@@ -145,11 +155,16 @@ class LifecycleWrapper:
         # 2. Start claude interactively (NO -p, NO --dangerously-skip-permissions)
         #    --dangerously-skip-permissions exits immediately in interactive mode.
         #    Permissions are handled via .claude/settings.json allow/deny rules.
+        #    --add-dir grants access to the ZO root plus any delivery repos,
+        #    data paths, or other directories agents need without prompting.
+        add_dir_flags = f' --add-dir {shlex.quote(cwd)}'
+        for d in (add_dirs or []):
+            add_dir_flags += f' --add-dir {shlex.quote(d)}'
         interactive_cmd = (
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
-            f' --add-dir {shlex.quote(cwd)}'
+            f'{add_dir_flags}'
         )
         subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, interactive_cmd, "Enter"],
@@ -205,6 +220,7 @@ class LifecycleWrapper:
         team_name: str,
         model: str,
         max_turns: int,
+        add_dirs: list[str] | None = None,
     ) -> LeadProcess:
         """Launch Claude Code as a headless subprocess (--print mode)."""
         cmd: list[str] = [
@@ -215,6 +231,8 @@ class LifecycleWrapper:
             "--add-dir", cwd,
             "--dangerously-skip-permissions",
         ]
+        for d in (add_dirs or []):
+            cmd.extend(["--add-dir", d])
         cmd.extend(["-p", prompt])
 
         stdout_log = self._log_dir / f"{team_name}-stdout.log"
