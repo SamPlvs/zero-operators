@@ -177,11 +177,8 @@ Delivery repositories contain only project artifacts. They follow a standard str
 ├── reports/                      ← agent-generated analysis
 │   ├── figures/
 │   └── *.md
-├── notebooks/                    ← exploration + auto-generated
-│   ├── data/                     ← human data exploration
-│   ├── model/                    ← human architecture experiments
-│   ├── analysis/                 ← human explainability work
-│   └── phase/                    ← ZO auto-generated per-phase
+├── notebooks/                    ← per-phase notebooks
+│   └── phase/                    ← NN_description.ipynb (sequentially numbered)
 ├── tests/
 │   ├── unit/                     ← code correctness
 │   ├── ml/                       ← oracle threshold checks, benchmarks
