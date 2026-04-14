@@ -106,12 +106,12 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## What's Next
 
-1. **prod-001 setup** — run `zo init prod-001` (conversational) on the existing repo at the target branch. Scout team drafts plan; build with auto/supervised gates.
+1. **prod-001 Phase 2** — baseline models on GPU server. Phase 1 data pipeline complete (denylist approach, 297 tests, full doc QA). Re-alignment with full tag set (~15k tags) needed on GPU.
 2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
 3. Domain evaluator refactor — make project-specific via plan.md domain priors
 4. ~~XAI + Domain Evaluator activation for prod-001 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
 5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
-6. prod-001 project — first production deployment
+6. **ZO learning: denylist-first data pipelines** — when building data pipelines for DL, default to including all available signals and exclude only leakage. Feature selection is model-dependent, not pipeline-dependent.
 
 ## Deferred — Post prod-001 First Pass
 
@@ -125,10 +125,10 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-14T16:00:00Z
-last_session: session-016
+last_checkpoint: 2026-04-14T22:00:00Z
+last_session: session-017
 branch: claude/elated-hellman (worktree)
-test_count: 476 passed, 7 skipped
+test_count: 485 passed, 7 skipped (ZO); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
-prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix)
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure)

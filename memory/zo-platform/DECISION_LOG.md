@@ -601,3 +601,33 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** First `zo preflight` against a production plan failed with `AttributeError`. Investigation found THREE bugs — all present since the module was written, all invisible because (a) preflight had zero tests and (b) mocked tests would have used the same wrong attribute names. Self-evolution protocol: fix the symptom (3 bugs) AND fix the rule (add integration tests that use real objects, add PR-025 prior).
 **Alternatives considered:** (1) Just fix the bugs — violates self-evolution principle. (2) Add unit tests with mocks — would have caught `is_valid` if written correctly, but mocks can perpetuate the same misconception. (3) Integration tests with real objects (chosen) — catches interface mismatches by definition.
 **Outcome:** PR #39. 485 tests pass (was 476). PR-025 prior added. The parenthetical oracle field test specifically guards against the exact production plan format that triggered this bug.
+
+---
+
+## Decision: 2026-04-14T22:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Data pipelines should use denylist, not allowlist, for DL projects
+**Decision:** When building Phase 1 data pipelines for deep learning projects, default to including all available signals (denylist approach — exclude only target leakage) rather than curating a small allowlist of input features. Feature selection is deferred to Phase 2 as a model-dependent transform.
+**Rationale:** During prod-001 Phase 1, a manually-curated allowlist (~164 tags from a pre-project config file) was initially used. This artificially limited the feature space to <1% of available signals (~15,600 total). Switching to a denylist (exclude ~786 leakage tags, keep ~14,815) expanded the feature space 90×. DL models benefit from maximum feature space — they learn their own representations. Manually curating inputs pre-model introduces human bias about what's "relevant." The pipeline's job is leakage prevention, not feature selection.
+**Alternatives considered:** (1) Keep the curated allowlist — limits what models can discover, biased by the human who created it. (2) Denylist but with aggressive feature engineering in pipeline — couples pipeline to model assumptions. (3) Denylist with model-dependent transforms in Phase 2 (chosen) — clean separation of concerns.
+**Outcome:** Applied to prod-001. Phase 1 subtask guidance should recommend denylist-first for DL projects. Feature curation belongs in Phase 2 model config (e.g., XGBoost: no normalise; TFT: zscore + forward_fill; etc.).
+
+---
+
+## Decision: 2026-04-14T22:00:00Z
+**Type:** PROCESS
+**Title:** Notebook execution as gate validation
+**Decision:** Phase notebooks should be executed end-to-end as part of gate checks, not just generated as documentation templates.
+**Rationale:** During prod-001 Phase 1, the notebook had 3 bugs (wrong constructor args, renamed methods, old attribute names) that only surfaced when executing cells. Unit tests passed because they tested the functions directly, but the notebook used the public API differently. Executing the notebook catches API-level integration issues.
+**Alternatives considered:** (1) Treat notebooks as documentation only — misses API drift. (2) Write separate integration tests — duplicates validation. (3) Execute notebooks at gates (chosen) — the notebook IS the integration test, and it produces visible output for the report.
+**Outcome:** Not yet codified in ZO's gate checks. Candidate for v1.0.3 enhancement.
+
+---
+
+## Decision: 2026-04-14T22:00:00Z
+**Type:** PROCESS
+**Title:** Specialist review personas find complementary issues
+**Decision:** Multi-persona specialist reviews (domain expert, ML specialist, data scientist) are effective at catching different classes of issues in the same pipeline. Each persona has blind spots the others cover.
+**Rationale:** Three specialist reviews of the same prod-001 Phase 1 pipeline found non-overlapping issues: domain specialist found missing flow transmitter exclusions; ML specialist found trend slope inconsistency and test gaps; data scientist found detection limit handling issues and sample-to-feature ratios. No single reviewer would have caught all issues.
+**Alternatives considered:** (1) Single comprehensive review — misses domain-specific blind spots. (2) Automated-only checks — can't reason about process chemistry or ML methodology. (3) Multi-persona reviews (validated) — complementary coverage.
+**Outcome:** Applied to prod-001. The code-reviewer agent should support domain-specific review prompts when plan.md includes agent adaptations.
