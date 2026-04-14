@@ -2,13 +2,19 @@
 # Zero Operators — Stop hook (fires after each Claude turn)
 # Checks if uncommitted changes exist in cascade-trigger files
 # and reminds about running validation before session ends.
+#
+# Only runs inside the ZO repo itself. When agents run inside a
+# delivery repo (zo build), this hook exits silently.
 
 set -uo pipefail
 
-# Find repo root
-HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+# Find repo root — exit silently if paths don't resolve
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" 2>/dev/null && pwd)" || exit 0
+REPO_ROOT="$(cd "$HOOK_DIR/../.." 2>/dev/null && pwd)" || exit 0
 cd "$REPO_ROOT" || exit 0
+
+# Only run in the ZO repo (has src/zo/), not delivery repos
+[[ -d "src/zo" ]] || exit 0
 
 # Check for uncommitted changes in cascade-trigger paths
 TRIGGER_PATHS=(
