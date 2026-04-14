@@ -102,12 +102,21 @@ class MemoryManager:
     def write_state(self, state: SessionState) -> None:
         """Atomically write STATE.md (temp file + rename).
 
-        This prevents corruption if the process is killed mid-write.
+        Preserves agent-written content (summaries, tables, findings)
+        that appears after the ``## Phases`` section.  The structured
+        header fields and phase statuses are always updated from the
+        ``SessionState`` model; everything else is kept verbatim.
         """
         self._memory_root.mkdir(parents=True, exist_ok=True)
         target = self._memory_root / "STATE.md"
+        existing = ""
+        if target.exists():
+            try:
+                existing = target.read_text(encoding="utf-8")
+            except OSError:
+                existing = ""
         tmp = self._memory_root / ".STATE.md.tmp"
-        content = render_state(state)
+        content = render_state(state, preserve_from=existing)
         tmp.write_text(content, encoding="utf-8")
         os.replace(tmp, target)
 
