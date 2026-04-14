@@ -396,6 +396,29 @@ def _ask_additional_instructions(gate_mode: str) -> str:
     return user_input
 
 
+def _print_next_steps(team_name: str, zo_root: Path) -> None:
+    """Print context-aware next steps after a session completes."""
+    console.print(f"\n[{_AMBER}]Next steps:[/]")
+    if team_name.startswith("init-"):
+        project = team_name.removeprefix("init-")
+        console.print(f"  1. Review targets/{project}.target.md and plans/{project}.md")
+        console.print(f"  2. Run [bold]zo draft -p {project}[/] to refine the plan with scouts")
+    elif team_name.startswith("draft-"):
+        project = team_name.removeprefix("draft-")
+        plan_path = zo_root / "plans" / f"{project}.md"
+        if plan_path.exists():
+            size_kb = plan_path.stat().st_size // 1024
+            console.print(f"  Plan ready: plans/{project}.md ({size_kb}KB)")
+        console.print(f"  1. Review [bold]plans/{project}.md[/] — edit if needed")
+        console.print(f"  2. Run [bold]zo preflight plans/{project}.md[/] to validate")
+        console.print(f"  3. Run [bold]zo build plans/{project}.md[/] to start the agent team")
+    elif team_name.startswith("zo-"):
+        project = team_name.removeprefix("zo-")
+        console.print(f"  1. Check [bold]zo status {project}[/] for current phase")
+        console.print(f"  2. Run [bold]zo build plans/{project}.md[/] to continue")
+    console.print()
+
+
 def _generate_session_summary(events: list[str], team_name: str) -> None:
     """Ask Haiku for a 2-3 line session summary and print next steps."""
     events_text = "\n".join(events[-30:])
@@ -599,6 +622,9 @@ def _launch_and_monitor(
     # Generate a Haiku summary of the session from buffered events.
     if _headline_buffer:
         _generate_session_summary(_headline_buffer, team_name)
+
+    # Always print next steps based on what command just ran.
+    _print_next_steps(team_name, zo_root)
 
     if orchestrator:
         orchestrator.end_session()
