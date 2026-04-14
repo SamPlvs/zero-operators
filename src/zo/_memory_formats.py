@@ -46,8 +46,16 @@ def _parse_bracket_list(raw: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def render_state(state: SessionState) -> str:
-    """Render a SessionState to STATE.md markdown format."""
+def render_state(state: SessionState, *, preserve_from: str = "") -> str:
+    """Render a SessionState to STATE.md markdown format.
+
+    Args:
+        state: The session state to render.
+        preserve_from: Existing STATE.md content.  Any sections after
+            ``## Phases`` (e.g. agent-written summaries, tables, findings)
+            are preserved verbatim.  This prevents ``end_session()`` from
+            overwriting rich content the agent wrote during the build.
+    """
     ts = state.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
     last = state.last_completed_subtask or "null"
     lines = [
@@ -68,7 +76,42 @@ def render_state(state: SessionState) -> str:
         for pid, status in state.phase_states.items():
             subtasks = state.completed_subtasks_by_phase.get(pid, [])
             lines.append(f"{pid}: {status} {_format_list(subtasks)}")
+
+    # Preserve agent-written content below ## Phases (summaries, tables,
+    # findings, test results).  Look for sections that come after Phases.
+    if preserve_from:
+        extra = _extract_extra_sections(preserve_from)
+        if extra:
+            lines.append("")
+            lines.append(extra)
+
     return "\n".join(lines) + "\n"
+
+
+def _extract_extra_sections(text: str) -> str:
+    """Extract content after the ``## Phases`` block from STATE.md.
+
+    Returns everything from the first ``## `` heading that is NOT
+    ``## Phases`` and comes after the Phases block, preserving it
+    verbatim.  Returns empty string if no extra content exists.
+    """
+    in_phases = False
+    past_phases = False
+    extra_lines: list[str] = []
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "## Phases":
+            in_phases = True
+            continue
+        if in_phases and stripped.startswith("## "):
+            # First non-Phases heading after Phases block
+            in_phases = False
+            past_phases = True
+        if past_phases:
+            extra_lines.append(line)
+
+    return "\n".join(extra_lines).strip()
 
 
 _PHASE_LINE_RE = re.compile(r"^(phase_\d+):\s*(\w+)\s*(.*)")
