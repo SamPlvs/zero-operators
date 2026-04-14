@@ -124,7 +124,7 @@ The Plan Architect also populates two Agent Configuration knobs based on scout f
 ```bash
 zo init my-project                                              # conversational (default)
 zo init my-project --no-tmux --branch main --scaffold-delivery /path/to/delivery-repo
-zo init prod-001    --no-tmux --branch samtukra --existing-repo ~/code/prod-001 --layout-mode adaptive
+zo init my-project --no-tmux --branch feature-branch --existing-repo ~/code/my-project --layout-mode adaptive
 ```
 
 Default behaviour launches the **Init Architect** (Opus) in a tmux pane. The agent interviews you (new vs existing repo, branch, training host, data location, layout mode), inspects the target repo, runs `--dry-run` to preview the file tree, and only commits writes after you confirm. For CI/scripts, pass `--no-tmux` plus the flags you need.
@@ -447,7 +447,7 @@ mnist-delivery/          ← delivery repo (clean)
 
 ## Status
 
-**v1.0.1 — All phases complete. Validated end-to-end. Pre-prod-001 hardening done.**
+**v1.0.1 — All phases complete. Validated end-to-end. Pre-production hardening done.**
 
 | Phase | What | Status |
 |-------|------|--------|

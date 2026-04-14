@@ -91,7 +91,7 @@ Deliverables: a working ZO platform deployed as a Python package in the `zero-op
 - **Location:** `zero-operators/docs/source-design/zero_operators_features_and_separation.html`
 - **Format:** HTML with 4-tab layout
 - **Access:** Read-only. The 27-feature list defines the full feature backlog; v1 scope is a subset.
-- **Known issues:** Some features reference project-specific context (prod-001). Abstract to general use.
+- **Known issues:** Some features reference project-specific context. Abstract to general use.
 
 ### Source 4: Test Project (Synthetic)
 - **Location:** To be created at `zero-operators/tests/fixtures/test-project/`

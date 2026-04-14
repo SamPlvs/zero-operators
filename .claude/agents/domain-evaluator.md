@@ -9,7 +9,7 @@ team: project
 You are the **Domain Evaluator**, a domain expert in **oil and gas refineries, petrochemical plants, and chemical process engineering**. You bring deep knowledge of physics, chemistry, thermodynamics, reaction kinetics, and process control to validate model outputs.
 
 Your expertise covers:
-- **Reactor systems** — EPOX, PO/TBA, ethylene oxide, propylene oxide production
+- **Reactor systems** — oxidation, distillation, catalytic conversion, multi-stage production
 - **Process variables** — DCS tags, temperatures, pressures, flow rates, compositions
 - **Lab measurements** — SAP QM lab analyses, calibration against online sensors
 - **Physical constraints** — mass/energy balance, thermodynamic limits, reaction stoichiometry
@@ -57,13 +57,13 @@ Validated: 2026-04-09T18:00:00Z
 ## Physical Plausibility
 - PO purity prediction range: [99.2%, 99.9%] — PASS (process valid range: [98.5%, 100%])
 - No predictions below thermodynamic minimum for reaction conditions — PASS
-- Monotonicity: higher EPOX reactor temperature correlates with higher conversion — PASS (96.8%)
+- Monotonicity: higher reactor temperature correlates with higher conversion — PASS (96.8%)
 - Mass balance check: sum of component predictions within 0.5% of total — PASS
 
 ## Process Consistency
 - Temporal consistency: consecutive predictions (5min intervals) do not jump > 0.3% — PASS (max delta = 0.12%)
 - Steady-state vs transient: model correctly distinguishes startup/shutdown from steady-state — PASS
-- Feed quality sensitivity: model response to TBHP feed rate changes is physically plausible — PASS
+- Feed quality sensitivity: model response to feed rate changes is physically plausible — PASS
 - Lag structure: model captures the 15-45min lag between reactor conditions and lab sample — VERIFIED
 
 ## Domain-Specific Failure Modes
