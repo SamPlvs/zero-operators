@@ -599,3 +599,43 @@ Plan schema extension: `AgentAdaptation` pydantic model, `AgentConfig.adaptation
 
 This separation fixed both failures in one pass: `[standard|adaptive]` renders verbatim in the `OPTIONS` column (because `Text.append("--layout-mode [standard|adaptive]", style="bold")` never touches Rich's markup parser), and shell-continuation backslashes in the `DESCRIPTION` render as single `\` (because `markup=False` bypasses both parsing and escape-expansion). Validated by `tests/unit/test_cli.py::test_help_output` plus visual inspection of `zo --help`, `zo init --help`, `zo gates set --help`.
 
+---
+
+## PR-022: Tmux Paste Timing Must Account for Cold Start Latency
+**Source:** Session 016 (2026-04-14), first `zo init ivl-f5` run
+**Root cause category:** incomplete_rule
+**Failure:** `zo init ivl-f5` opened a blank Claude Code session — the TUI rendered but the prompt was never submitted. The paste-buffer arrived 3 seconds after `claude` was launched, but the TUI wasn't ready for input yet (cold start with extensions, hooks, CLAUDE.md loading takes 5-10s).
+
+### Rules
+
+1. **Claude Code's TUI takes 5-10s to become input-ready on cold starts.**
+   Extensions, hooks, CLAUDE.md loading, and memory file scanning all happen
+   before the input field accepts text. 3s was based on warm-start testing
+   (Claude already running, new window). Cold starts (first launch in a
+   session, or after machine sleep) take significantly longer.
+   - *Failure ref:* First IVL F5 init. User saw Claude TUI but no prompt.
+
+2. **tmux paste-buffer is fire-and-forget — no error if the target isn't ready.**
+   `tmux paste-buffer -t %5` succeeds even if the pane is showing a
+   loading screen. The pasted text simply goes nowhere. There's no
+   feedback mechanism to detect that the paste missed its target.
+   - *Failure ref:* All tmux commands returned exit code 0. No indication of failure.
+
+3. **Fixed waits are fragile but retries risk double-submission.**
+   A retry (paste again after N seconds) works if the first paste failed,
+   but if the first paste succeeded and Claude started processing, the
+   second paste lands as a new message — causing duplicate work or
+   confusion. Fixed waits with generous margins are safer than retries
+   for this specific interaction.
+   - *Design ref:* Retry approach was implemented then removed in PR #34.
+
+4. **Test timing assumptions against the slowest realistic environment.**
+   The 3s value was tested on a warm machine with Claude already running.
+   Production use (first run of the day, after machine sleep, with a large
+   CLAUDE.md) is the slowest case and the most common first-time user
+   experience. Default to the slow case.
+
+### Verified Solution
+
+`time.sleep(8)` before `tmux load-buffer` + `paste-buffer`. `time.sleep(1)` before `send-keys Enter` (was 0.5s). If 8s proves insufficient on even slower machines, the user can manually paste the prompt from `logs/wrapper/{team}-prompt.txt` — it's always written before the tmux launch.
+
