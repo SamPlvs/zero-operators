@@ -156,11 +156,16 @@ class LifecycleWrapper:
             capture_output=True, text=True, timeout=10,
         )
 
-        # 3. Wait for TUI to initialize before pasting
-        time.sleep(3)
+        # 3. Wait for TUI to initialize before pasting.
+        #    Claude Code's TUI can take 5-10s to fully render on first
+        #    launch (extensions, hooks, memory loading).  The original
+        #    3s wait caused blank-session bugs where the paste arrived
+        #    before the input field was ready.  8s covers cold starts
+        #    with hooks and CLAUDE.md loading.
+        time.sleep(8)
 
         # 4. Load the prompt into tmux's paste buffer and paste it
-        #    into the Claude TUI input field
+        #    into the Claude TUI input field.
         subprocess.run(
             ["tmux", "load-buffer", str(prompt_file)],
             capture_output=True, text=True, timeout=10,
@@ -170,8 +175,8 @@ class LifecycleWrapper:
             capture_output=True, text=True, timeout=10,
         )
 
-        # 5. Send Enter to submit the prompt
-        time.sleep(0.5)
+        # 5. Send Enter to submit the prompt.
+        time.sleep(1)
         subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, "Enter"],
             capture_output=True, text=True, timeout=10,
