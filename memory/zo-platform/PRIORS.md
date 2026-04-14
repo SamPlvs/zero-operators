@@ -739,3 +739,50 @@ Three additions to `wrapper.py` + `cli.py`:
 
 `tests/integration/test_preflight.py` — 9 tests covering: fixture plan validation, parenthetical oracle fields, validation error formatting, full `run_preflight()` pipeline, edge cases. All use real parser output, no mocks. Test count: 476 → 485.
 
+
+---
+
+## PR-026: Denylist-First for DL Data Pipelines
+**Source:** Session 017 (2026-04-14), prod-001 Phase 1 data pipeline
+**Root cause category:** incomplete_rule
+**Failure:** Phase 1 data pipeline initially used a ~164-tag manually-curated allowlist, limiting the feature space to <1% of available signals. This was inherited from a pre-project config file created by a different person. The pipeline worked correctly but the allowlist was an unnecessary bottleneck — DL models can handle and benefit from the full feature space (~15,600 tags → ~88,890 features after aggregation).
+
+### Rules
+
+1. **Default to denylist (exclude leakage only), not allowlist (curate inputs).**
+   In DL/ML data pipelines, the pipeline's responsibility is preventing target leakage, not selecting features. Include all available signals and let the model handle feature importance.
+
+2. **Curated tag/feature lists from pre-project setup should be treated as reference, not as runtime filters.**
+   These lists reflect one person's assumptions about what's relevant. They may be incomplete, biased, or outdated.
+
+3. **Feature selection belongs in Phase 2, configured per model type.**
+   Tree models (XGBoost) have built-in feature selection. Neural nets learn representations. The transform should be model-dependent, not pipeline-dependent.
+
+4. **When inheriting config from a previous human, validate assumptions against the full dataset.**
+   The 164-tag list was never validated against the 15,601 available tags. A simple count comparison would have flagged the 99% reduction immediately.
+
+### Verified Solution
+
+Switch `align.py` from `filter_allowed_tags()` to `filter_excluded_tags()`. Mark `input_tags.yaml` as "reference only" in pipeline config. Add `filter_excluded_tags()` tests. 297 tests pass. Feature space: 164 → 14,815 tags.
+
+---
+
+## PR-027: Specialist Review Personas Are Complementary
+**Source:** Session 017 (2026-04-14), prod-001 Phase 1 specialist reviews
+**Root cause category:** novel_case
+**Failure:** Not a failure — a validated practice. Three specialist reviews (domain, ML, data science) of the same pipeline found non-overlapping issues. Each caught things the others missed.
+
+### Rules
+
+1. **Use 3+ specialist review personas for Phase 1 pipelines: domain expert, ML methodologist, data scientist.**
+   Each has distinct blind spots.
+
+2. **Convert specialist findings into automated tests immediately.**
+   Domain review findings → `test_domain_validation.py`. This prevents regression.
+
+3. **Review findings should update pipeline code AND config AND docs.**
+   A finding that only updates one layer will drift from the others.
+
+### Verified Solution
+
+3 specialist reviews → 40+ domain validation tests. All findings addressed in code, config, and documentation. 297 tests passing.
