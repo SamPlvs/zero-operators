@@ -851,7 +851,12 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     project_name = plan.frontmatter.project_name
 
     # 2. Resolve project context (.zo/ or legacy)
-    ctx = _load_project_context(project_name)
+    # If the plan lives inside a .zo/plans/ directory, infer delivery repo
+    # from the plan path so build inherits context from continue --repo.
+    delivery_hint: Path | None = None
+    if plan_path.resolve().parts[-3:-1] == (".zo", "plans"):
+        delivery_hint = plan_path.resolve().parent.parent.parent
+    ctx = _load_project_context(project_name, delivery_repo=delivery_hint)
     target = ctx.make_target()
     memory = ctx.make_memory()
     memory.initialize_project()
@@ -2070,7 +2075,11 @@ def gates() -> None:
     "--project", "-p", required=True,
     help="Project name whose gate mode to change.",
 )
-def gates_set(mode: str, project: str) -> None:
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def gates_set(mode: str, project: str, repo: str | None) -> None:
     """Set the gate mode for a project mid-session.
 
     Writes the mode to the project's gate_mode file so that
@@ -2083,9 +2092,10 @@ def gates_set(mode: str, project: str) -> None:
     Usage::
 
         zo gates set auto --project my-project
-        zo gates set full-auto -p my-project
+        zo gates set full-auto -p my-project --repo ~/my-delivery
     """
-    pctx = _load_project_context(project)
+    delivery = Path(repo).resolve() if repo else None
+    pctx = _load_project_context(project, delivery_repo=delivery)
     memory = pctx.make_memory()
 
     if not memory.memory_root.exists():
@@ -2106,7 +2116,11 @@ def gates_set(mode: str, project: str) -> None:
 @cli.command("watch-training")
 @click.option("--project", "-p", required=True, help="Project name")
 @click.option("--interval", "-i", default=2.0, help="Refresh interval in seconds")
-def watch_training(project: str, interval: float) -> None:
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def watch_training(project: str, interval: float, repo: str | None) -> None:
     """Live training metrics dashboard.
 
     Tails the training metrics JSONL in the delivery repo and displays
@@ -2116,13 +2130,14 @@ def watch_training(project: str, interval: float) -> None:
     Auto-launched by zo build during Phase 4 (training) via tmux split-pane.
     Can also be run standalone::
 
-        zo watch-training --project my-project
+        zo watch-training --project my-project --repo ~/my-delivery
     """
     from zo.plan import parse_plan
     from zo.training_display import run_live_display
 
     # Resolve delivery repo from context (.zo/ or legacy)
-    pctx = _load_project_context(project)
+    delivery = Path(repo).resolve() if repo else None
+    pctx = _load_project_context(project, delivery_repo=delivery)
     target = pctx.make_target()
     delivery_repo = Path(target.target_repo)
 
