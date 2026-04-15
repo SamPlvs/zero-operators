@@ -786,3 +786,31 @@ Switch `align.py` from `filter_allowed_tags()` to `filter_excluded_tags()`. Mark
 ### Verified Solution
 
 3 specialist reviews → 40+ domain validation tests. All findings addressed in code, config, and documentation. 297 tests passing.
+
+---
+
+## PR-028: Project Memory Must Live in the Delivery Repo, Not the Platform Repo
+**Source:** Session 018 (2026-04-15), prod-001 Mac Mini → GPU server transfer
+**Root cause category:** missing_rule
+**Failure:** User moved prod-001 from Mac Mini to GPU server. `zo status prod-001` failed with "No STATE.md found" because `memory/{project}/` is gitignored in the ZO public repo. All project state (STATE.md, DECISION_LOG, PRIORS, sessions, plans) was trapped on the original machine. The only recovery option was manual `scp`.
+
+### Rules
+
+1. **Project memory belongs in the delivery repo, not the platform repo.**
+   The delivery repo is private (client-specific) and committed to git. `git pull` on a new machine brings code AND state. The ZO public repo should contain zero project-specific artifacts — not even gitignored ones, since gitignored files don't transfer.
+   - *Failure ref:* `zo status` on GPU server found nothing. Memory existed only on Mac Mini.
+
+2. **Use a `.zo/` directory in the delivery repo for all project state.**
+   `.zo/config.yaml` (portable project config, committed), `.zo/local.yaml` (machine-specific paths, gitignored), `.zo/memory/` (STATE.md, DECISION_LOG, PRIORS, sessions), `.zo/plans/` (the project plan). This mirrors the `.git/`/`.claude/` convention.
+   - *Implementation:* scaffold.py adds `.zo/` dirs; CLI detects `.zo/config.yaml` as project marker.
+
+3. **Machine-specific paths must be separated from portable config.**
+   Data directories, GPU info, and gate mode vary per server. Store in `.zo/local.yaml` (gitignored). Portable config (project name, branch, agent dirs, workflow mode) goes in `.zo/config.yaml` (committed). On a new machine, `zo continue --repo` auto-detects environment and populates `local.yaml` conversationally.
+   - *Failure ref:* Target file stored absolute paths that were wrong on the new server.
+
+4. **Platform memory (zo-platform/) stays in the ZO repo — only generic learnings.**
+   ZO's own STATE.md, DECISION_LOG, PRIORS are platform infrastructure. Project-specific learnings go to the project's own PRIORS. Cross-reference with `**ZO Platform ref:** PR-XXX`.
+
+### Verified Solution
+
+New `.zo/` directory structure in delivery repos. `zo migrate` command for existing projects. `zo continue --repo` for reconnecting on new machines. `_detect_delivery_repo()` + `_load_project_context()` in CLI for dual-layout support (legacy + `.zo/`).

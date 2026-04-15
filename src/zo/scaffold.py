@@ -34,6 +34,11 @@ console = Console()
 # agents drop configs, experiment trails, reports, phase notebooks, and
 # containerisation files.
 _META_DIRECTORIES: list[str] = [
+    # ZO project state (portable memory + plans)
+    ".zo",
+    ".zo/memory",
+    ".zo/memory/sessions",
+    ".zo/plans",
     # Config
     "configs/data",
     "configs/model",
@@ -140,7 +145,7 @@ Agent-generated analysis (read-only for humans).
 - `reports/validation_report.md` — Phase 6 output
 
 ## notebooks/
-- `notebooks/phase/` — Sequentially numbered per-phase notebooks (01_data_pipeline, 02_feature_engineering, etc.)
+- `notebooks/phase/` — Per-phase notebooks (01_data_pipeline, 02_feature_engineering, ...)
 
 ## tests/
 - `tests/unit/` — Code correctness (does the code run?)
@@ -288,7 +293,17 @@ services:
     tty: true
 """
 
+_ZO_GITIGNORE_TEMPLATE = """\
+# Machine-specific config (paths, GPU info, gate mode)
+local.yaml
+
+# SQLite databases (regenerated from DECISION_LOG)
+memory/index.db
+memory/draft_index.db
+"""
+
 _FILE_TEMPLATES: list[tuple[str, str]] = [
+    (".zo/.gitignore", _ZO_GITIGNORE_TEMPLATE),
     ("README.md", _README_TEMPLATE),
     ("STRUCTURE.md", _STRUCTURE_TEMPLATE),
     ("pyproject.toml", _PYPROJECT_TEMPLATE),

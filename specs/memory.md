@@ -339,6 +339,25 @@ Memory is **always per-project**. No shared state across projects.
 - Never copy, share, or reference DECISION_LOG across projects
 - PRIORS.md is domain-specific; different projects learn different facts
 
+### Portable Project Memory (.zo/ directory)
+
+Project memory can optionally live in the delivery repo under `.zo/memory/` instead of (or in addition to) the ZO repo's `memory/{project}/`. This makes projects portable across machines via `git pull`.
+
+**Layout in the delivery repo:**
+
+```
+{delivery-repo}/
+└── .zo/
+    ├── config.yaml            ← project config (committed)
+    ├── local.yaml             ← machine-specific paths (gitignored)
+    ├── memory/                ← STATE.md, DECISION_LOG.md, PRIORS.md, sessions/
+    └── plans/                 ← the project plan.md
+```
+
+- `zo migrate <project>` copies state from `memory/{project}/` into the delivery repo's `.zo/` directory
+- `zo continue` and `zo status` auto-detect the project from `.zo/config.yaml` when run inside the delivery repo
+- Platform memory (`memory/zo-platform/`) always stays in the ZO repo — only project-specific state is portable
+
 **Multi-project concurrency** (v2 trigger):
 
 - When running 3+ concurrent projects, implement SONA-style routing heuristics

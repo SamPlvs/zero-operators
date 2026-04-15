@@ -15,13 +15,19 @@ Usage::
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 from rich.console import Console
 from rich.table import Table
 
 from zo._orchestrator_models import GateMode
+
+if TYPE_CHECKING:
+    from zo.memory import MemoryManager
+    from zo.target import TargetConfig
 
 console = Console()
 
@@ -35,6 +41,178 @@ _VERSION = "1.0.1"
 def _zo_root() -> Path:
     """Derive the ZO repository root from the CLI package location."""
     return Path(__file__).resolve().parent.parent.parent
+
+
+# ---------------------------------------------------------------------------
+# Project discovery — find project state in .zo/ (new) or legacy layout
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ProjectContext:
+    """Resolved paths for a project, whether from .zo/ or legacy layout."""
+
+    layout: str  # "zo-dir" or "legacy"
+    delivery_repo: Path
+    plan_path: Path
+    project_name: str
+    zo_root: Path
+
+    def make_memory(self) -> MemoryManager:
+        """Create a MemoryManager pointing at the right root."""
+        from zo.memory import MemoryManager
+
+        if self.layout == "zo-dir":
+            return MemoryManager(
+                project_dir=self.delivery_repo,
+                project_name=self.project_name,
+                memory_root=self.delivery_repo / ".zo" / "memory",
+            )
+        return MemoryManager(
+            project_dir=self.zo_root, project_name=self.project_name,
+        )
+
+    def make_target(self) -> TargetConfig:
+        """Load target config from .zo/config.yaml or legacy target file."""
+        if self.layout == "zo-dir":
+            from zo.project_config import load_project_config, to_target_config
+
+            pc = load_project_config(self.delivery_repo)
+            return to_target_config(pc, self.delivery_repo)
+
+        from zo.target import parse_target
+
+        target_path = self.zo_root / "targets" / f"{self.project_name}.target.md"
+        return parse_target(target_path)
+
+
+def _detect_delivery_repo(project_name: str | None = None) -> Path | None:
+    """Check cwd for a .zo/config.yaml marker. Return cwd if found."""
+    from zo.project_config import has_zo_dir, load_project_config
+
+    cwd = Path.cwd()
+    if not has_zo_dir(cwd):
+        return None
+
+    if project_name is not None:
+        try:
+            pc = load_project_config(cwd)
+            if pc.project_name != project_name:
+                return None
+        except Exception:  # noqa: BLE001
+            return None
+
+    return cwd
+
+
+def _load_project_context(
+    project_name: str,
+    delivery_repo: Path | None = None,
+) -> ProjectContext:
+    """Resolve project paths from .zo/ layout or legacy layout.
+
+    Precedence:
+    1. Explicit ``delivery_repo`` with .zo/config.yaml
+    2. cwd with .zo/config.yaml matching ``project_name``
+    3. Legacy layout (zo_root/targets/, zo_root/plans/, zo_root/memory/)
+    """
+    from zo.project_config import has_zo_dir, load_project_config
+
+    zo_root = _zo_root()
+
+    # Try explicit delivery repo
+    if delivery_repo is not None:
+        delivery_repo = Path(delivery_repo).resolve()
+        if has_zo_dir(delivery_repo):
+            pc = load_project_config(delivery_repo)
+            plan_path = delivery_repo / ".zo" / "plans" / f"{pc.project_name}.md"
+            return ProjectContext(
+                layout="zo-dir",
+                delivery_repo=delivery_repo,
+                plan_path=plan_path,
+                project_name=pc.project_name,
+                zo_root=zo_root,
+            )
+
+    # Try cwd detection
+    detected = _detect_delivery_repo(project_name)
+    if detected is not None:
+        pc = load_project_config(detected)
+        plan_path = detected / ".zo" / "plans" / f"{pc.project_name}.md"
+        return ProjectContext(
+            layout="zo-dir",
+            delivery_repo=detected,
+            plan_path=plan_path,
+            project_name=pc.project_name,
+            zo_root=zo_root,
+        )
+
+    # Fall back to legacy layout
+    main_root = _main_repo_root()
+    plan_path = main_root / "plans" / f"{project_name}.md"
+    target_path = main_root / "targets" / f"{project_name}.target.md"
+
+    # Resolve delivery repo from legacy target file
+    delivery_path = main_root.parent / f"{project_name}-delivery"
+    if target_path.exists():
+        from zo.target import parse_target
+
+        target = parse_target(target_path)
+        delivery_path = Path(target.target_repo).resolve()
+
+    return ProjectContext(
+        layout="legacy",
+        delivery_repo=delivery_path,
+        plan_path=plan_path,
+        project_name=project_name,
+        zo_root=zo_root,
+    )
+
+
+def _ensure_local_config(delivery_repo: Path) -> None:
+    """Check for .zo/local.yaml; auto-detect environment if missing.
+
+    On a new machine, local.yaml won't exist yet. This function detects
+    the environment (GPU, CUDA, Docker) and prompts for any paths that
+    can't be auto-detected (data_dir), then writes .zo/local.yaml.
+    """
+    from zo.project_config import LocalConfig, load_local_config, save_local_config
+
+    existing = load_local_config(delivery_repo)
+    if existing is not None:
+        return  # Already set up on this machine
+
+    from zo.environment import detect_environment
+
+    console.print(f"\n[{_AMBER}]New machine detected — setting up local config.[/]")
+
+    env = detect_environment()
+    gpu_names: list[str] = []
+    if env and env.gpu_names:
+        gpu_names = list(env.gpu_names) if not isinstance(env.gpu_names, list) else env.gpu_names
+
+    # Prompt for data directory (can't auto-detect)
+    data_dir = click.prompt(
+        "  Data directory (raw data path on this machine)",
+        default="", show_default=False,
+    )
+
+    local = LocalConfig(
+        data_dir=data_dir or None,
+        gpu_count=env.gpu_count if env else 0,
+        gpu_names=gpu_names,
+        cuda_version=env.cuda_version if env else None,
+        docker_available=env.docker_available if env else False,
+        gate_mode="supervised",
+        zo_repo_path=str(_zo_root()),
+    )
+    save_local_config(delivery_repo, local)
+
+    console.print(f"[green]Local config written:[/] {delivery_repo / '.zo' / 'local.yaml'}")
+    if env and env.gpu_count:
+        console.print(f"  [{_DIM}]GPUs: {env.gpu_count}x {', '.join(gpu_names)}[/]")
+    if env and env.cuda_version:
+        console.print(f"  [{_DIM}]CUDA: {env.cuda_version}[/]")
 
 
 def _main_repo_root() -> Path:
@@ -615,7 +793,7 @@ def _launch_and_monitor(
 
     console.print()
     if process.status == "completed":
-        console.print(f"[green bold]Session completed.[/]")
+        console.print("[green bold]Session completed.[/]")
     else:
         console.print(f"[red bold]Session ended with status:[/] {process.status}")
 
@@ -648,13 +826,15 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     - Fresh project (no state) -> build from scratch
     - Existing state -> continue from current phase
     - Plan edited since last run -> re-decompose and continue
+
+    Supports both .zo/ layout (plan in delivery repo) and legacy layout
+    (plan in ZO repo). When run from a delivery repo with .zo/, the
+    plan_path is resolved from .zo/plans/.
     """
     from zo.comms import CommsLogger
-    from zo.memory import MemoryManager
     from zo.orchestrator import Orchestrator
     from zo.plan import parse_plan, validate_plan
     from zo.semantic import SemanticIndex
-    from zo.target import parse_target
     from zo.wrapper import LifecycleWrapper
 
     zo_root = _zo_root()
@@ -670,16 +850,13 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 
     project_name = plan.frontmatter.project_name
 
-    # 2. Parse target file
-    target_path = zo_root / "targets" / f"{project_name}.target.md"
-    if not target_path.exists():
-        console.print(f"[red bold]Target file not found:[/] {target_path}")
-        raise SystemExit(1)
-    target = parse_target(target_path)
-
-    # 3. Initialize memory and detect mode
-    memory = MemoryManager(project_dir=zo_root, project_name=project_name)
+    # 2. Resolve project context (.zo/ or legacy)
+    ctx = _load_project_context(project_name)
+    target = ctx.make_target()
+    memory = ctx.make_memory()
     memory.initialize_project()
+
+    # 3. Detect mode from state
     state_check = memory.read_state()
     detected_mode = "build" if state_check.phase == "init" else "continue"
 
@@ -713,6 +890,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     orchestrator = Orchestrator(
         plan=plan, target=target, memory=memory, comms=comms,
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
+        plan_path=plan_path,
     )
     orchestrator.start_session()
 
@@ -741,6 +919,7 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         prompt += f"\n\n---\n\n# Additional Human Instructions\n\n{extra}\n"
 
     # 10. Launch, monitor, end session
+    delivery_path = Path(target.target_repo).resolve()
     wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
     _launch_and_monitor(
         wrapper=wrapper,
@@ -752,36 +931,89 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         no_tmux=no_tmux,
         gate_mode_file=memory.memory_root / "gate_mode",
         project_name=project_name,
-        delivery_repo=Path(target.target_repo),
-        add_dirs=[str(Path(target.target_repo).resolve())],
+        delivery_repo=delivery_path,
+        add_dirs=[str(delivery_path)],
     )
 
 
 @cli.command("continue")
-@click.argument("project_name")
+@click.argument("project_name", required=False, default=None)
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False),
+    default=None,
+    help="Path to delivery repo with .zo/ directory. "
+    "Use when reconnecting to a project on a new machine.",
+)
 @click.option(
     "--gate-mode",
     type=click.Choice(["supervised", "auto", "full-auto"]),
     default="supervised",
 )
 @click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
-def continue_(project_name: str, gate_mode: str, no_tmux: bool) -> None:
-    """Resume a paused project. Shorthand for zo build with the existing plan.
+def continue_(
+    project_name: str | None,
+    repo: str | None,
+    gate_mode: str,
+    no_tmux: bool,
+) -> None:
+    """Resume a paused project or reconnect on a new machine.
 
-    Finds plans/{project_name}.md and runs zo build on it.
+    Finds the project plan and runs zo build on it. Supports both
+    .zo/ layout (delivery repo) and legacy layout (ZO repo).
+
+    On a new machine, use --repo to point at the delivery repo::
+
+        zo continue --repo ~/my-project
+
+    If .zo/local.yaml is missing, ZO will auto-detect the environment
+    and prompt for any machine-specific paths before proceeding.
+
+    From inside the delivery repo (cwd has .zo/), project_name is
+    optional — it's read from .zo/config.yaml.
     """
+    from zo.project_config import has_zo_dir, load_project_config
+
+    # Resolve delivery repo from --repo flag or cwd
+    delivery = Path(repo).resolve() if repo else None
+
+    # If no project_name given, try to infer from .zo/config.yaml
+    if project_name is None:
+        detect_path = delivery or Path.cwd()
+        if has_zo_dir(detect_path):
+            pc = load_project_config(detect_path)
+            project_name = pc.project_name
+            if delivery is None:
+                delivery = detect_path
+        else:
+            console.print(
+                "[red bold]No project name given and no .zo/ found in cwd.[/]"
+            )
+            console.print(
+                "Usage: [bold]zo continue PROJECT[/] or "
+                "[bold]zo continue --repo /path/to/delivery[/]"
+            )
+            raise SystemExit(1)
+
     _show_banner(project=project_name, mode="continue")
 
-    zo_root = _zo_root()
-    plan_path = zo_root / "plans" / f"{project_name}.md"
+    # Load project context
+    pctx = _load_project_context(project_name, delivery_repo=delivery)
+
+    # If .zo/ layout and local.yaml is missing, set it up
+    if pctx.layout == "zo-dir":
+        _ensure_local_config(pctx.delivery_repo)
+
+    plan_path = pctx.plan_path
     if not plan_path.exists():
         console.print(f"[red bold]Plan not found:[/] {plan_path}")
         console.print("Run [bold]zo build plans/your-plan.md[/] first.")
         raise SystemExit(1)
 
     # Delegate to build
-    ctx = click.get_current_context()
-    ctx.invoke(build, plan_path=plan_path, gate_mode=gate_mode, no_tmux=no_tmux)
+    click_ctx = click.get_current_context()
+    click_ctx.invoke(
+        build, plan_path=plan_path, gate_mode=gate_mode, no_tmux=no_tmux,
+    )
 
 
 @cli.command("init")
@@ -1130,34 +1362,18 @@ def _init_commit_writes(
     layout_mode: str,
 ) -> None:
     """Actually write all init artifacts. Called after a successful
-    dry-run or directly when the user chose not to preview."""
+    dry-run or directly when the user chose not to preview.
+
+    Writes to BOTH locations for backward compatibility:
+    - .zo/ in delivery repo (new portable layout)
+    - Legacy locations in ZO repo (so older commands still work)
+    """
     from zo.memory import MemoryManager
+    from zo.project_config import ProjectConfig, save_project_config
     from zo.scaffold import scaffold_delivery as _scaffold
 
-    # Memory
-    memory = MemoryManager(project_dir=zo_root, project_name=project_name)
-    memory.initialize_project()
-    console.print(f"[green]Memory initialized:[/] {memory.memory_root}")
-
-    # Target file
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    if not target_path.exists():
-        target_path.write_text(target_content, encoding="utf-8")
-        console.print(f"[green]Target created:[/] {target_path}")
-        console.print(f"  [{_DIM}]Delivery repo:[/] {delivery_path}")
-        console.print(f"  [{_DIM}]Branch:[/] {branch}")
-    else:
-        console.print(f"[{_DIM}]Target already exists:[/] {target_path}")
-
-    # Plan template
-    plan_path.parent.mkdir(parents=True, exist_ok=True)
-    if not plan_path.exists():
-        plan_path.write_text(plan_content, encoding="utf-8")
-        console.print(f"[green]Plan template created:[/] {plan_path}")
-    else:
-        console.print(f"[{_DIM}]Plan already exists:[/] {plan_path}")
-
-    # Delivery repo scaffold (fresh) or overlay (existing)
+    # Delivery repo scaffold (fresh) or overlay (existing) — do this
+    # first so .zo/ directories exist before we write into them.
     if overlay:
         _scaffold(
             delivery_path, project_name,
@@ -1177,13 +1393,81 @@ def _init_commit_writes(
             overlay=True, layout_mode=layout_mode,
         )
 
+    # -- .zo/ layout (new, portable) --
+
+    # .zo/config.yaml — portable project config
+    zo_dir = delivery_path / ".zo"
+    zo_dir.mkdir(parents=True, exist_ok=True)
+    config_path = zo_dir / "config.yaml"
+    if not config_path.exists():
+        pc = ProjectConfig(
+            project_name=project_name,
+            branch=branch,
+            agent_working_dirs={
+                "data-engineer": "src/data/",
+                "model-builder": "src/model/",
+                "ml-engineer": "src/engineering/",
+                "inference": "src/inference/",
+                "oracle-qa": "reports/",
+                "test-engineer": "tests/",
+                "xai-agent": "reports/",
+                "domain-evaluator": "reports/",
+            },
+        )
+        save_project_config(delivery_path, pc)
+        console.print(f"[green]Project config created:[/] {config_path}")
+    else:
+        console.print(f"[{_DIM}]Project config already exists:[/] {config_path}")
+
+    # Memory in .zo/memory/ (portable)
+    zo_memory = MemoryManager(
+        project_dir=delivery_path,
+        project_name=project_name,
+        memory_root=zo_dir / "memory",
+    )
+    zo_memory.initialize_project()
+    console.print(f"[green]Memory initialized:[/] {zo_memory.memory_root}")
+
+    # Plan in .zo/plans/ (portable)
+    zo_plan_path = zo_dir / "plans" / f"{project_name}.md"
+    zo_plan_path.parent.mkdir(parents=True, exist_ok=True)
+    if not zo_plan_path.exists():
+        zo_plan_path.write_text(plan_content, encoding="utf-8")
+        console.print(f"[green]Plan template created:[/] {zo_plan_path}")
+    else:
+        console.print(f"[{_DIM}]Plan already exists:[/] {zo_plan_path}")
+
+    # -- Legacy layout (backward compat) --
+
+    # Legacy memory in ZO repo
+    legacy_memory = MemoryManager(
+        project_dir=zo_root, project_name=project_name,
+    )
+    legacy_memory.initialize_project()
+
+    # Legacy target file
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    if not target_path.exists():
+        target_path.write_text(target_content, encoding="utf-8")
+        console.print(f"  [{_DIM}]Legacy target:[/] {target_path}")
+
+    # Legacy plan
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    if not plan_path.exists():
+        plan_path.write_text(plan_content, encoding="utf-8")
+        console.print(f"  [{_DIM}]Legacy plan:[/] {plan_path}")
+
     console.print(f"\n[{_AMBER}]Project '{project_name}' ready.[/]")
     console.print("Next steps:")
     console.print(
         f"  1. Draft plan: [bold]zo draft --project {project_name}[/]"
     )
     console.print(
-        f"  2. Build: [bold]zo build plans/{project_name}.md[/]"
+        f"  2. Build: [bold]zo build {zo_plan_path}[/]"
+    )
+    console.print(
+        f"  3. Commit .zo/: [bold]cd {delivery_path} && "
+        f"git add .zo/ && git commit -m 'feat: add ZO project state'[/]"
     )
 
 
@@ -1485,14 +1769,258 @@ def _build_init_architect_prompt(*, project: str, hints: dict) -> str:
 
 @cli.command()
 @click.argument("project_name")
-def status(project_name: str) -> None:
-    """Show current project status from STATE.md."""
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo. If omitted, resolved from "
+    "targets/{project_name}.target.md.",
+)
+@click.option(
+    "--clean", is_flag=True,
+    help="Remove legacy artifacts from ZO repo after migration.",
+)
+def migrate(project_name: str, repo: str | None, clean: bool) -> None:
+    """Migrate project state from ZO repo to delivery repo .zo/ directory.
+
+    Copies memory (STATE.md, DECISION_LOG, PRIORS, sessions), plan, and
+    target config into the delivery repo's .zo/ directory, making the
+    project portable across machines via git.
+
+    After migration, commit .zo/ in the delivery repo::
+
+        cd /path/to/delivery && git add .zo/ && git commit
+
+    Use --clean to remove the old artifacts from the ZO repo after
+    verifying the migration succeeded.
+    """
+    import shutil
+
+    from zo.project_config import (
+        ProjectConfig,
+        has_zo_dir,
+        save_local_config,
+        save_project_config,
+    )
+
+    _show_banner(project=project_name, mode="migrate")
+
+    zo_root = _main_repo_root()
+
+    # Resolve delivery repo path
+    if repo:
+        delivery_path = Path(repo).resolve()
+    else:
+        target_path = zo_root / "targets" / f"{project_name}.target.md"
+        if not target_path.exists():
+            console.print(
+                f"[red bold]Target file not found:[/] {target_path}\n"
+                f"Use [bold]--repo /path/to/delivery[/] to specify the "
+                f"delivery repo path explicitly."
+            )
+            raise SystemExit(1)
+        from zo.target import parse_target
+
+        target = parse_target(target_path)
+        delivery_path = Path(target.target_repo).resolve()
+
+    if not delivery_path.is_dir():
+        console.print(f"[red bold]Delivery repo not found:[/] {delivery_path}")
+        raise SystemExit(1)
+
+    # Check if already migrated
+    if has_zo_dir(delivery_path):
+        console.print(
+            f"[{_DIM}]Delivery repo already has .zo/ — "
+            f"checking for missing files.[/]"
+        )
+
+    # Source paths (legacy ZO repo layout)
+    legacy_memory = zo_root / "memory" / project_name
+    legacy_plan = zo_root / "plans" / f"{project_name}.md"
+    legacy_target = zo_root / "targets" / f"{project_name}.target.md"
+
+    # Destination paths (.zo/ in delivery repo)
+    zo_dir = delivery_path / ".zo"
+    zo_memory = zo_dir / "memory"
+    zo_plans = zo_dir / "plans"
+
+    # Create .zo/ structure
+    for d in [zo_dir, zo_memory, zo_memory / "sessions", zo_plans]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Write .zo/.gitignore
+    gitignore = zo_dir / ".gitignore"
+    if not gitignore.exists():
+        gitignore.write_text(
+            "# Machine-specific config (paths, GPU info, gate mode)\n"
+            "local.yaml\n\n"
+            "# SQLite databases (regenerated from DECISION_LOG)\n"
+            "memory/index.db\n"
+            "memory/draft_index.db\n",
+            encoding="utf-8",
+        )
+
+    copied = 0
+
+    # Copy memory files
+    if legacy_memory.is_dir():
+        for f in ["STATE.md", "DECISION_LOG.md", "PRIORS.md"]:
+            src = legacy_memory / f
+            dst = zo_memory / f
+            if src.exists() and not dst.exists():
+                shutil.copy2(src, dst)
+                console.print(f"  [green]Copied:[/] {f}")
+                copied += 1
+            elif src.exists():
+                console.print(f"  [{_DIM}]Already exists:[/] {f}")
+
+        # Copy sessions
+        sessions_src = legacy_memory / "sessions"
+        sessions_dst = zo_memory / "sessions"
+        if sessions_src.is_dir():
+            for sf in sessions_src.iterdir():
+                if sf.is_file():
+                    dst = sessions_dst / sf.name
+                    if not dst.exists():
+                        shutil.copy2(sf, dst)
+                        copied += 1
+            session_count = sum(1 for _ in sessions_src.iterdir())
+            if session_count:
+                console.print(
+                    f"  [green]Copied:[/] {session_count} session files"
+                )
+
+        # Copy index.db if exists (will be regenerated but saves time)
+        for db in ["index.db", "draft_index.db"]:
+            src = legacy_memory / db
+            dst = zo_memory / db
+            if src.exists() and not dst.exists():
+                shutil.copy2(src, dst)
+
+        # Copy gate_mode into local.yaml
+        gm_src = legacy_memory / "gate_mode"
+        gm_content = ""
+        if gm_src.exists():
+            gm_content = gm_src.read_text(encoding="utf-8").strip()
+    else:
+        console.print(f"  [{_DIM}]No legacy memory found at {legacy_memory}[/]")
+        gm_content = ""
+
+    # Always write local.yaml — even without gate_mode, the user needs
+    # environment detection on the current machine for portability.
+    from zo.environment import detect_environment
+    from zo.project_config import LocalConfig
+
+    local_path = zo_dir / "local.yaml"
+    if not local_path.exists():
+        env = detect_environment()
+        local = LocalConfig(
+            gate_mode=gm_content or "supervised",
+            gpu_count=env.gpu_count if env else 0,
+            cuda_version=env.cuda_version if env else None,
+            docker_available=env.docker_available if env else False,
+            zo_repo_path=str(zo_root),
+        )
+        save_local_config(delivery_path, local)
+        console.print(
+            f"  [green]Local config written[/] (gate_mode="
+            f"{gm_content or 'supervised'})"
+        )
+
+    # Copy plan
+    if legacy_plan.exists():
+        dst = zo_plans / f"{project_name}.md"
+        if not dst.exists():
+            shutil.copy2(legacy_plan, dst)
+            console.print(f"  [green]Copied:[/] plan → .zo/plans/{project_name}.md")
+            copied += 1
+        else:
+            console.print(f"  [{_DIM}]Plan already exists in .zo/[/]")
+    else:
+        console.print(f"  [{_DIM}]No legacy plan found[/]")
+
+    # Generate .zo/config.yaml from target file
+    config_path = zo_dir / "config.yaml"
+    if not config_path.exists() and legacy_target.exists():
+        from zo.target import parse_target
+
+        target = parse_target(legacy_target)
+        pc = ProjectConfig(
+            project_name=project_name,
+            branch=target.target_branch,
+            agent_working_dirs=dict(target.agent_working_dirs),
+            zo_only_paths=[".zo/memory/", ".zo/plans/"],
+            git_author_name=target.git_author_name,
+            git_author_email=target.git_author_email,
+            enforce_isolation=target.enforce_isolation,
+        )
+        save_project_config(delivery_path, pc)
+        console.print("  [green]Config created:[/] .zo/config.yaml")
+        copied += 1
+    elif not config_path.exists():
+        # No target file — create minimal config
+        pc = ProjectConfig(project_name=project_name)
+        save_project_config(delivery_path, pc)
+        console.print("  [green]Config created:[/] .zo/config.yaml (minimal)")
+        copied += 1
+
+    # Summary
+    console.print(f"\n[{_AMBER}]Migration complete:[/] {copied} files copied")
+    console.print(
+        f"\nNext: [bold]cd {delivery_path} && git add .zo/ && "
+        f"git commit -m 'feat: add ZO project state'[/]"
+    )
+    console.print(
+        f"Then on new machine: [bold]zo continue --repo {delivery_path}[/]"
+    )
+
+    # Clean up legacy artifacts if requested
+    if clean:
+        console.print(f"\n[{_AMBER}]Cleaning legacy artifacts...[/]")
+        if legacy_memory.is_dir():
+            shutil.rmtree(legacy_memory)
+            console.print(f"  Removed: {legacy_memory}")
+        if legacy_plan.exists():
+            legacy_plan.unlink()
+            console.print(f"  Removed: {legacy_plan}")
+        if legacy_target.exists():
+            legacy_target.unlink()
+            console.print(f"  Removed: {legacy_target}")
+        console.print("[green]Legacy cleanup done.[/]")
+
+
+@cli.command()
+@click.argument("project_name", required=False, default=None)
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def status(project_name: str | None, repo: str | None) -> None:
+    """Show current project status from STATE.md.
+
+    Supports both .zo/ layout (delivery repo) and legacy layout.
+    From inside a delivery repo with .zo/, project_name is optional.
+    """
+    from zo.project_config import has_zo_dir, load_project_config
+
+    # Resolve project name from .zo/ if not given
+    delivery = Path(repo).resolve() if repo else None
+    if project_name is None:
+        detect_path = delivery or Path.cwd()
+        if has_zo_dir(detect_path):
+            pc = load_project_config(detect_path)
+            project_name = pc.project_name
+            if delivery is None:
+                delivery = detect_path
+        else:
+            console.print(
+                "[red bold]No project name given and no .zo/ found in cwd.[/]"
+            )
+            raise SystemExit(1)
+
     _show_banner(project=project_name, mode="status")
 
-    from zo.memory import MemoryManager
-
-    zo_root = _zo_root()
-    memory = MemoryManager(project_dir=zo_root, project_name=project_name)
+    pctx = _load_project_context(project_name, delivery_repo=delivery)
+    memory = pctx.make_memory()
 
     state_path = memory.memory_root / "STATE.md"
     if not state_path.exists():
@@ -1545,8 +2073,10 @@ def gates() -> None:
 def gates_set(mode: str, project: str) -> None:
     """Set the gate mode for a project mid-session.
 
-    Writes the mode to memory/{project}/gate_mode so that
+    Writes the mode to the project's gate_mode file so that
     the running orchestrator and wrapper pick it up dynamically.
+
+    Supports both .zo/ layout and legacy layout.
 
     Valid modes: supervised, auto, full-auto.
 
@@ -1555,10 +2085,8 @@ def gates_set(mode: str, project: str) -> None:
         zo gates set auto --project my-project
         zo gates set full-auto -p my-project
     """
-    from zo.memory import MemoryManager
-
-    zo_root = _zo_root()
-    memory = MemoryManager(project_dir=zo_root, project_name=project)
+    pctx = _load_project_context(project)
+    memory = pctx.make_memory()
 
     if not memory.memory_root.exists():
         console.print(
@@ -1591,23 +2119,17 @@ def watch_training(project: str, interval: float) -> None:
         zo watch-training --project my-project
     """
     from zo.plan import parse_plan
-    from zo.target import parse_target
     from zo.training_display import run_live_display
 
-    zo_root = _zo_root()
-
-    # Resolve delivery repo path from target file
-    target_path = zo_root / "targets" / f"{project}.target.md"
-    if not target_path.exists():
-        console.print(f"[red bold]Target file not found:[/] {target_path}")
-        raise SystemExit(1)
-    target = parse_target(target_path)
+    # Resolve delivery repo from context (.zo/ or legacy)
+    pctx = _load_project_context(project)
+    target = pctx.make_target()
     delivery_repo = Path(target.target_repo)
 
     # Try to get oracle target from plan
     target_metric: float | None = None
     target_metric_name = ""
-    plan_path = zo_root / "plans" / f"{project}.md"
+    plan_path = pctx.plan_path
     if plan_path.exists():
         try:
             plan = parse_plan(plan_path)
