@@ -873,3 +873,36 @@ New `.zo/` directory structure in delivery repos. `zo migrate` command for exist
 `scripts/validate-docs.sh` Check 8: `git ls-files | xargs grep -liE "$CLIENT_BLOCKLIST"`.
 HARD FAIL if any match. PreToolUse hook on `git commit` runs validate-docs.sh,
 so commits with client names are physically blocked.
+
+---
+
+## PR-031: Fixed Sleeps for External Process Readiness Are Machine-Dependent — Poll Instead
+**Source:** Session 018 (2026-04-15), `zo continue` on GPU server — blank Claude Code session
+**Root cause category:** incomplete_rule
+**Failure:** `_launch_tmux()` used `time.sleep(8)` before pasting the prompt into Claude Code's TUI. On the Mac Mini this was sufficient. On the GPU server (different hardware, different cold-start latency) the TUI wasn't ready after 8s — the paste was silently dropped and Claude Code appeared blank with no prompt submitted.
+
+### Rules
+
+1. **Never use a fixed sleep to wait for an external process to become ready.**
+   Fixed sleeps are calibrated on one machine and break on another. The only
+   reliable approach is polling for a readiness signal. For tmux panes, use
+   `tmux capture-pane -p` to read content and detect when the TUI has rendered.
+   - *Failure ref:* 3s (PR-001), increased to 8s (PR-022), still failed on GPU server.
+
+2. **Poll with stability detection: content must be substantial AND settled.**
+   Check that (a) pane has >100 chars (TUI frame rendered, not just a shell) and
+   (b) content is identical across 2 consecutive polls (rendering complete, not
+   mid-draw). This adapts to any machine speed automatically.
+
+3. **After paste, verify it was received — retry once if not.**
+   `tmux paste-buffer` is fire-and-forget with no error if the target isn't ready.
+   After pasting + Enter, check if pane content changed. If it still looks like an
+   empty input, retry the paste once. Log the prompt file path for manual recovery
+   if retry also fails.
+
+### Verified Solution
+
+`_wait_for_tui_ready()` polls `tmux capture-pane` every 1s for up to 30s, requiring
+2 consecutive stable readings with >100 chars. `_verify_prompt_submitted()` checks
+post-paste content and retries once if the paste appears to have missed. Falls back
+gracefully with logged error + prompt file path for manual recovery.
