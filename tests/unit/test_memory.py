@@ -556,3 +556,23 @@ class TestRenderParse:
         assert len(parsed) == 1
         assert parsed[0].statement == "Learning rate 3e-4 works for BERT fine-tuning"
         assert parsed[0].superseded_by is None
+
+
+# ---------------------------------------------------------------------------
+# MemoryManager — memory_root override
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryRootOverride:
+    """MemoryManager respects the optional memory_root kwarg."""
+
+    def test_custom_memory_root(self, tmp_path: Path) -> None:
+        custom_root = tmp_path / "custom" / "memory"
+        mm = MemoryManager(
+            project_dir=tmp_path, project_name="proj", memory_root=custom_root,
+        )
+        assert mm.memory_root == custom_root
+
+    def test_default_memory_root(self, tmp_path: Path) -> None:
+        mm = MemoryManager(project_dir=tmp_path, project_name="proj")
+        assert mm.memory_root == tmp_path / "memory" / "proj"

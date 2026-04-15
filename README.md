@@ -15,7 +15,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-464_passing-F0C040?style=flat-square&labelColor=080808)](#status)
+[![Tests](https://img.shields.io/badge/tests-521_passing-F0C040?style=flat-square&labelColor=080808)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
 [![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
 
@@ -103,9 +103,11 @@ Shows a brand panel, phase review with subtasks/agents/oracle criteria, and prom
 
 ```bash
 zo continue my-project
+zo continue --repo /path/to/delivery    # auto-detect project from .zo/config.yaml
+zo continue                              # auto-detect if cwd has .zo/config.yaml
 ```
 
-Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path.
+Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path. With `--repo`, reads project config from the delivery repo's `.zo/` directory. If cwd contains `.zo/config.yaml`, the project name is auto-detected.
 
 ### `zo draft` — Draft a plan with scout team
 
@@ -143,9 +145,20 @@ Runs local-only validation: Claude CLI, tmux, plan parsing, agent definitions, m
 
 ```bash
 zo status my-project
+zo status --repo /path/to/delivery    # read state from .zo/memory/
+zo status                              # auto-detect if cwd has .zo/config.yaml
 ```
 
-Displays the current `STATE.md`: active phase, blockers, next steps, agent statuses.
+Displays the current `STATE.md`: active phase, blockers, next steps, agent statuses. With `--repo`, reads state from the delivery repo's `.zo/memory/` directory.
+
+### `zo migrate` — Portable project memory
+
+```bash
+zo migrate my-project
+zo migrate my-project --repo /path/to/delivery --clean
+```
+
+Copies project state (memory, plan, config) into the delivery repo's `.zo/` directory, making the project portable across machines via `git pull`. Use `--clean` to remove legacy artifacts from the ZO repo after migration.
 
 ### `zo watch-training` — Live training dashboard
 
@@ -336,6 +349,9 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 │  src/ models/ reports/ tests/ — zero ZO artifacts           │
 │  Isolation enforced via target.py zo_only_paths blocklist   │
 │                                                             │
+│  Optional: .zo/ directory for portable project memory       │
+│  (config, state, plans — travels with the repo via git)     │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -391,7 +407,7 @@ Over time, `PRIORS.md` accumulates domain knowledge. The same mistake never happ
 ```
 zero-operators/
 ├── src/zo/                     # Platform code (10 modules)
-│   ├── cli.py                  # CLI: zo build/continue/init/status/draft/gates
+│   ├── cli.py                  # CLI: zo build/continue/init/status/draft/gates/migrate
 │   ├── draft.py                # Conversational plan generation (with or without source docs)
 │   ├── plan.py                 # Plan parser and validator (8 sections)
 │   ├── target.py               # Target file parser, isolation enforcer
