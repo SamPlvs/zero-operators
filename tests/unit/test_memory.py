@@ -563,6 +563,101 @@ class TestRenderParse:
 # ---------------------------------------------------------------------------
 
 
+class TestParseStateYamlLists:
+    """parse_state handles both bracket and YAML multi-line list formats."""
+
+    def test_bracket_format_next_steps(self) -> None:
+        text = (
+            "# STATE\n"
+            "timestamp: 2026-04-15T10:00:00Z\n"
+            "mode: build\n"
+            "phase: phase_2\n"
+            "last_completed_subtask: gate_close\n"
+            "active_blockers: []\n"
+            "next_steps: [Do thing A, Do thing B, Do thing C]\n"
+            "active_agents: []\n"
+            "git_head: abc123\n"
+        )
+        state = _parse_state(text)
+        assert state.next_steps == ["Do thing A", "Do thing B", "Do thing C"]
+
+    def test_yaml_multiline_next_steps(self) -> None:
+        text = (
+            "# STATE\n"
+            "timestamp: 2026-04-15T10:00:00Z\n"
+            "mode: build\n"
+            "phase: phase_2\n"
+            "last_completed_subtask: gate_close\n"
+            "active_blockers: []\n"
+            "next_steps:\n"
+            "  - Do thing A\n"
+            "  - Do thing B\n"
+            "  - Do thing C\n"
+            "active_agents: []\n"
+            "git_head: abc123\n"
+        )
+        state = _parse_state(text)
+        assert state.next_steps == ["Do thing A", "Do thing B", "Do thing C"]
+
+    def test_yaml_multiline_blockers(self) -> None:
+        text = (
+            "# STATE\n"
+            "timestamp: 2026-04-15T10:00:00Z\n"
+            "mode: build\n"
+            "phase: phase_2\n"
+            "last_completed_subtask: gate_close\n"
+            "active_blockers:\n"
+            "  - gpu_server_setup\n"
+            "  - data_not_transferred\n"
+            "next_steps: [stuff]\n"
+            "active_agents: []\n"
+            "git_head: abc123\n"
+        )
+        state = _parse_state(text)
+        assert state.active_blockers == ["gpu_server_setup", "data_not_transferred"]
+
+    def test_mixed_formats(self) -> None:
+        """Bracket blockers + YAML next_steps in the same file."""
+        text = (
+            "# STATE\n"
+            "timestamp: 2026-04-15T10:00:00Z\n"
+            "mode: build\n"
+            "phase: phase_2\n"
+            "last_completed_subtask: gate_close\n"
+            "active_blockers: [gpu_setup]\n"
+            "next_steps:\n"
+            "  - Docker build\n"
+            "  - Re-align data\n"
+            "active_agents: []\n"
+            "git_head: abc123\n"
+        )
+        state = _parse_state(text)
+        assert state.active_blockers == ["gpu_setup"]
+        assert state.next_steps == ["Docker build", "Re-align data"]
+
+    def test_round_trip_preserves_yaml_input(self) -> None:
+        """YAML multi-line input → parse → render → parse gives same data."""
+        text = (
+            "# STATE\n"
+            "timestamp: 2026-04-15T10:00:00Z\n"
+            "mode: build\n"
+            "phase: phase_2\n"
+            "last_completed_subtask: gate_close\n"
+            "active_blockers: [gpu_setup]\n"
+            "next_steps:\n"
+            "  - Docker build\n"
+            "  - Re-align data\n"
+            "  - Run tests\n"
+            "active_agents: []\n"
+            "git_head: abc123\n"
+        )
+        state1 = _parse_state(text)
+        rendered = _render_state(state1)
+        state2 = _parse_state(rendered)
+        assert state2.next_steps == state1.next_steps
+        assert state2.active_blockers == state1.active_blockers
+
+
 class TestMemoryRootOverride:
     """MemoryManager respects the optional memory_root kwarg."""
 

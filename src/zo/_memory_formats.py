@@ -120,10 +120,18 @@ _PHASE_LINE_RE = re.compile(r"^(phase_\d+):\s*(\w+)\s*(.*)")
 def parse_state(text: str) -> SessionState:
     """Parse STATE.md text into a SessionState model.
 
+    Supports two list formats:
+    - Bracket: ``next_steps: [a, b, c]``
+    - YAML multi-line: ``next_steps:\\n  - a\\n  - b\\n  - c``
+
     Raises:
         ValueError: If the text cannot be parsed.
     """
     kv: dict[str, str] = {}
+    # Multi-line YAML list accumulation: when a key has an empty value
+    # and subsequent lines start with "- ", collect them into the key.
+    yaml_list_items: dict[str, list[str]] = {}
+    current_list_key: str | None = None
     phase_states: dict[str, str] = {}
     completed_by_phase: dict[str, list[str]] = {}
     in_phases_section = False
@@ -132,6 +140,7 @@ def parse_state(text: str) -> SessionState:
         stripped = line.strip()
         if stripped == "## Phases":
             in_phases_section = True
+            current_list_key = None
             continue
         if stripped.startswith("## ") and in_phases_section:
             in_phases_section = False
@@ -143,11 +152,26 @@ def parse_state(text: str) -> SessionState:
                 completed_by_phase[pid] = _parse_bracket_list(rest)
             continue
         if stripped.startswith("#") or not stripped:
+            current_list_key = None
             continue
+
+        # Collect YAML multi-line list items (lines starting with "- ")
+        if stripped.startswith("- ") and current_list_key is not None:
+            item = stripped[2:].strip()
+            if item:
+                yaml_list_items.setdefault(current_list_key, []).append(item)
+            continue
+
         if ":" not in stripped:
+            current_list_key = None
             continue
         key, _, value = stripped.partition(":")
-        kv[key.strip()] = value.strip()
+        key = key.strip()
+        value = value.strip()
+        kv[key] = value
+
+        # If value is empty, the next lines might be YAML list items
+        current_list_key = key if not value or value == "[]" else None
 
     if not kv:
         raise ValueError("STATE.md contains no parseable key-value pairs")
@@ -163,7 +187,11 @@ def parse_state(text: str) -> SessionState:
         kwargs["last_completed_subtask"] = None if val == "null" else val
     for list_key in ("active_blockers", "next_steps", "active_agents"):
         if list_key in kv:
-            kwargs[list_key] = _parse_bracket_list(kv[list_key])
+            parsed = _parse_bracket_list(kv[list_key])
+            # Fall back to YAML multi-line items if bracket parse was empty
+            if not parsed and list_key in yaml_list_items:
+                parsed = yaml_list_items[list_key]
+            kwargs[list_key] = parsed
     if "git_head" in kv:
         val = kv["git_head"]
         kwargs["git_head"] = None if val == "null" else val
