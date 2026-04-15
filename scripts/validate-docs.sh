@@ -223,6 +223,34 @@ fi
 
 echo ""
 
+# Check 8: Client confidentiality — no project-specific identifiers in tracked files
+# This is a HARD FAIL, not a warning. Client names in a public repo is a legal risk.
+# The blocklist is maintained here. Add new project aliases to the grep pattern
+# when onboarding new clients.
+
+echo -e "${DIM}Check 8: Client confidentiality...${RESET}"
+# Blocklist: add client project identifiers, real names, locations, product codes
+# that must never appear in tracked ZO files. Use | to separate patterns.
+# Keep patterns lowercase — grep -i handles case-insensitive matching.
+CLIENT_BLOCKLIST="ivl_f5|ivl f5|indorama|port neches|pontbe|f5lb|f5ai6406|f5ai9518|f5ac2658"
+# Search tracked files only (not gitignored). Exclude this script itself.
+LEAKS=$(git ls-files -- '*.md' '*.py' '*.yaml' '*.yml' '*.json' '*.sh' \
+    | grep -v 'validate-docs.sh' \
+    | xargs grep -liE "$CLIENT_BLOCKLIST" 2>/dev/null || true)
+if [[ -z "$LEAKS" ]]; then
+    pass "No client identifiers found in tracked files"
+else
+    LEAK_COUNT=$(echo "$LEAKS" | wc -l | tr -d ' ')
+    fail "Client identifiers found in ${LEAK_COUNT} tracked file(s):"
+    echo "$LEAKS" | while read -r f; do
+        echo -e "    ${RED}${f}${RESET}"
+    done
+    echo -e "    ${DIM}Blocklist: ${CLIENT_BLOCKLIST}${RESET}"
+    echo -e "    ${DIM}Use project aliases (prod-001, prod-002) instead.${RESET}"
+fi
+
+echo ""
+
 # ─────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────

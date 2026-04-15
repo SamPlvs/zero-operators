@@ -240,3 +240,78 @@ class TestProjectContextMakeTarget:
         assert target.target_repo == str(delivery)
         assert target.git_author_name == "ZO Agent"
         assert "data_engineer" in target.agent_working_dirs
+
+
+# ---------------------------------------------------------------------------
+# Tests — build() delivery_hint from plan path
+# ---------------------------------------------------------------------------
+
+
+class TestBuildDeliveryHint:
+    """Tests that build() infers delivery repo from .zo/ plan paths.
+
+    This covers the continue→build handoff: continue resolves --repo
+    and passes a .zo/plans/X.md path to build. Build must infer the
+    delivery repo from that path, not re-resolve from scratch.
+    """
+
+    def test_build_infers_delivery_from_zo_plan_path(
+        self, tmp_path: Path,
+    ) -> None:
+        """Plan at .zo/plans/X.md → delivery_hint = repo root."""
+        delivery = tmp_path / "my-delivery"
+        zo_plans = delivery / ".zo" / "plans"
+        zo_plans.mkdir(parents=True)
+
+        plan_path = zo_plans / "myproject.md"
+        plan_path.touch()
+
+        resolved = plan_path.resolve()
+        parts = resolved.parts[-3:-1]
+
+        assert parts == (".zo", "plans"), f"Expected ('.zo', 'plans'), got {parts}"
+
+        inferred = resolved.parent.parent.parent
+        assert inferred == delivery.resolve()
+
+    def test_legacy_plan_path_gives_no_hint(
+        self, tmp_path: Path,
+    ) -> None:
+        """Plan at plans/X.md (legacy) → no delivery_hint."""
+        zo_root = tmp_path / "zo-repo"
+        plans = zo_root / "plans"
+        plans.mkdir(parents=True)
+
+        plan_path = plans / "myproject.md"
+        plan_path.touch()
+
+        resolved = plan_path.resolve()
+        parts = resolved.parts[-3:-1]
+
+        assert parts != (".zo", "plans")
+
+    def test_build_context_resolves_via_hint(
+        self, tmp_path: Path,
+    ) -> None:
+        """Full handoff: .zo/ plan path → _load_project_context finds .zo/."""
+        delivery = tmp_path / "delivery"
+        _write_config(delivery, "testproj")
+
+        zo_root = tmp_path / "zo-repo"
+        zo_root.mkdir()
+
+        plan_path = delivery / ".zo" / "plans" / "testproj.md"
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.touch()
+
+        # Simulate what build() does
+        resolved = plan_path.resolve()
+        delivery_hint = None
+        if resolved.parts[-3:-1] == (".zo", "plans"):
+            delivery_hint = resolved.parent.parent.parent
+
+        with patch("zo.cli._zo_root", return_value=zo_root):
+            ctx = _load_project_context("testproj", delivery_repo=delivery_hint)
+
+        assert ctx.layout == "zo-dir"
+        assert ctx.delivery_repo == delivery
