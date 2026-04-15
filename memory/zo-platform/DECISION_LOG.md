@@ -641,3 +641,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** User moved prod-001 from Mac Mini to GPU server. `zo status` failed — memory was gitignored in ZO (by design, for confidentiality) but that makes it non-portable. The delivery repo is private, committed to git, and already travels between machines via `git pull`. Putting project state there solves portability without compromising confidentiality. Separate `local.yaml` (gitignored) from `config.yaml` (committed) handles machine-specific vs portable config cleanly.
 **Alternatives considered:** (1) scp memory between machines — manual, error-prone, doesn't scale. (2) Track memory in ZO repo — violates confidentiality, ZO is public. (3) Separate private config repo — over-engineered, adds a third repo. (4) `.zo/` in delivery repo (chosen) — project state travels with the project, zero confidentiality risk.
 **Outcome:** New `project_config.py` module, MemoryManager `memory_root` override, scaffold `.zo/` dirs, CLI discovery layer (`_detect_delivery_repo`, `_load_project_context`), `zo migrate` command, `zo continue --repo` enhancement. Backward compatible — legacy layout still works.
+
+---
+
+## Decision: 2026-04-15T12:00:00Z
+**Type:** BUGFIX
+**Title:** Every CLI command must accept --repo for .zo/ layout resolution
+**Decision:** Fixed three issues: (1) `build()` infers delivery repo from plan path when it's inside `.zo/plans/` (fixes continue→build handoff). (2) `gates_set` gains `--repo` option. (3) `watch_training` gains `--repo` option. Added integration tests for the plan-path→delivery-repo inference.
+**Rationale:** First live `zo continue --repo` on GPU server (4x H200) crashed with `FileNotFoundError: targets/ivl_f5.target.md`. The continue command correctly resolved `.zo/` but build re-resolved without the hint. Same class of bug existed in gates_set and watch_training. Self-evolution protocol: fix the immediate bug AND fix every other command with the same pattern AND add a prior (PR-029) so new commands include `--repo` from the start.
+**Alternatives considered:** (1) Pass delivery_repo as a hidden click parameter — Click doesn't support invisible params well across ctx.invoke(). (2) Store delivery_repo in a module-level variable — global state, fragile. (3) Infer from plan path (chosen) — plan path is already passed, no new params needed.
+**Outcome:** PR-029 added to PRIORS. 3 integration tests added. All commands that use `_load_project_context()` now accept `--repo`.

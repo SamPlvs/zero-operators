@@ -129,7 +129,7 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 last_checkpoint: 2026-04-15T12:00:00Z
 last_session: session-018
 branch: claude/lucid-swirles (worktree)
-test_count: 521 passed, 7 skipped (ZO); 297 passed (prod-001)
+test_count: 524 passed, 7 skipped (ZO); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure)

@@ -814,3 +814,31 @@ Switch `align.py` from `filter_allowed_tags()` to `filter_excluded_tags()`. Mark
 ### Verified Solution
 
 New `.zo/` directory structure in delivery repos. `zo migrate` command for existing projects. `zo continue --repo` for reconnecting on new machines. `_detect_delivery_repo()` + `_load_project_context()` in CLI for dual-layout support (legacy + `.zo/`).
+
+---
+
+## PR-029: Every Command That Resolves Project Context Must Accept --repo
+**Source:** Session 018 (2026-04-15), first `zo continue --repo` on GPU server
+**Root cause category:** incomplete_rule
+**Failure:** `zo continue --repo ~/ivl_f5` correctly resolved the `.zo/` layout and found the plan at `.zo/plans/ivl_f5.md`. But `continue_` delegates to `build()` via `ctx.invoke()`, and `build()` re-called `_load_project_context(project_name)` without the `--repo` hint. Build fell back to legacy layout, looked for `targets/ivl_f5.target.md` in the ZO repo, and crashed with `FileNotFoundError`. Same class of bug existed in `gates_set` and `watch_training` — neither accepted `--repo`.
+
+### Rules
+
+1. **Every CLI command that calls `_load_project_context()` must accept a `--repo` option and pass it as `delivery_repo`.**
+   Without this, the command can only find projects via cwd detection or legacy layout. On a new machine where cwd is the ZO repo (not the delivery repo), both fail. Commands affected: build, continue, status, gates set, watch-training.
+   - *Failure ref:* `zo continue --repo ~/ivl_f5` → build() → `FileNotFoundError: targets/ivl_f5.target.md`
+
+2. **When one command delegates to another via `ctx.invoke()`, context must flow through the call.**
+   `continue_` resolved the delivery repo but passed only `plan_path` to `build()`. The fix: `build()` infers the delivery repo from the plan path when it's inside `.zo/plans/`. This is a generic pattern: any command that delegates must either pass context explicitly or encode it in the arguments.
+   - *Failure ref:* `plan_path=/home/sam/ivl_f5/.zo/plans/ivl_f5.md` was passed but delivery repo was not.
+
+3. **Test every cross-machine code path, not just the happy path.**
+   The original tests verified `.zo/` detection and `_load_project_context()` individually. None tested the full `continue → build` delegation with a `.zo/` plan path. The bug was in the seam between two tested components.
+   - *Failure ref:* 521 tests passed, 0 tested the actual continue→build handoff.
+
+### Verified Solution
+
+1. `build()` infers `delivery_hint` from `plan_path.resolve().parts[-3:-1] == (".zo", "plans")`
+2. `gates_set` and `watch_training` gain `--repo` options
+3. Integration test `TestBuildDeliveryHint` verifies the plan-path → delivery-repo inference
+4. **Rule for future commands:** any new command that uses `_load_project_context()` MUST include `--repo`
