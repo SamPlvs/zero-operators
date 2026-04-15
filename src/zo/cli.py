@@ -851,7 +851,12 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
     project_name = plan.frontmatter.project_name
 
     # 2. Resolve project context (.zo/ or legacy)
-    ctx = _load_project_context(project_name)
+    # If the plan lives inside a .zo/plans/ directory, infer delivery repo
+    # from the plan path so build inherits context from continue --repo.
+    delivery_hint: Path | None = None
+    if plan_path.resolve().parts[-3:-1] == (".zo", "plans"):
+        delivery_hint = plan_path.resolve().parent.parent.parent
+    ctx = _load_project_context(project_name, delivery_repo=delivery_hint)
     target = ctx.make_target()
     memory = ctx.make_memory()
     memory.initialize_project()
