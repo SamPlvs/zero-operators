@@ -171,13 +171,14 @@ class LifecycleWrapper:
             capture_output=True, text=True, timeout=10,
         )
 
-        # 3. Wait for TUI to initialize before pasting.
-        #    Claude Code's TUI can take 5-10s to fully render on first
-        #    launch (extensions, hooks, memory loading).  The original
-        #    3s wait caused blank-session bugs where the paste arrived
-        #    before the input field was ready.  8s covers cold starts
-        #    with hooks and CLAUDE.md loading.
-        time.sleep(8)
+        # 3. Wait for Claude Code TUI to become ready for input.
+        #    Instead of a fixed sleep (fragile — differs per machine),
+        #    poll the tmux pane content until the TUI has rendered.
+        #    Claude Code shows its interface (box-drawing chars, model
+        #    name, input area) once ready.  We detect this by checking
+        #    that the pane has substantial content and has stabilised
+        #    (same content for 2 consecutive polls).
+        self._wait_for_tui_ready(pane_id, timeout_seconds=30)
 
         # 4. Load the prompt into tmux's paste buffer and paste it
         #    into the Claude TUI input field.
@@ -190,12 +191,18 @@ class LifecycleWrapper:
             capture_output=True, text=True, timeout=10,
         )
 
-        # 5. Send Enter to submit the prompt.
+        # 5. Send Enter to submit the prompt.  Wait briefly for the
+        #    paste to be ingested by the TUI before pressing Enter.
         time.sleep(1)
         subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, "Enter"],
             capture_output=True, text=True, timeout=10,
         )
+
+        # 6. Verify the prompt was submitted by checking that pane
+        #    content changed after the paste (not still showing the
+        #    empty input field).
+        self._verify_prompt_submitted(pane_id, prompt_file)
 
         lead = LeadProcess(
             pid=None, status=AgentStatus.SPAWNING,
@@ -211,6 +218,129 @@ class LifecycleWrapper:
         self._stdout_fh = None
         self._stderr_fh = None
         return lead
+
+    @staticmethod
+    def _capture_pane(pane_id: str) -> str:
+        """Capture the current visible content of a tmux pane."""
+        try:
+            result = subprocess.run(
+                ["tmux", "capture-pane", "-p", "-t", pane_id],
+                capture_output=True, text=True, timeout=5,
+            )
+            return result.stdout
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _wait_for_tui_ready(
+        self, pane_id: str, *, timeout_seconds: int = 30,
+    ) -> None:
+        """Poll tmux pane until Claude Code TUI is ready for input.
+
+        Replaces the fragile fixed ``time.sleep(8)``.  Checks:
+        1. Pane has substantial content (TUI rendered, not just shell)
+        2. Content has stabilised (same for 2 consecutive polls)
+
+        Falls back to the full timeout if detection fails — never
+        shorter than a safe minimum.
+        """
+        min_content_len = 100  # TUI frame + header = well over 100 chars
+        poll_interval = 1.0
+        stable_required = 2  # consecutive polls with same content
+        min_wait = 3  # always wait at least 3s for process to start
+
+        time.sleep(min_wait)
+
+        prev_content = ""
+        stable_count = 0
+        elapsed = min_wait
+
+        while elapsed < timeout_seconds:
+            content = self._capture_pane(pane_id)
+            content_stripped = content.strip()
+
+            if len(content_stripped) > min_content_len:
+                if content_stripped == prev_content:
+                    stable_count += 1
+                    if stable_count >= stable_required:
+                        self._comms.log_checkpoint(
+                            agent="wrapper",
+                            phase="launch",
+                            subtask="tui-ready",
+                            progress=(
+                                f"TUI ready after {elapsed:.0f}s "
+                                f"({len(content_stripped)} chars)"
+                            ),
+                        )
+                        return
+                else:
+                    stable_count = 0
+                prev_content = content_stripped
+
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+        # Timeout — log warning but proceed (paste may still work)
+        self._comms.log_error(
+            agent="wrapper",
+            error_type="tui_timeout",
+            severity="warning",
+            description=(
+                f"TUI readiness not detected after {timeout_seconds}s. "
+                f"Proceeding with paste — prompt may need manual "
+                f"resubmission from the saved prompt file."
+            ),
+        )
+
+    def _verify_prompt_submitted(
+        self, pane_id: str, prompt_file: Path,
+    ) -> None:
+        """Check that the paste was received by comparing pane content.
+
+        If the pane still looks like an empty input field (no prompt
+        text visible), attempt one retry.  If retry also fails, log
+        a warning with the prompt file path for manual recovery.
+        """
+        time.sleep(2)  # give Claude a moment to process
+        content = self._capture_pane(pane_id)
+
+        # Check for signs that Claude is processing: content should be
+        # longer than just the TUI frame, or contain thinking indicators
+        if len(content.strip()) < 200:
+            # Possible missed paste — retry once
+            self._comms.log_checkpoint(
+                agent="wrapper",
+                phase="launch",
+                subtask="paste-retry",
+                progress="Paste may have missed — retrying once.",
+            )
+            subprocess.run(
+                ["tmux", "load-buffer", str(prompt_file)],
+                capture_output=True, text=True, timeout=10,
+            )
+            subprocess.run(
+                ["tmux", "paste-buffer", "-t", pane_id],
+                capture_output=True, text=True, timeout=10,
+            )
+            time.sleep(1)
+            subprocess.run(
+                ["tmux", "send-keys", "-t", pane_id, "Enter"],
+                capture_output=True, text=True, timeout=10,
+            )
+
+            # Final check
+            time.sleep(2)
+            content = self._capture_pane(pane_id)
+            if len(content.strip()) < 200:
+                self._comms.log_error(
+                    agent="wrapper",
+                    error_type="paste_failed",
+                    severity="warning",
+                    description=(
+                        f"Prompt paste failed after retry. "
+                        f"Manual recovery: open the Claude tmux "
+                        f"window and paste from {prompt_file}"
+                    ),
+                )
 
     def _launch_headless(
         self,
