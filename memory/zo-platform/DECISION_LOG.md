@@ -631,3 +631,13 @@ Append-only. Every orchestration decision with timestamp, rationale, and outcome
 **Rationale:** Three specialist reviews of the same prod-001 Phase 1 pipeline found non-overlapping issues: domain specialist found missing flow transmitter exclusions; ML specialist found trend slope inconsistency and test gaps; data scientist found detection limit handling issues and sample-to-feature ratios. No single reviewer would have caught all issues.
 **Alternatives considered:** (1) Single comprehensive review — misses domain-specific blind spots. (2) Automated-only checks — can't reason about process chemistry or ML methodology. (3) Multi-persona reviews (validated) — complementary coverage.
 **Outcome:** Applied to prod-001. The code-reviewer agent should support domain-specific review prompts when plan.md includes agent adaptations.
+
+---
+
+## Decision: 2026-04-15T10:00:00Z
+**Type:** ARCHITECTURE
+**Title:** Portable project memory — `.zo/` directory in delivery repo
+**Decision:** Move all project-specific state (STATE.md, DECISION_LOG, PRIORS, sessions, plans, project config) from the ZO repo (`memory/{project}/`, `plans/{project}.md`, `targets/{project}.target.md`) into the delivery repo under `.zo/`. ZO public repo retains only platform-level memory (`memory/zo-platform/`). Machine-specific paths (data_dir, GPU info, gate mode) stored in gitignored `.zo/local.yaml`; portable config in committed `.zo/config.yaml`.
+**Rationale:** User moved prod-001 from Mac Mini to GPU server. `zo status` failed — memory was gitignored in ZO (by design, for confidentiality) but that makes it non-portable. The delivery repo is private, committed to git, and already travels between machines via `git pull`. Putting project state there solves portability without compromising confidentiality. Separate `local.yaml` (gitignored) from `config.yaml` (committed) handles machine-specific vs portable config cleanly.
+**Alternatives considered:** (1) scp memory between machines — manual, error-prone, doesn't scale. (2) Track memory in ZO repo — violates confidentiality, ZO is public. (3) Separate private config repo — over-engineered, adds a third repo. (4) `.zo/` in delivery repo (chosen) — project state travels with the project, zero confidentiality risk.
+**Outcome:** New `project_config.py` module, MemoryManager `memory_root` override, scaffold `.zo/` dirs, CLI discovery layer (`_detect_delivery_repo`, `_load_project_context`), `zo migrate` command, `zo continue --repo` enhancement. Backward compatible — legacy layout still works.

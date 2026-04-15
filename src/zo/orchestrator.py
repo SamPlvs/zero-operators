@@ -149,6 +149,9 @@ class Orchestrator:
         comms: Comms logger for audit events.
         semantic: Semantic index for decision retrieval.
         zo_root: Root directory of the ZO repository.
+        plan_path: Optional override for the plan file path used in
+            the lead prompt. When provided, this path is referenced
+            instead of the default ``zo_root / "plans" / "<project>.md"``.
     """
 
     def __init__(
@@ -161,6 +164,7 @@ class Orchestrator:
         zo_root: Path,
         *,
         gate_mode: GateMode = GateMode.SUPERVISED,
+        plan_path: Path | None = None,
     ) -> None:
         self._plan = plan
         self._target = target
@@ -169,6 +173,7 @@ class Orchestrator:
         self._semantic = semantic
         self._zo_root = Path(zo_root)
         self._gate_mode = gate_mode
+        self._plan_path = plan_path
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
         self._plan_hash: str = self._compute_plan_hash()
@@ -719,7 +724,7 @@ class Orchestrator:
     def _prompt_plan_context(self) -> str:
         p = self._plan
         oracle_text = p.oracle.raw_content if p.oracle else "Not defined"
-        plan_path = (
+        plan_path = self._plan_path if self._plan_path is not None else (
             self._zo_root / "plans"
             / f"{p.frontmatter.project_name}.md"
         )
