@@ -6,6 +6,8 @@ Zero Operators provides 24 slash commands for Claude Code, covering the full pro
 
 All commands are defined in `.claude/commands/` and invoked as `/category/command` in a Claude Code session.
 
+The `zo` CLI provides 10 terminal commands: `build`, `continue`, `draft`, `init`, `status`, `preflight`, `gates set`, `watch-training`, and `migrate`.
+
 ---
 
 ## CLI Commands
@@ -25,8 +27,12 @@ zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
 Resume a paused project. Shorthand for `zo build` with an existing plan -- finds the plan by project name and picks up from the current phase.
 
 ```
-zo continue project-name [--gate-mode supervised|auto|full-auto]
+zo continue [project-name] [--repo PATH] [--gate-mode supervised|auto|full-auto]
 ```
+
+**Options:**
+- `project-name` — optional if cwd contains `.zo/config.yaml` (auto-detected)
+- `--repo PATH` — path to delivery repo (overrides target file lookup)
 
 ### zo draft
 
@@ -99,8 +105,24 @@ zo init my-project --reset --yes     # no confirmation (for scripts)
 Show the current project status by reading `STATE.md`. Displays phase, blockers, recent activity, and next steps.
 
 ```
-zo status project-name
+zo status [project-name] [--repo PATH]
 ```
+
+**Options:**
+- `project-name` — optional if cwd contains `.zo/config.yaml` (auto-detected)
+- `--repo PATH` — path to delivery repo (reads state from `.zo/memory/`)
+
+### zo migrate
+
+Migrate project state from ZO repo to delivery repo `.zo/` directory.
+
+**Usage:** `zo migrate <project_name> [--repo PATH] [--clean]`
+
+**Options:**
+- `--repo PATH` — Path to delivery repo. If omitted, resolved from `targets/{project}.target.md`
+- `--clean` — Remove legacy artifacts from ZO repo after migration
+
+Copies memory (STATE.md, DECISION_LOG, PRIORS, sessions), plan, and target config into the delivery repo's `.zo/` directory, making the project portable across machines via git.
 
 ### zo preflight
 

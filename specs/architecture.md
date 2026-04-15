@@ -193,7 +193,31 @@ Delivery repositories contain only project artifacts. They follow a standard str
 └── README.md
 ```
 
-No ZO-specific files appear in delivery repositories.
+No ZO-specific files appear in delivery repositories (except the optional `.zo/` directory below).
+
+### Portable Project Memory (.zo/ directory)
+
+Projects can optionally carry their own state in a `.zo/` directory at the delivery repo root. This makes projects portable across machines via `git pull` — no need to clone the ZO repo's `memory/` directory separately.
+
+```
+{project}/
+├── .zo/
+│   ├── config.yaml            ← portable project config (committed)
+│   ├── local.yaml             ← machine-specific paths and environment (gitignored)
+│   ├── memory/                ← STATE.md, DECISION_LOG.md, PRIORS.md, sessions/
+│   └── plans/                 ← the project plan.md
+├── src/
+├── ...
+```
+
+- `config.yaml` — project identity and settings (committed to git)
+- `local.yaml` — machine-specific paths (gitignored, regenerated per machine)
+- `memory/` — mirrors `memory/{project}/` from the ZO repo
+- `plans/` — the project plan file
+
+Platform memory (`memory/zo-platform/`) stays in the ZO repo. Only project-specific state moves to `.zo/`.
+
+Use `zo migrate <project>` to copy existing project state from the ZO repo into `.zo/`. Once migrated, `zo continue` and `zo status` auto-detect the project from `.zo/config.yaml` when run inside the delivery repo.
 
 ---
 

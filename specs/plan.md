@@ -43,9 +43,9 @@ A clear, concise statement of what the project aims to achieve. This is not a va
 ```markdown
 ## Objective
 
-Build a soft sensor model that predicts real-time PO composition and purity
+Build a soft sensor model that predicts real-time product composition and purity
 from process sensor data (DCS tags), calibrated against lab measurements
-(SAP QM F5LB tag series). The model must operate in advisory mode (no DCS
+(SAP QM lab tag series). The model must operate in advisory mode (no DCS
 writes) and produce predictions with quantified uncertainty at 1-minute
 resolution.
 
@@ -61,7 +61,7 @@ The oracle is the hard, verifiable metric that determines success. Without this 
 ## Oracle
 
 **Primary metric:** RMSE on held-out lab samples
-**Ground truth source:** SAP QM F5LB tag series (frozen at project start, 81,906 records)
+**Ground truth source:** SAP QM lab tag series (frozen at project start, ~80,000 records)
 **Evaluation method:** Evaluate on temporally disjoint held-out set (last 6 months of data)
 **Target threshold:** RMSE ≤ 0.05 (Tier 1), RMSE ≤ 0.08 (Tier 2), RMSE ≤ 0.12 (Tier 3)
 **Evaluation frequency:** After every training iteration
@@ -127,7 +127,7 @@ Describes where data comes from, its format, and access requirements.
 - **Known issues:** Bypass period flags in _MA tags, turnaround gaps
 
 ### Source 2: Lab Measurements
-- **Location:** /data/raw/sap_qm_f5lb.csv
+- **Location:** /data/raw/lab_measurements.csv
 - **Format:** CSV, ~6-hour sampling cadence, 6 sample points per measurement
 - **Time range:** Same as Source 1
 - **Access:** Read-only

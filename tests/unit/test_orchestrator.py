@@ -1106,3 +1106,41 @@ class TestArtifactAndNotebookWiring:
         prompt = orchestrator.build_lead_prompt(decomp.phases[0])
         assert "docker compose" in prompt.lower()
         assert "STRUCTURE.md" in prompt
+
+
+# ---------------------------------------------------------------------------
+# plan_path override
+# ---------------------------------------------------------------------------
+
+
+class TestPlanPathOverride:
+    """Orchestrator respects the optional plan_path kwarg."""
+
+    def test_custom_plan_path_in_lead_prompt(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """When plan_path is passed, build_lead_prompt references it."""
+        custom_path = Path("/srv/plans/custom-plan.md")
+        target = _make_target()
+        memory = MemoryManager(
+            project_dir=tmp_path, project_name="test-project",
+        )
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-project",
+            session_id="test-session-001",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch = Orchestrator(
+            plan=plan,
+            target=target,
+            memory=memory,
+            comms=comms,
+            semantic=semantic,
+            zo_root=REPO_ROOT,
+            plan_path=custom_path,
+        )
+        decomp = orch.decompose_plan()
+        prompt = orch.build_lead_prompt(decomp.phases[0])
+        assert str(custom_path) in prompt

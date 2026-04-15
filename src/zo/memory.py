@@ -74,12 +74,24 @@ class MemoryManager:
             git operations).
         project_name: Human-readable project identifier used as the
             subdirectory name under ``memory/``.
+        memory_root: Optional override for the memory directory. When
+            provided, this path is used instead of the default
+            ``project_dir / "memory" / project_name``.
     """
 
-    def __init__(self, project_dir: Path, project_name: str) -> None:
+    def __init__(
+        self,
+        project_dir: Path,
+        project_name: str,
+        *,
+        memory_root: Path | None = None,
+    ) -> None:
         self._project_dir = Path(project_dir)
         self._project_name = project_name
-        self._memory_root = self._project_dir / "memory" / project_name
+        if memory_root is not None:
+            self._memory_root = memory_root
+        else:
+            self._memory_root = self._project_dir / "memory" / project_name
 
     @property
     def memory_root(self) -> Path:
