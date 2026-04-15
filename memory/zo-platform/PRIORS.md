@@ -820,17 +820,17 @@ New `.zo/` directory structure in delivery repos. `zo migrate` command for exist
 ## PR-029: Every Command That Resolves Project Context Must Accept --repo
 **Source:** Session 018 (2026-04-15), first `zo continue --repo` on GPU server
 **Root cause category:** incomplete_rule
-**Failure:** `zo continue --repo ~/ivl_f5` correctly resolved the `.zo/` layout and found the plan at `.zo/plans/ivl_f5.md`. But `continue_` delegates to `build()` via `ctx.invoke()`, and `build()` re-called `_load_project_context(project_name)` without the `--repo` hint. Build fell back to legacy layout, looked for `targets/ivl_f5.target.md` in the ZO repo, and crashed with `FileNotFoundError`. Same class of bug existed in `gates_set` and `watch_training` — neither accepted `--repo`.
+**Failure:** `zo continue --repo ~/my-project` correctly resolved the `.zo/` layout and found the plan at `.zo/plans/{project}.md`. But `continue_` delegates to `build()` via `ctx.invoke()`, and `build()` re-called `_load_project_context(project_name)` without the `--repo` hint. Build fell back to legacy layout, looked for `targets/{project}.target.md` in the ZO repo, and crashed with `FileNotFoundError`. Same class of bug existed in `gates_set` and `watch_training` — neither accepted `--repo`.
 
 ### Rules
 
 1. **Every CLI command that calls `_load_project_context()` must accept a `--repo` option and pass it as `delivery_repo`.**
    Without this, the command can only find projects via cwd detection or legacy layout. On a new machine where cwd is the ZO repo (not the delivery repo), both fail. Commands affected: build, continue, status, gates set, watch-training.
-   - *Failure ref:* `zo continue --repo ~/ivl_f5` → build() → `FileNotFoundError: targets/ivl_f5.target.md`
+   - *Failure ref:* `zo continue --repo ~/my-project` → build() → `FileNotFoundError: targets/{project}.target.md`
 
 2. **When one command delegates to another via `ctx.invoke()`, context must flow through the call.**
    `continue_` resolved the delivery repo but passed only `plan_path` to `build()`. The fix: `build()` infers the delivery repo from the plan path when it's inside `.zo/plans/`. This is a generic pattern: any command that delegates must either pass context explicitly or encode it in the arguments.
-   - *Failure ref:* `plan_path=/home/sam/ivl_f5/.zo/plans/ivl_f5.md` was passed but delivery repo was not.
+   - *Failure ref:* `plan_path=/home/user/project/.zo/plans/{project}.md` was passed but delivery repo was not.
 
 3. **Test every cross-machine code path, not just the happy path.**
    The original tests verified `.zo/` detection and `_load_project_context()` individually. None tested the full `continue → build` delegation with a `.zo/` plan path. The bug was in the seam between two tested components.
@@ -842,3 +842,34 @@ New `.zo/` directory structure in delivery repos. `zo migrate` command for exist
 2. `gates_set` and `watch_training` gain `--repo` options
 3. Integration test `TestBuildDeliveryHint` verifies the plan-path → delivery-repo inference
 4. **Rule for future commands:** any new command that uses `_load_project_context()` MUST include `--repo`
+
+---
+
+## PR-030: Client Confidentiality Must Be Enforced by Automated Check, Not Human Discipline
+**Source:** Session 018 (2026-04-15), repeated violation of PR-024 across 3 commits + 1 PR body
+**Root cause category:** ignored_rule
+**Failure:** PR-024 (session 016) established that client identifiers must never appear in tracked ZO files. Despite this, session 018 committed prod-001 client identifiers into DECISION_LOG.md, PRIORS.md, cli.py docstrings, and a PR body — the EXACT same class of violation PR-024 was supposed to prevent. The prior existed as text but had no enforcement. PR-005 already established that "aspirational rules without enforcement are dead letter" — and PR-024 violated that principle by being an aspirational rule itself.
+
+### Rules
+
+1. **`validate-docs.sh` Check 8 scans all tracked files for a client blocklist.**
+   Pattern: client-specific identifiers (case-insensitive grep, maintained in validate-docs.sh).
+   This is a HARD FAIL, not a warning. The PreToolUse hook blocks `git commit`
+   if validate-docs fails, so client names physically cannot be committed.
+   - *Failure ref:* 4 violations in session 018 despite PR-024 existing.
+
+2. **The blocklist lives in validate-docs.sh and is updated when onboarding new clients.**
+   New project → add the client's identifiable patterns to `CLIENT_BLOCKLIST`.
+   This is a one-line edit. The check runs in <2 seconds with all other validations.
+
+3. **PR descriptions and commit messages must also be sanitised.**
+   validate-docs.sh catches file contents but cannot catch git messages.
+   Claude must self-check commit messages and PR bodies against the blocklist
+   before submitting them. This is the one remaining manual discipline —
+   but now there's an explicit checklist item, not just a vague rule.
+
+### Verified Solution
+
+`scripts/validate-docs.sh` Check 8: `git ls-files | xargs grep -liE "$CLIENT_BLOCKLIST"`.
+HARD FAIL if any match. PreToolUse hook on `git commit` runs validate-docs.sh,
+so commits with client names are physically blocked.
