@@ -337,6 +337,7 @@ class Orchestrator:
             self._prompt_autonomy(),
             self._prompt_phase(phase), self._prompt_contracts(phase),
             self._prompt_adaptations(), self._prompt_roster(),
+            self._prompt_experiment_context(phase),
             self._prompt_memory(), self._prompt_coordination(),
             self._prompt_gate_criteria(phase), self._prompt_constraints(),
         ]
@@ -481,11 +482,16 @@ class Orchestrator:
 
         if all_done:
             missing = self._check_artifacts(phase)
-            if missing:
+            exp_missing = self._finalize_experiments(phase)
+            all_missing = [*missing, *exp_missing]
+            if all_missing:
                 ev = GateEvaluation(
                     phase_id=phase_id, gate_type=GateType.AUTOMATED,
                     decision=GateDecision.ITERATE,
-                    rationale=f"Subtasks done but artifacts missing: {', '.join(missing)}",
+                    rationale=(
+                        f"Subtasks done but artifacts missing: "
+                        f"{', '.join(all_missing)}"
+                    ),
                 )
                 self._log_gate(ev)
                 return ev
@@ -570,12 +576,14 @@ class Orchestrator:
         phase = self._find_phase(phase_id)
         if decision == GateDecision.PROCEED:
             phase.status = PhaseStatus.COMPLETED
+            self._finalize_experiments(phase)
             self._generate_test_report(phase)
             self._generate_notebook(phase)
             self._generate_snapshot(phase, "human", decision)
         elif decision == GateDecision.ITERATE:
             phase.status = PhaseStatus.ACTIVE
             phase.completed_subtasks.clear()
+            self._abort_running_experiments(phase_id)
         elif decision == GateDecision.ESCALATE:
             phase.status = PhaseStatus.BLOCKED
         else:
@@ -697,6 +705,187 @@ class Orchestrator:
                 message=f"Failed to generate notebook for {phase.phase_id}: {exc}",
                 severity="warning",
             )
+
+    # -- Experiment capture layer (Phase 4) ---------------------------------
+
+    _EXPERIMENT_PHASE = "phase_4"
+
+    def _experiments_dir(self) -> Path | None:
+        """Return the ``.zo/experiments/`` dir under the delivery repo.
+
+        Returns ``None`` if the delivery repo doesn't exist yet (e.g.
+        during tests that skip scaffolding, or before ``zo init``).
+        """
+        target_repo = Path(self._target.target_repo)
+        if not target_repo.is_dir():
+            return None
+        return target_repo / ".zo" / "experiments"
+
+    def _ensure_experiment_for_phase(
+        self, phase_id: str,
+    ) -> object | None:
+        """Ensure a running experiment exists for the phase; mint if not.
+
+        Only mints for ``phase_4``. Idempotent: returns the existing
+        running experiment when one is already active for the phase;
+        otherwise mints a new experiment with ``parent_id`` set to the
+        latest experiment in the phase (for lineage).
+
+        Returns ``None`` when the delivery repo is absent.
+        """
+        if phase_id != self._EXPERIMENT_PHASE:
+            return None
+        exp_dir = self._experiments_dir()
+        if exp_dir is None:
+            return None
+        from zo.experiments import (
+            ExperimentStatus,
+            load_registry,
+            mint_experiment,
+        )
+        registry = load_registry(
+            exp_dir, project=self._plan.frontmatter.project_name,
+        )
+        # Return existing running experiment for this phase, if any.
+        for exp in registry.experiments:
+            if exp.phase == phase_id and exp.status == ExperimentStatus.RUNNING:
+                return exp
+        # Otherwise mint a new one, linked to the latest in this phase.
+        latest = registry.latest_in_phase(phase_id)
+        parent_id = latest.id if latest is not None else None
+        return mint_experiment(
+            registry_dir=exp_dir,
+            project=self._plan.frontmatter.project_name,
+            phase=phase_id,
+            parent_id=parent_id,
+        )
+
+    def _finalize_experiments(
+        self, phase: PhaseDefinition,
+    ) -> list[str]:
+        """Parse ``result.md`` for running Phase 4 experiments.
+
+        For each running experiment in the phase, read its ``result.md``
+        (if present), call ``update_result`` to store the result and
+        mark the experiment complete. Returns a list of missing
+        artifacts (one entry per running experiment without a valid
+        ``result.md``) — empty when everything finalized cleanly.
+
+        Non-phase_4 phases return an empty list immediately.
+        """
+        if phase.phase_id != self._EXPERIMENT_PHASE:
+            return []
+        exp_dir = self._experiments_dir()
+        if exp_dir is None or not exp_dir.is_dir():
+            return [".zo/experiments/<exp-NNN>/result.md (no experiments minted)"]
+        from zo.experiments import (
+            ExperimentStatus,
+            load_registry,
+            parse_result_md,
+            update_result,
+        )
+        registry = load_registry(exp_dir)
+        running = [
+            e for e in registry.experiments
+            if e.phase == phase.phase_id and e.status == ExperimentStatus.RUNNING
+        ]
+        if not running:
+            # No running experiments; accept if any experiments exist for
+            # this phase (i.e. all complete), otherwise flag.
+            has_any = any(
+                e.phase == phase.phase_id for e in registry.experiments
+            )
+            return [] if has_any else [
+                ".zo/experiments/<exp-NNN>/result.md (no experiments for phase_4)",
+            ]
+        missing: list[str] = []
+        for exp in running:
+            result_path = Path(exp.artifacts_dir) / "result.md"
+            if not result_path.exists():
+                missing.append(f".zo/experiments/{exp.id}/result.md")
+                continue
+            try:
+                result = parse_result_md(result_path)
+                update_result(exp_dir, exp.id, result)
+            except Exception as exc:  # noqa: BLE001
+                self._comms.log_error(
+                    agent="orchestrator",
+                    error_type="experiment_result_parse_failed",
+                    message=f"Failed to parse {exp.id}/result.md: {exc}",
+                    severity="warning",
+                )
+                missing.append(
+                    f".zo/experiments/{exp.id}/result.md (parse failed)",
+                )
+        return missing
+
+    def _abort_running_experiments(self, phase_id: str) -> None:
+        """Mark all running experiments in a phase as ABORTED.
+
+        Used when a phase is iterated — the in-flight experiment didn't
+        produce a result, so a fresh one will be minted on the next
+        lead prompt build.
+        """
+        if phase_id != self._EXPERIMENT_PHASE:
+            return
+        exp_dir = self._experiments_dir()
+        if exp_dir is None or not exp_dir.is_dir():
+            return
+        from zo.experiments import (
+            ExperimentStatus,
+            load_registry,
+            update_status,
+        )
+        registry = load_registry(exp_dir)
+        for exp in registry.experiments:
+            if exp.phase == phase_id and exp.status == ExperimentStatus.RUNNING:
+                update_status(exp_dir, exp.id, ExperimentStatus.ABORTED)
+
+    def _prompt_experiment_context(self, phase: PhaseDefinition) -> str:
+        """Lead prompt section describing the active experiment (Phase 4)."""
+        if phase.phase_id != self._EXPERIMENT_PHASE:
+            return ""
+        exp = self._ensure_experiment_for_phase(phase.phase_id)
+        if exp is None:
+            return ""
+        parent_line = (
+            f" Parent: `{exp.parent_id}`." if exp.parent_id else
+            " This is the root experiment for the phase."
+        )
+        return dedent(f"""\
+            # Experiment Capture Layer
+
+            This phase is running **{exp.id}**.{parent_line}
+            Artifacts directory: `{exp.artifacts_dir}` — every file for
+            this iteration lives here.
+
+            **Files agents write:**
+            - `{exp.id}/hypothesis.md` — Model Builder writes BEFORE training
+              (YAML frontmatter + markdown body). States the testable claim.
+            - `{exp.id}/config.yaml` — frozen config snapshot (architecture,
+              hyperparameters, data hash).
+            - `{exp.id}/metrics.jsonl` + `{exp.id}/training_status.json` — emitted
+              automatically by `ZOTrainingCallback.for_experiment(
+                  registry_dir='.zo/experiments', experiment_id='{exp.id}')`.
+              Use this factory; it handles the paths.
+            - `{exp.id}/result.md` — Oracle writes AFTER eval. YAML frontmatter
+              with `oracle_tier`, `primary_metric` (`name`, `value`,
+              optional `delta_vs_parent`), `secondary_metrics`; markdown
+              body has `## Shortfalls` bullets.
+            - `{exp.id}/next.md` — Model Builder writes AFTER result. One
+              `## exp-NNN` section per proposed follow-up experiment.
+            - `{exp.id}/diagnosis.md` (optional) — XAI or Domain Evaluator
+              writes when a failure-mode breakdown is needed.
+
+            **Gate requirement:** the phase advances only when `result.md`
+            exists in the active experiment's directory. The orchestrator
+            parses it, marks the experiment complete, and computes
+            `delta_vs_parent` automatically if the parent used the same
+            `primary_metric.name`.
+
+            **Iteration:** if this phase ITERATEs, a fresh experiment is
+            minted with `parent_id = {exp.id}` so lineage is preserved
+            in `.zo/experiments/registry.json`.""")
 
     def _generate_snapshot(
         self,

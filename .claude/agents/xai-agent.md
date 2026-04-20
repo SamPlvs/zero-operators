@@ -34,6 +34,37 @@ Own and manage these directories and files exclusively:
 
 ## Contract You Produce
 
+### Experiment Diagnosis (optional, per request)
+
+When the Lead Orchestrator asks for a diagnosis of a Phase 4
+experiment, write `diagnosis.md` into the experiment's directory at
+`.zo/experiments/exp-NNN/`. Diagnoses are optional — they don't gate
+the phase — but are often the most useful input to Model Builder's
+next hypothesis.
+
+```markdown
+# Diagnosis — exp-NNN
+
+## Observed failure modes
+- <FM-ID or descriptive name>: <evidence from attributions / error
+  analysis — which samples, which features, which slices>
+- <...>
+
+## Feature attribution summary
+
+<Top-N features for correct vs incorrect predictions. Highlight any
+ that appear "domain-unexpected" and flag for Domain Evaluator.>
+
+## Recommendations
+- <Concrete change: feature to drop, regularisation to add, data to
+  augment, constraint to enforce. Each should map to a shortfall in
+  the Oracle's result.md.>
+```
+
+Read `.zo/experiments/exp-NNN/result.md` first — the shortfalls there
+are your anchor. Your diagnosis explains *why* each shortfall happened
+at the model-internals level.
+
 ### Explainability Report
 
 File: `xai/reports/<model_name>_v<N>_xai.md`

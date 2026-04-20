@@ -142,6 +142,39 @@ class ZOTrainingCallback:
         self._history: list[dict[str, float]] = []
         self._config: dict[str, Any] = {}
 
+    @classmethod
+    def for_experiment(
+        cls,
+        registry_dir: str | Path,
+        experiment_id: str,
+        experiment_name: str = "",
+    ) -> ZOTrainingCallback:
+        """Create a callback that writes into an experiment's directory.
+
+        Preferred factory when Phase 4 runs through the experiment
+        capture layer (``zo.experiments``): metrics.jsonl and
+        training_status.json land in
+        ``{registry_dir}/{experiment_id}/`` so the whole experiment
+        (hypothesis, config, metrics, result, diagnosis, next) lives
+        in one place.
+
+        Args:
+            registry_dir: The experiments registry directory, typically
+                ``{delivery_repo}/.zo/experiments``.
+            experiment_id: Short identifier, e.g. ``"exp-003"``.
+            experiment_name: Optional human-readable label.
+
+        Returns:
+            A callback whose ``log_dir`` is
+            ``{registry_dir}/{experiment_id}/``.
+        """
+        log_dir = Path(registry_dir) / experiment_id
+        return cls(
+            log_dir=log_dir,
+            experiment_id=experiment_id,
+            experiment_name=experiment_name,
+        )
+
     # --- Public API ---
 
     def on_training_start(
