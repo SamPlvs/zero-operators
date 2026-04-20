@@ -133,13 +133,17 @@ Validate data integrity and identify corruption:
 
 ### Subtask 1.3: Exclusion Filters
 
-Apply domain-specific filters to remove invalid records:
-- Identify exclusion criteria from domain priors (e.g., turnaround periods, manual mode flags, known bad sensors, annotation disagreements)
-- Apply each filter; record record count before and after
-- Document every exclusion with count, criteria, and domain justification
-- Produce inclusion/exclusion flags in cleaned dataset
+> **Denylist-first for DL projects (default):** Include all available signals and exclude only known leakage sources and invalid records. Do not curate an allowlist of "relevant" inputs — that biases the feature space with one person's assumptions and defeats the model's ability to discover representations. The pipeline's job is preventing target leakage, not selecting features. Feature selection belongs in Phase 2 as a model-dependent transform (tree models use built-in importance; neural nets learn representations). When inheriting a curated list from pre-project setup, treat it as reference and validate against the full dataset — flag any reduction >10× for explicit justification. Exception: classical ML on small tabular data where an allowlist captures validated domain constraints.
 
-**Artifact:** `exclusion_filters.yaml` and cleaned dataset with filter flags.
+Apply filters to remove leakage, invalid records, and excluded regimes:
+- **Leakage exclusions** (mandatory): signals derived from or correlated-by-construction with the target (future values, post-hoc labels, target-adjacent sensors)
+- **Invalid record exclusions** (domain priors): turnaround periods, manual mode flags, known bad sensors, annotation disagreements
+- Apply each filter; record record/signal count before and after
+- Document every exclusion with count, criteria, and domain justification (leakage vs. invalid record)
+- Produce inclusion/exclusion flags in cleaned dataset
+- If a curated input list exists from prior work, validate against the full dataset and flag any reduction ratio >10× in the report
+
+**Artifact:** `exclusion_filters.yaml` (denylist of excluded signals/records with justification) and cleaned dataset with filter flags.
 
 ### Subtask 1.4: Data Alignment and Joining
 

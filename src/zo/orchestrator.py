@@ -492,6 +492,7 @@ class Orchestrator:
             phase.status = PhaseStatus.COMPLETED
             self._generate_test_report(phase)
             self._generate_notebook(phase)
+            self._generate_snapshot(phase, "automated", GateDecision.PROCEED)
             ev = GateEvaluation(
                 phase_id=phase_id, gate_type=GateType.AUTOMATED,
                 decision=GateDecision.PROCEED,
@@ -571,6 +572,7 @@ class Orchestrator:
             phase.status = PhaseStatus.COMPLETED
             self._generate_test_report(phase)
             self._generate_notebook(phase)
+            self._generate_snapshot(phase, "human", decision)
         elif decision == GateDecision.ITERATE:
             phase.status = PhaseStatus.ACTIVE
             phase.completed_subtasks.clear()
@@ -695,6 +697,102 @@ class Orchestrator:
                 message=f"Failed to generate notebook for {phase.phase_id}: {exc}",
                 severity="warning",
             )
+
+    def _generate_snapshot(
+        self,
+        phase: PhaseDefinition,
+        gate_decision: str,
+        gate_outcome: str,
+    ) -> None:
+        """Write a phase completion snapshot to ``{memory_root}/snapshots/``.
+
+        Called at every gate PROCEED (automated or human). Failures are
+        logged as warnings but do not block the gate — the snapshot is a
+        reporting artifact, not a correctness gate.
+        """
+        try:
+            from zo.snapshots import PhaseSnapshot, write_snapshot
+
+            artifacts_missing = self._check_artifacts(phase)
+            artifacts_present = [
+                a for a in phase.required_artifacts if a not in artifacts_missing
+            ]
+
+            decisions = self._recent_decisions_for_phase(phase.phase_id)
+            issues = self._issues_for_phase(phase.phase_id)
+
+            snap = PhaseSnapshot(
+                phase_id=phase.phase_id,
+                phase_name=phase.name,
+                status=str(phase.status),
+                gate_decision=gate_decision,
+                gate_outcome=str(gate_outcome),
+                subtasks_total=len(phase.subtasks),
+                subtasks_completed=len(phase.completed_subtasks),
+                completed_subtask_ids=list(phase.completed_subtasks),
+                remaining_subtask_ids=[
+                    s for s in phase.subtasks if s not in phase.completed_subtasks
+                ],
+                required_artifacts=list(phase.required_artifacts),
+                artifacts_present=artifacts_present,
+                artifacts_missing=artifacts_missing,
+                recent_decisions=decisions,
+                issues=issues,
+            )
+            path = write_snapshot(self._memory.memory_root, snap)
+            self._comms.log_checkpoint(
+                agent="orchestrator", phase=phase.phase_id,
+                subtask="snapshot_generation",
+                progress=f"Phase snapshot written: {path.name}",
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="snapshot_generation_failed",
+                message=f"Failed to write snapshot for {phase.phase_id}: {exc}",
+                severity="warning",
+            )
+
+    def _recent_decisions_for_phase(
+        self, phase_id: str, limit: int = 10,
+    ) -> list[dict[str, str]]:
+        """Pull recent decision events mentioning the phase, newest last."""
+        try:
+            events = self._comms.query_logs(event_type="decision")
+        except Exception:  # noqa: BLE001
+            return []
+        matches: list[dict[str, str]] = []
+        for ev in events:
+            title = getattr(ev, "title", "") or ""
+            rationale = getattr(ev, "rationale", "") or ""
+            if phase_id in title or phase_id in rationale:
+                matches.append({
+                    "timestamp": ev.timestamp.isoformat()
+                    if hasattr(ev.timestamp, "isoformat") else str(ev.timestamp),
+                    "title": title,
+                })
+        return matches[-limit:]
+
+    def _issues_for_phase(
+        self, phase_id: str, limit: int = 10,
+    ) -> list[dict[str, str]]:
+        """Pull error/warning events mentioning the phase, newest last."""
+        try:
+            events = self._comms.query_logs(event_type="error")
+        except Exception:  # noqa: BLE001
+            return []
+        matches: list[dict[str, str]] = []
+        for ev in events:
+            message = getattr(ev, "description", "") or ""
+            error_type = getattr(ev, "error_type", "") or ""
+            severity = str(getattr(ev, "severity", "info"))
+            # Phase association is best-effort: match on message content.
+            if phase_id in message or phase_id in error_type:
+                matches.append({
+                    "severity": severity,
+                    "message": f"{error_type}: {message}" if error_type else message,
+                })
+        return matches[-limit:]
 
     def _log_gate(self, evaluation: GateEvaluation) -> None:
         self._comms.log_decision(
