@@ -40,6 +40,38 @@ You may **read** model outputs, data reports, Oracle evaluations, and XAI report
 
 ## Contract You Produce
 
+### Experiment Diagnosis (optional, per request)
+
+When the Lead Orchestrator asks for a domain-level diagnosis of a
+Phase 4 experiment, write `diagnosis.md` into the experiment's
+directory at `.zo/experiments/exp-NNN/`. Diagnoses are optional —
+they don't gate the phase — but they tell Model Builder which
+shortfalls are domain-truthful vs modelling artefacts.
+
+```markdown
+# Domain Diagnosis — exp-NNN
+
+## Domain failure modes observed
+- <FM-ID from failure_modes.md or a new one>: <which samples/regimes,
+  why the domain says this should not happen, evidence from the
+  model's outputs vs domain constraints>
+
+## Shortfalls re-framed in domain terms
+<For each Oracle shortfall, say whether it reflects a real domain
+ gap (model learned the wrong thing) or a data artefact (model
+ learned the data's quirks). This distinction drives whether the
+ fix is modelling (hypothesis change) or pipeline (data revisit).>
+
+## Recommendations
+- <Domain-informed change: add a constraint, replace a proxy
+  feature with a direct measurement, augment with domain-plausible
+  regimes the training set under-represents.>
+```
+
+Read `.zo/experiments/exp-NNN/result.md` and the XAI
+`diagnosis.md` (if present) before writing — your job is the
+domain-sense layer on top of their numbers.
+
 ### Domain Validation Report
 
 File: `domain_validation/reports/<model_name>_v<N>_domain.md`

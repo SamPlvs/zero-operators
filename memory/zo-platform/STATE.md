@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **prod-001 Phase 1 done on GPU server, portable `.zo/` memory shipped, v1.x low-hanging fruit cleared**. Session-019 landed: (1) denylist-first DL prior codified in `specs/workflow.md` + `data-engineer.md`; (2) `domain-evaluator` refactored to generic shell that derives identity exclusively from plan's `**Agent adaptations:**` block at build time; (3) phase completion snapshots (C1) — new `src/zo/snapshots.py` module, `PhaseSnapshot` pydantic model with `schema_version`, MD+YAML frontmatter format, orchestrator writes a snapshot at every gate PROCEED (automated + human), uses `memory_root` so portable `.zo/memory/snapshots/` works automatically. Experiment capture-layer schema sketched in-session (deferred implementation until prod-001 Phase 4 generates iteration data — PR-005 principle). 20 core agents + custom library, **557 tests** (+28), ruff clean, validate-docs 10/10.
+ZO v1.0.2-pre — **Karpathy-style AutoResearch capture layer landed (capture only, loop deferred)**. Session-019 landed v1.x polish (PR #48: phase snapshots + denylist-first + generic domain-evaluator) then pivoted to the experiment capture layer: new `src/zo/experiments.py` (models + registry I/O + mint + MD parsers), `.zo/experiments/` in the delivery repo, orchestrator mints one experiment per Phase 4 iteration with `parent_id` lineage, `result.md` is a hard gate requirement, orchestrator parses Oracle's result → auto-computes `delta_vs_parent` across the lineage, ITERATE aborts the running exp and mints a child on the next prompt, `ZOTrainingCallback.for_experiment()` factory writes metrics into the exp dir, agent contracts (model-builder, oracle-qa, xai-agent, domain-evaluator) all document the experiment protocol, `zo experiments list/show/diff` CLI group for inspection. Autonomous loop (plateau detector, proposer, dead-end guard, budget-aware selection) explicitly deferred per PR-005 until prod-001 Phase 4 generates ≥5 real iterations to design the heuristics against. 20 core agents + custom library, **617 tests** (+88 over baseline), ruff clean, validate-docs 10/10.
 
 ## Completed
 
@@ -97,6 +97,7 @@ ZO v1.0.2-pre — **prod-001 Phase 1 done on GPU server, portable `.zo/` memory 
 - [x] v1.0.2-pre: Denylist-first DL data-pipeline guidance codified (specs/workflow.md Subtask 1.3 callout + data-engineer.md Pipeline Principles section). Cross-reference to PR-026.
 - [x] v1.0.2-pre: Domain-evaluator refactored to generic shell — domain identity comes exclusively from plan's `**Agent adaptations:**` block at build time. Agent file is reusable across projects; stop-rule prevents generic reports when adaptation missing.
 - [x] v1.0.2-pre: Phase completion snapshots (C1) — `src/zo/snapshots.py`, `PhaseSnapshot` pydantic model with `schema_version`, MD+YAML frontmatter format, orchestrator hooks at both automated+human gate PROCEED paths, uses `memory_root` (auto-portable with `.zo/` layout). 23 unit + 5 integration tests. Test count 529 → 557.
+- [x] v1.0.2-pre: Experiment capture layer (Phase 4) — `src/zo/experiments.py` (models + registry I/O + mint + MD parsers), `.zo/experiments/` in delivery repo, orchestrator mints one exp per Phase 4 iteration with `parent_id` lineage, `result.md` gate requirement, orchestrator parses Oracle's result → computes `delta_vs_parent`, aborts running exps on ITERATE (child gets mounted next prompt), `ZOTrainingCallback.for_experiment()` factory writes into exp dir, agent contracts updated (model-builder hypothesis+next, oracle-qa result, xai/domain-eval diagnosis), `zo experiments list/show/diff` CLI group. 38 unit + 10 orchestrator-flow + 9 CLI tests. Test count 557 → 617.
 
 ## Known Issues
 
@@ -115,7 +116,9 @@ ZO v1.0.2-pre — **prod-001 Phase 1 done on GPU server, portable `.zo/` memory 
 4. ~~Domain evaluator refactor~~ (SHIPPED: session-019, generic shell + plan adaptations)
 5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect) — NEXT
 6. ~~ZO learning: denylist-first data pipelines~~ (SHIPPED: session-019, codified in workflow.md + data-engineer.md)
-7. **Experiment capture layer** — design sketched in session-019. Minimal layer (`.zo/experiments/` + registry.json + hypothesis/result/diagnosis/next artifacts per exp) captures prod-001 Phase 4 iterations as they happen. Autonomous loop (plateau detector, proposer, budget-aware selection) stays deferred per PR-005 until real iteration data grounds the heuristics. NEXT after remote-data manifest.
+7. ~~Experiment capture layer~~ (SHIPPED: session-019, capture only — the autonomous loop stays deferred per PR-005 until prod-001 Phase 4 generates real iteration data).
+8. **Remote-data manifest for `zo draft`** — cancelled. Portable `.zo/` memory (PR #44) already solves the cross-machine case; run `zo draft` on whichever machine has the data.
+9. **Autonomous experiment loop (deferred)** — plateau detector (`|Δ| < ε` for N runs), next-experiment proposer agent, dead-end guard (cosine-match new hypothesis vs registry), budget-aware selection. Build after prod-001 Phase 4 produces enough experiments to design the heuristics against (≥5 iterations).
 
 ## Deferred — Post prod-001 First Pass
 
@@ -129,10 +132,10 @@ ZO v1.0.2-pre — **prod-001 Phase 1 done on GPU server, portable `.zo/` memory 
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-20T12:00:00Z
+last_checkpoint: 2026-04-20T15:30:00Z
 last_session: session-019
-branch: claude/interesting-dubinsky-90747c (worktree)
-test_count: 557 passed, 7 skipped (ZO); 297 passed (prod-001)
+branch: claude/experiments-capture-layer (worktree)
+test_count: 617 passed, 7 skipped (ZO); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 1 warning (stale test-count badge)
-prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness)
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness), #48 (phase snapshots + denylist-first + generic domain-evaluator)
