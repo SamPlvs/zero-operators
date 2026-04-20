@@ -152,6 +152,20 @@ zo watch-training --project NAME [-i INTERVAL]
 
 `INTERVAL` (default: 2.0) is the refresh rate in seconds. The dashboard shows current and best metrics, ETA, and the oracle target threshold from `plan.md`.
 
+### zo experiments list / show / diff
+
+Inspect the Phase 4 experiment registry at `.zo/experiments/registry.json` in the delivery repo. The orchestrator mints one experiment per iteration; every experiment has its own directory with `hypothesis.md`, `config.yaml`, `metrics.jsonl`, `result.md`, optional `diagnosis.md`, and `next.md`.
+
+```
+zo experiments list --project NAME [--phase phase_4] [--repo PATH]
+zo experiments show EXP_ID --project NAME [--repo PATH]
+zo experiments diff EXP_A EXP_B --project NAME [--repo PATH]
+```
+
+- **list** — table of all experiments (id, phase, parent, hypothesis, primary metric, Δ vs parent, status).
+- **show** — full details for one experiment including the content of every authored markdown artefact.
+- **diff** — side-by-side comparison of two experiments' metrics and shortfalls. Useful for sibling comparisons (two parallel variants) and parent-child comparisons (did the iteration actually improve?).
+
 ---
 
 ## Slash Commands
