@@ -33,6 +33,58 @@ Own and manage these directories and files exclusively:
 
 ## Contract You Produce
 
+### Experiment Capture Layer (Phase 4)
+
+During Phase 4, the orchestrator mints one experiment per iteration at
+`.zo/experiments/exp-NNN/` and injects the active `exp_id` into your
+spawn prompt. You author three files in that directory:
+
+**1. `hypothesis.md` — BEFORE training.** YAML frontmatter + markdown body.
+The hypothesis is your single testable claim for this iteration; the
+rationale grounds it in the parent experiment's shortfalls (if any) or
+the Phase 3 model-design rationale (for the root experiment).
+
+```markdown
+---
+exp_id: exp-NNN
+parent_id: exp-(N-1) | null
+created: <ISO-8601 UTC>
+---
+
+# Hypothesis
+
+<One sentence. A claim evaluation can falsify — not a goal or vibe.>
+
+## Rationale
+
+<Why this next? For children: cite the parent's shortfalls from
+ result.md. For root: cite architecture/loss rationale from Phase 3.>
+```
+
+**2. `config.yaml` — frozen config snapshot.** Everything needed to
+reproduce the run: architecture, hyperparameters, data split hash,
+augmentation settings, random seed.
+
+**3. `next.md` — AFTER result lands.** Propose ≥1 follow-up experiment.
+Each `## exp-NNN` subsection has a first bullet stating the idea.
+
+```markdown
+# Next experiments
+
+## exp-NNN+1
+- <One-sentence idea>
+- Rationale: <which shortfall from result.md this addresses>
+```
+
+Use `ZOTrainingCallback.for_experiment(registry_dir=".zo/experiments",
+experiment_id=exp_id)` in your training script — it writes
+`metrics.jsonl` and `training_status.json` into the same experiment
+directory, no extra wiring.
+
+The orchestrator parses your `hypothesis.md` and `next.md` into the
+registry and computes `delta_vs_parent` from the Oracle's `result.md`.
+Don't write to `registry.json` yourself.
+
 ### Trained Model Checkpoint
 
 File: `models/checkpoints/<model_name>_v<N>/checkpoint.pt`

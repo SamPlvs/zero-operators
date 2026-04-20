@@ -2113,6 +2113,321 @@ def gates_set(mode: str, project: str, repo: str | None) -> None:
     console.print(f"  Gate mode set to: [{_AMBER}]{gm.value}[/]")
 
 
+# ---------------------------------------------------------------------------
+# Experiments — inspect the Phase 4 experiment registry
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def experiments() -> None:
+    """Inspect the Phase 4 experiment registry for a project."""
+
+
+def _experiments_dir_for(project: str, repo: str | None) -> Path:
+    """Resolve the ``.zo/experiments/`` dir for a project.
+
+    Exits with a helpful message when the delivery repo or registry
+    cannot be found.
+    """
+    delivery = Path(repo).resolve() if repo else None
+    pctx = _load_project_context(project, delivery_repo=delivery)
+    target = pctx.make_target()
+    delivery_repo = Path(target.target_repo)
+    if not delivery_repo.is_dir():
+        console.print(
+            f"[red bold]Delivery repo not found:[/] {delivery_repo}\n"
+            f"Pass [bold]--repo PATH[/] to override.",
+        )
+        raise SystemExit(1)
+    return delivery_repo / ".zo" / "experiments"
+
+
+def _format_metric(value: float | None) -> str:
+    """Render a float metric for table cells; shows '—' for None."""
+    if value is None:
+        return "—"
+    abs_v = abs(value)
+    if abs_v >= 100 or abs_v == 0:
+        return f"{value:.2f}"
+    return f"{value:.4g}"
+
+
+def _format_delta(value: float | None) -> str:
+    """Render delta_vs_parent with a sign and color hint. No color hint
+    when value is None (root)."""
+    if value is None:
+        return "—"
+    sign = "+" if value > 0 else ""
+    return f"{sign}{_format_metric(value)}"
+
+
+@experiments.command("list")
+@click.option("--project", "-p", required=True, help="Project name")
+@click.option(
+    "--phase", default=None,
+    help="Filter to one phase (e.g. phase_4).",
+)
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def experiments_list(
+    project: str, phase: str | None, repo: str | None,
+) -> None:
+    """List all experiments in the project's registry.
+
+    Shows id, phase, parent, hypothesis summary, primary metric,
+    delta_vs_parent, and status. Useful as a quick overview before
+    diving into a specific experiment with ``zo experiments show``.
+    """
+    from zo.experiments import load_registry
+
+    _show_banner(project=project, mode="experiments")
+    exp_dir = _experiments_dir_for(project, repo)
+    if not exp_dir.is_dir():
+        console.print(
+            f"  [{_DIM}]No experiments yet.[/]\n"
+            f"  Registry will be created at "
+            f"[bold]{exp_dir}[/] on first Phase 4 run.",
+        )
+        return
+
+    registry = load_registry(exp_dir)
+    rows = registry.experiments
+    if phase:
+        rows = [e for e in rows if e.phase == phase]
+    if not rows:
+        console.print(
+            f"  [{_DIM}]No experiments match[/] "
+            f"(phase filter: {phase or 'none'}).",
+        )
+        return
+
+    table = Table(
+        title=f"Experiments — {registry.project}",
+        show_lines=False,
+    )
+    table.add_column("ID", style="bold")
+    table.add_column("Phase")
+    table.add_column("Parent", style=_DIM)
+    table.add_column("Hypothesis")
+    table.add_column("Metric")
+    table.add_column("Δ parent", justify="right")
+    table.add_column("Status")
+    for exp in rows:
+        status_style = {
+            "running": _AMBER,
+            "complete": "green",
+            "failed": "red",
+            "aborted": _DIM,
+        }.get(str(exp.status), "")
+        metric_cell = "—"
+        delta_cell = "—"
+        if exp.result is not None:
+            pm = exp.result.primary_metric
+            metric_cell = f"{pm.name}={_format_metric(pm.value)}"
+            delta_cell = _format_delta(pm.delta_vs_parent)
+        hypothesis_short = (
+            exp.hypothesis[:48] + "…"
+            if len(exp.hypothesis) > 49 else exp.hypothesis
+        ) or "—"
+        table.add_row(
+            exp.id,
+            exp.phase,
+            exp.parent_id or "—",
+            hypothesis_short,
+            metric_cell,
+            delta_cell,
+            f"[{status_style}]{exp.status}[/]" if status_style else str(exp.status),
+        )
+    console.print(table)
+
+
+@experiments.command("show")
+@click.argument("exp_id")
+@click.option("--project", "-p", required=True, help="Project name")
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def experiments_show(project: str, exp_id: str, repo: str | None) -> None:
+    """Show full details for a single experiment.
+
+    Prints registry metadata plus the contents of every authored
+    markdown artifact (``hypothesis.md``, ``result.md``, ``diagnosis.md``,
+    ``next.md``) when present. Use for deep inspection after
+    ``zo experiments list`` narrows the field.
+    """
+    from zo.experiments import load_registry
+
+    _show_banner(project=project, mode="experiments")
+    exp_dir = _experiments_dir_for(project, repo)
+    if not exp_dir.is_dir():
+        console.print(f"  [red]No registry at {exp_dir}.[/]")
+        raise SystemExit(1)
+
+    registry = load_registry(exp_dir)
+    exp = registry.find(exp_id)
+    if exp is None:
+        console.print(
+            f"  [red bold]Experiment {exp_id} not found.[/]\n"
+            f"  Registered ids: "
+            f"{', '.join(e.id for e in registry.experiments) or '(none)'}",
+        )
+        raise SystemExit(1)
+
+    console.print(f"\n  [{_AMBER}][bold]{exp.id}[/][/]  "
+                  f"[{_DIM}]({exp.phase})[/]")
+    console.print(f"  Parent:       {exp.parent_id or '—'}")
+    console.print(f"  Status:       {exp.status}")
+    console.print(f"  Created:      {exp.created.isoformat()}")
+    console.print(f"  Artifacts:    {exp.artifacts_dir}")
+    if exp.hypothesis:
+        console.print(f"  Hypothesis:   {exp.hypothesis}")
+    if exp.rationale:
+        console.print(f"  Rationale:    {exp.rationale}")
+    if exp.result is not None:
+        pm = exp.result.primary_metric
+        console.print(f"  Oracle tier:  [{_AMBER}]{exp.result.oracle_tier}[/]")
+        console.print(
+            f"  Primary:      {pm.name} = {_format_metric(pm.value)}  "
+            f"(Δ parent: {_format_delta(pm.delta_vs_parent)})",
+        )
+        if exp.result.secondary_metrics:
+            console.print(f"  [{_DIM}]Secondary metrics:[/]")
+            for k, v in exp.result.secondary_metrics.items():
+                console.print(f"    {k}: {_format_metric(v)}")
+        if exp.result.shortfalls:
+            console.print(f"  [{_DIM}]Shortfalls:[/]")
+            for s in exp.result.shortfalls:
+                console.print(f"    - {s}")
+    if exp.next_ideas:
+        console.print(f"  [{_DIM}]Next ideas:[/]")
+        for idea in exp.next_ideas:
+            console.print(f"    - {idea}")
+
+    # Dump markdown artifacts if present.
+    artifact_names = ["hypothesis.md", "result.md", "diagnosis.md", "next.md"]
+    for name in artifact_names:
+        path = Path(exp.artifacts_dir) / name
+        if not path.is_file():
+            continue
+        console.print(f"\n  [{_AMBER}]── {name} ──[/]")
+        content = path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            console.print(f"  {line}", markup=False, highlight=False)
+
+
+@experiments.command("diff")
+@click.argument("exp_a")
+@click.argument("exp_b")
+@click.option("--project", "-p", required=True, help="Project name")
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+def experiments_diff(
+    project: str, exp_a: str, exp_b: str, repo: str | None,
+) -> None:
+    """Diff two experiments across metrics, hypothesis, and shortfalls.
+
+    Intended for sibling comparisons ("which of our two variants
+    beat the other, and on what dimensions?") as well as
+    parent-child comparisons.
+    """
+    from zo.experiments import load_registry
+
+    _show_banner(project=project, mode="experiments")
+    exp_dir = _experiments_dir_for(project, repo)
+    registry = load_registry(exp_dir)
+    a = registry.find(exp_a)
+    b = registry.find(exp_b)
+    if a is None or b is None:
+        missing = [x for x, e in [(exp_a, a), (exp_b, b)] if e is None]
+        console.print(
+            f"  [red bold]Not found:[/] {', '.join(missing)}\n"
+            f"  Registered ids: "
+            f"{', '.join(e.id for e in registry.experiments) or '(none)'}",
+        )
+        raise SystemExit(1)
+
+    console.print(
+        f"\n  [{_AMBER}][bold]{a.id}[/] ↔ [bold]{b.id}[/][/]  "
+        f"[{_DIM}](parents: {a.parent_id or '—'} / {b.parent_id or '—'})[/]\n",
+    )
+
+    table = Table(show_header=True, show_lines=False)
+    table.add_column("Field", style="bold")
+    table.add_column(a.id)
+    table.add_column(b.id)
+    table.add_column("Δ (b − a)", justify="right")
+
+    # Hypothesis lines first (no delta).
+    table.add_row(
+        "hypothesis",
+        (a.hypothesis[:40] + "…") if len(a.hypothesis) > 41 else (a.hypothesis or "—"),
+        (b.hypothesis[:40] + "…") if len(b.hypothesis) > 41 else (b.hypothesis or "—"),
+        "—",
+    )
+    table.add_row(
+        "status", str(a.status), str(b.status), "—",
+    )
+
+    # Result-based metrics — only if both have results.
+    if a.result is not None and b.result is not None:
+        pm_a, pm_b = a.result.primary_metric, b.result.primary_metric
+        if pm_a.name == pm_b.name:
+            delta = pm_b.value - pm_a.value
+            table.add_row(
+                f"{pm_a.name} (primary)",
+                _format_metric(pm_a.value), _format_metric(pm_b.value),
+                _format_delta(delta),
+            )
+        else:
+            table.add_row(
+                "primary metric (name differs)",
+                f"{pm_a.name}={_format_metric(pm_a.value)}",
+                f"{pm_b.name}={_format_metric(pm_b.value)}",
+                "—",
+            )
+        table.add_row(
+            "oracle tier",
+            a.result.oracle_tier, b.result.oracle_tier, "—",
+        )
+        # Secondary metrics shared between the two.
+        shared = sorted(
+            set(a.result.secondary_metrics) & set(b.result.secondary_metrics),
+        )
+        for k in shared:
+            va, vb = a.result.secondary_metrics[k], b.result.secondary_metrics[k]
+            table.add_row(
+                k, _format_metric(va), _format_metric(vb),
+                _format_delta(vb - va),
+            )
+    else:
+        table.add_row(
+            "result", "(none)" if a.result is None else "present",
+            "(none)" if b.result is None else "present", "—",
+        )
+
+    console.print(table)
+
+    # Shortfall diff — set-based so the reader sees what's new/gone.
+    a_sf = set(a.result.shortfalls) if a.result else set()
+    b_sf = set(b.result.shortfalls) if b.result else set()
+    only_a = sorted(a_sf - b_sf)
+    only_b = sorted(b_sf - a_sf)
+    shared_sf = sorted(a_sf & b_sf)
+    if only_a or only_b or shared_sf:
+        console.print(f"\n  [{_DIM}]Shortfalls:[/]")
+    for s in shared_sf:
+        console.print(f"    = {s}")
+    for s in only_a:
+        console.print(f"    [{_AMBER}]− {a.id} only:[/] {s}")
+    for s in only_b:
+        console.print(f"    [{_AMBER}]+ {b.id} only:[/] {s}")
+
+
 @cli.command("watch-training")
 @click.option("--project", "-p", required=True, help="Project name")
 @click.option("--interval", "-i", default=2.0, help="Refresh interval in seconds")

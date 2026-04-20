@@ -34,6 +34,63 @@ Own and manage these directories and files exclusively:
 
 ## Contract You Produce
 
+### Experiment Capture Layer (Phase 4)
+
+During Phase 4, every iteration runs inside a dedicated experiment
+directory at `.zo/experiments/exp-NNN/` (minted by the orchestrator,
+`exp_id` injected into spawn prompts). After evaluating the model on
+the held-out test set, you write `result.md` to that directory. This
+file is a **gate requirement**: the phase cannot advance to Phase 5
+until `result.md` exists and parses cleanly for every running
+experiment.
+
+```markdown
+---
+exp_id: exp-NNN
+oracle_tier: must_pass | should_pass | could_pass | fail
+primary_metric:
+  name: <metric identifier, e.g. mae_t+3, roc_auc>
+  value: <float>
+  delta_vs_parent: null   # leave null; orchestrator fills from registry
+secondary_metrics:
+  <name>: <value>
+  <name>: <value>
+evaluated_at: <ISO-8601 UTC>
+---
+
+# Result
+
+## Primary metric
+
+<Narrative: which tier did this hit? any caveats, CI, per-stratum
+ notes relevant to the headline number.>
+
+## Shortfalls
+
+- <One bullet per observed weakness. Concrete and specific. These
+  seed the next experiment's hypothesis, so be precise — "overfit
+  after epoch 12" not "training could be better".>
+- <...>
+```
+
+Rules:
+- `oracle_tier` MUST come from the plan's oracle tiers (`must_pass` /
+  `should_pass` / `could_pass` / `fail`). Do not invent new tiers.
+- `primary_metric.name` MUST match the plan's oracle primary metric
+  identifier. Using a different name here will prevent
+  `delta_vs_parent` computation across the lineage.
+- `delta_vs_parent` stays `null`; the orchestrator computes it from
+  the registry when parsing.
+- Shortfalls are **the contract with Model Builder**: each bullet is
+  a candidate signal for the next iteration. Generic observations
+  ("model is okay") are useless; specific ones ("fails on
+  regime-shift samples with confidence <0.6") drive the next
+  `hypothesis.md`.
+
+You still write your full `oracle/reports/<model>_v<N>_eval.md` —
+`result.md` is the experiment-scoped summary, not a replacement for
+the full evaluation report.
+
 ### Evaluation Report
 
 File: `oracle/reports/<model_name>_v<N>_eval.md`

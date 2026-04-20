@@ -188,6 +188,35 @@ class TestZOTrainingCallback:
         assert (new_dir / "metrics.jsonl").exists()
 
 
+class TestForExperimentFactory:
+    """Tests for ZOTrainingCallback.for_experiment — the experiment-dir factory."""
+
+    def test_log_dir_is_registry_over_exp_id(self, tmp_path: Path) -> None:
+        cb = ZOTrainingCallback.for_experiment(
+            registry_dir=tmp_path / ".zo" / "experiments",
+            experiment_id="exp-007",
+            experiment_name="TFT baseline",
+        )
+        cb.on_training_start(total_epochs=1)
+        assert (tmp_path / ".zo" / "experiments" / "exp-007" / "metrics.jsonl").exists()
+
+    def test_experiment_id_propagates(self, tmp_path: Path) -> None:
+        cb = ZOTrainingCallback.for_experiment(
+            registry_dir=tmp_path, experiment_id="exp-007",
+        )
+        cb.on_training_start(total_epochs=1)
+        history = read_metrics_history(tmp_path / "exp-007")
+        assert history[0].experiment_id == "exp-007"
+
+    def test_name_defaults_to_id_when_empty(self, tmp_path: Path) -> None:
+        cb = ZOTrainingCallback.for_experiment(
+            registry_dir=tmp_path, experiment_id="exp-007",
+        )
+        cb.on_training_start(total_epochs=1)
+        history = read_metrics_history(tmp_path / "exp-007")
+        assert history[0].experiment_name == "exp-007"
+
+
 # ------------------------------------------------------------------ #
 # Readers
 # ------------------------------------------------------------------ #

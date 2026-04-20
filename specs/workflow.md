@@ -517,6 +517,8 @@ All concurrent subtasks must report completion. Orchestrator waits for all to fi
 
 Once Phase 3 parallel work completes, orchestrator initiates autonomous training and iteration.
 
+> **Experiment capture layer (ZO infrastructure):** every iteration through this phase runs inside a dedicated experiment directory at `.zo/experiments/exp-NNN/`. The orchestrator mints the directory on phase entry, injects the `exp_id` into the Lead's prompt, and parses the resulting `result.md` at the gate. Files per experiment: `hypothesis.md` (Model Builder, pre-run), `config.yaml` (frozen snapshot), `metrics.jsonl` + `training_status.json` (via `ZOTrainingCallback.for_experiment`), `result.md` (Oracle, post-eval — REQUIRED for gate PROCEED), `diagnosis.md` (XAI / Domain Evaluator, optional), `next.md` (Model Builder, post-result). Lineage is preserved via `parent_id` — iterating a phase mints a child experiment, not a reset. Inspect via `zo experiments list / show / diff`.
+
 ### Subtask 4.1: Baseline Training Run
 
 Execute the first full training run:
