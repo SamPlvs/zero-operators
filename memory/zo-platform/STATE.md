@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent adaptations + branded CLI help + tmux paste timing fix**. Conversational `zo init` via Init Architect, env detection, adaptive layout mode, plan Environment section, `**Agent adaptations:**` block (Plan Architect proposes domain-specific prompt additions during draft; orchestrator injects at build time), branded `zo --help`, and **tmux TUI paste wait 3s→8s** (fixes blank-session bug on cold starts). 20 core agents + custom library, 476 tests, ruff clean, validate-docs 10/10. PRs #22-#29, #33-#34 merged.
+ZO v1.0.2-pre — **prod-001 Phase 1 done on GPU server, portable `.zo/` memory shipped, v1.x low-hanging fruit cleared**. Session-019 landed: (1) denylist-first DL prior codified in `specs/workflow.md` + `data-engineer.md`; (2) `domain-evaluator` refactored to generic shell that derives identity exclusively from plan's `**Agent adaptations:**` block at build time; (3) phase completion snapshots (C1) — new `src/zo/snapshots.py` module, `PhaseSnapshot` pydantic model with `schema_version`, MD+YAML frontmatter format, orchestrator writes a snapshot at every gate PROCEED (automated + human), uses `memory_root` so portable `.zo/memory/snapshots/` works automatically. Experiment capture-layer schema sketched in-session (deferred implementation until prod-001 Phase 4 generates iteration data — PR-005 principle). 20 core agents + custom library, **557 tests** (+28), ruff clean, validate-docs 10/10.
 
 ## Completed
 
@@ -94,6 +94,9 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 - [x] v1.0.2-pre: Agent session auto-cleanup — `_tmux_claude_running()` detects Claude exit via `pane_current_command`, `_kill_tmux_window()` closes leftover shell, `_generate_session_summary()` prints Haiku bullet summary before returning control to terminal
 - [x] v1.0.2-pre: Preflight integration tests (9 tests) — fixture plan validation, parenthetical oracle fields, error formatting, full pipeline. Fixed 3 stacked bugs: `report.is_valid`→`.valid`, `i.field`→`.section`, oracle alias lookup strips parenthetical suffixes. Test count 476→485.
 - [x] v1.0.2-pre: Lead prompt includes explicit "read full plan.md" instruction + autonomy level section based on gate mode
+- [x] v1.0.2-pre: Denylist-first DL data-pipeline guidance codified (specs/workflow.md Subtask 1.3 callout + data-engineer.md Pipeline Principles section). Cross-reference to PR-026.
+- [x] v1.0.2-pre: Domain-evaluator refactored to generic shell — domain identity comes exclusively from plan's `**Agent adaptations:**` block at build time. Agent file is reusable across projects; stop-rule prevents generic reports when adaptation missing.
+- [x] v1.0.2-pre: Phase completion snapshots (C1) — `src/zo/snapshots.py`, `PhaseSnapshot` pydantic model with `schema_version`, MD+YAML frontmatter format, orchestrator hooks at both automated+human gate PROCEED paths, uses `memory_root` (auto-portable with `.zo/` layout). 23 unit + 5 integration tests. Test count 529 → 557.
 
 ## Known Issues
 
@@ -106,13 +109,13 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## What's Next
 
-1. **Portable project memory** — `.zo/` directory in delivery repos. Project state (memory, plans, config) moves from ZO repo to delivery repo for cross-machine portability. `zo migrate` command, `zo continue --repo` enhancement, CLI discovery layer. IN PROGRESS (session-018).
-2. **prod-001 Phase 2** — baseline models on GPU server. Phase 1 data pipeline complete (denylist approach, 297 tests, full doc QA). Re-alignment with full tag set (~15k tags) needed on GPU. BLOCKED on portable memory (need to migrate prod-001 state to delivery repo first).
-2. Phase completion snapshots (C1) — capture context at phase boundaries for reports
-3. Domain evaluator refactor — make project-specific via plan.md domain priors
-4. ~~XAI + Domain Evaluator activation for prod-001 Phase 5~~ (UNBLOCKED by agent adaptations: Plan Architect proposes adaptations during draft; activation now means writing the adaptation block in plan.md)
-5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect)
-6. **ZO learning: denylist-first data pipelines** — when building data pipelines for DL, default to including all available signals and exclude only leakage. Feature selection is model-dependent, not pipeline-dependent.
+1. ~~Portable project memory~~ (SHIPPED: PR #44-47, session-018)
+2. **prod-001 Phase 2** — baseline models on GPU server. Phase 1 data pipeline complete (denylist approach, 297 tests, full doc QA). Re-alignment with full tag set (~15k tags) needed on GPU. UNBLOCKED by portable memory.
+3. ~~Phase completion snapshots (C1)~~ (SHIPPED: session-019, snapshots.py + orchestrator hooks + 28 tests)
+4. ~~Domain evaluator refactor~~ (SHIPPED: session-019, generic shell + plan adaptations)
+5. Remote-data manifest support for `zo draft` (Data Scout reads YAML manifest when data is on a GPU server it can't introspect) — NEXT
+6. ~~ZO learning: denylist-first data pipelines~~ (SHIPPED: session-019, codified in workflow.md + data-engineer.md)
+7. **Experiment capture layer** — design sketched in session-019. Minimal layer (`.zo/experiments/` + registry.json + hypothesis/result/diagnosis/next artifacts per exp) captures prod-001 Phase 4 iterations as they happen. Autonomous loop (plateau detector, proposer, budget-aware selection) stays deferred per PR-005 until real iteration data grounds the heuristics. NEXT after remote-data manifest.
 
 ## Deferred — Post prod-001 First Pass
 
@@ -126,10 +129,10 @@ ZO v1.0.2-pre — **CIFAR-10 done, prod-001 setup tightened + per-project agent 
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-15T12:00:00Z
-last_session: session-018
-branch: claude/lucid-swirles (worktree)
-test_count: 524 passed, 7 skipped (ZO); 297 passed (prod-001)
+last_checkpoint: 2026-04-20T12:00:00Z
+last_session: session-019
+branch: claude/interesting-dubinsky-90747c (worktree)
+test_count: 557 passed, 7 skipped (ZO); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
-validation: scripts/validate-docs.sh 10/10 passed, 0 warnings
-prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure)
+validation: scripts/validate-docs.sh 10/10 passed, 1 warning (stale test-count badge)
+prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness)
