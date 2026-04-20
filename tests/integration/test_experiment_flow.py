@@ -194,19 +194,40 @@ class TestPhase4GateBlocksOnMissingResult:
     def test_result_md_allows_automated_gate(
         self, tmp_path: Path,
     ) -> None:
+        """When result hits must_pass, loop says TARGET_HIT → PROCEED."""
         orch, delivery_repo = _build_orch(tmp_path, gate_mode=GateMode.FULL_AUTO)
         phase = _phase_4(orch)
         _make_phase_artifacts(delivery_repo, phase)
         orch.build_lead_prompt(phase)
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
-        # Write result.md in the active exp dir.
+        # Write result.md with must_pass tier so the loop stops.
         exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
-        _write_result_md(exp_dir)
+        _write_result_md(exp_dir, oracle_tier="must_pass")
 
         ev = orch.advance_phase(phase.phase_id)
         assert ev.decision == GateDecision.PROCEED
         assert phase.status == PhaseStatus.COMPLETED
+
+    def test_supervised_mode_disables_auto_iteration(
+        self, tmp_path: Path,
+    ) -> None:
+        """Supervised mode ignores the loop evaluator — phase gates for human."""
+        orch, delivery_repo = _build_orch(
+            tmp_path, gate_mode=GateMode.SUPERVISED,
+        )
+        phase = _phase_4(orch)
+        _make_phase_artifacts(delivery_repo, phase)
+        orch.build_lead_prompt(phase)
+        for st in phase.subtasks:
+            orch.mark_subtask_complete(phase.phase_id, st)
+        exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
+        _write_result_md(exp_dir, oracle_tier="should_pass")
+
+        ev = orch.advance_phase(phase.phase_id)
+        # Supervised gate holds for human regardless of loop state.
+        assert ev.requires_human is True
+        assert phase.status == PhaseStatus.GATED
 
     def test_gate_pass_marks_experiment_complete(
         self, tmp_path: Path,

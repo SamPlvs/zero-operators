@@ -117,6 +117,30 @@ class AgentConfig(BaseModel):
         return None
 
 
+class ExperimentLoopSpec(BaseModel):
+    """Plan-declared policy for the autonomous Phase 4 iteration loop.
+
+    All fields are optional in the plan; the orchestrator merges plan
+    values on top of ``zo.experiment_loop.DEFAULT_POLICY`` before
+    evaluating. Present only when the plan includes an
+    ``## Experiment Loop`` section.
+
+    Attributes:
+        max_iterations: Hard cap on completed experiments in phase_4.
+        plateau_epsilon: ``|delta_vs_parent|`` threshold for plateau.
+        plateau_runs: Consecutive small-delta runs that trigger plateau.
+        stop_on_tier: Oracle tier at which the loop is considered done.
+        dead_end_threshold: Cosine similarity above which a candidate
+            hypothesis is treated as a near-duplicate.
+    """
+
+    max_iterations: int | None = None
+    plateau_epsilon: float | None = None
+    plateau_runs: int | None = None
+    stop_on_tier: str | None = None
+    dead_end_threshold: float | None = None
+
+
 class Plan(BaseModel):
     """The full parsed plan — top-level container."""
 
@@ -134,6 +158,10 @@ class Plan(BaseModel):
     delivery: str | None = None
     environment: str | None = None
     open_questions: str | None = None
+
+    # Autonomous-iteration knobs — optional; defaults applied by the
+    # orchestrator when absent. Parsed from ``## Experiment Loop``.
+    experiment_loop: ExperimentLoopSpec | None = None
 
     # Raw section map for introspection.
     raw_sections: dict[str, str] = Field(default_factory=dict)
@@ -536,6 +564,9 @@ _OPTIONAL_SECTION_ALIASES: dict[str, str] = {
     "environment": "environment",
     "dependencies and environment": "environment",
     "open questions": "open_questions",
+    "experiment loop": "experiment_loop",
+    "experiment loop policy": "experiment_loop",
+    "autonomous iteration": "experiment_loop",
 }
 
 
@@ -595,6 +626,10 @@ def parse_plan(path: Path) -> Plan:
     workflow = _parse_workflow(mapped["workflow"]) if "workflow" in mapped else None
     data_sources = _parse_data_sources(mapped["data_sources"]) if "data_sources" in mapped else []
     agents = _parse_agents(mapped["agents"]) if "agents" in mapped else None
+    experiment_loop = (
+        _parse_experiment_loop(mapped["experiment_loop"])
+        if "experiment_loop" in mapped else None
+    )
 
     return Plan(
         frontmatter=frontmatter,
@@ -609,9 +644,42 @@ def parse_plan(path: Path) -> Plan:
         delivery=mapped.get("delivery"),
         environment=mapped.get("environment"),
         open_questions=mapped.get("open_questions"),
+        experiment_loop=experiment_loop,
         raw_sections=raw_sections,
         source_path=path,
     )
+
+
+_LOOP_FIELD_RE = re.compile(
+    r"^\s*(max_iterations|plateau_epsilon|plateau_runs|stop_on_tier|dead_end_threshold)\s*:\s*(.+?)\s*$",
+    re.MULTILINE,
+)
+
+
+def _parse_experiment_loop(body: str) -> ExperimentLoopSpec:
+    """Parse the ``## Experiment Loop`` section body.
+
+    Accepts a simple ``key: value`` YAML-subset. Unknown keys are
+    ignored. Numeric fields are coerced; ``stop_on_tier`` is stored as
+    the raw string (orchestrator validates against the loop's enum).
+    """
+    data: dict[str, object] = {}
+    for match in _LOOP_FIELD_RE.finditer(body):
+        key = match.group(1)
+        raw = match.group(2).strip().strip('"').strip("'")
+        if key in {"max_iterations", "plateau_runs"}:
+            try:
+                data[key] = int(raw)
+            except ValueError:
+                continue
+        elif key in {"plateau_epsilon", "dead_end_threshold"}:
+            try:
+                data[key] = float(raw)
+            except ValueError:
+                continue
+        else:
+            data[key] = raw
+    return ExperimentLoopSpec(**data)
 
 
 
