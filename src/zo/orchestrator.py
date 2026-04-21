@@ -495,6 +495,16 @@ class Orchestrator:
                 )
                 self._log_gate(ev)
                 return ev
+            # For phase_4 (training/iteration), consult the autonomous
+            # loop evaluator before accepting the PROCEED. If the loop
+            # says CONTINUE, keep the phase ACTIVE and return ITERATE —
+            # the Lead Orchestrator sees this and mints a child exp on
+            # the next build_lead_prompt call.
+            auto_iter = self._auto_iterate_if_needed(phase)
+            if auto_iter is not None:
+                self._log_gate(auto_iter)
+                return auto_iter
+
             phase.status = PhaseStatus.COMPLETED
             self._generate_test_report(phase)
             self._generate_notebook(phase)
@@ -819,6 +829,69 @@ class Orchestrator:
                 )
         return missing
 
+    def _auto_iterate_if_needed(
+        self, phase: PhaseDefinition,
+    ) -> GateEvaluation | None:
+        """Consult the autonomous loop evaluator for phase_4 PROCEED.
+
+        Returns a GateEvaluation (decision=ITERATE, reason logged from
+        the LoopDecision) when the loop says CONTINUE — the caller
+        keeps the phase ACTIVE and clears completed_subtasks so the
+        Lead can start a fresh iteration (which mints a child exp via
+        _ensure_experiment_for_phase on the next prompt build).
+
+        Returns ``None`` when the loop is not applicable (non-phase_4,
+        supervised gate mode) OR when the loop says stop (TARGET_HIT,
+        PLATEAU, BUDGET_EXHAUSTED, DEAD_END) — in which case the caller
+        finalizes the phase normally (COMPLETED + snapshot + notebook).
+        """
+        if phase.phase_id != self._EXPERIMENT_PHASE:
+            return None
+        # Supervised mode disables auto-iteration — every gate pauses.
+        if self._gate_mode == GateMode.SUPERVISED:
+            return None
+        exp_dir = self._experiments_dir()
+        if exp_dir is None or not exp_dir.is_dir():
+            return None
+        from zo.experiment_loop import (
+            LoopVerdict,
+            evaluate_loop_state,
+            resolve_policy,
+        )
+        from zo.experiments import load_registry
+
+        registry = load_registry(exp_dir)
+        policy = resolve_policy(
+            self._plan.experiment_loop if self._plan else None,
+        )
+        decision = evaluate_loop_state(registry, phase.phase_id, policy)
+
+        # Log the decision to DECISION_LOG regardless of verdict.
+        self._memory.append_decision(DecisionEntry(
+            title=f"Loop verdict for {phase.phase_id}: {decision.verdict}",
+            context=(
+                f"Completed experiments: {decision.completed_count}. "
+                f"Last exp: {decision.last_exp_id or 'none'}."
+            ),
+            decision=str(decision.verdict),
+            rationale=decision.reason,
+            outcome=str(decision.verdict),
+        ))
+
+        if decision.verdict != LoopVerdict.CONTINUE:
+            # Stop — caller proceeds with phase completion.
+            return None
+
+        # Continue — reset phase, next prompt mints child exp.
+        phase.status = PhaseStatus.ACTIVE
+        phase.completed_subtasks.clear()
+        return GateEvaluation(
+            phase_id=phase.phase_id,
+            gate_type=GateType.AUTOMATED,
+            decision=GateDecision.ITERATE,
+            rationale=f"Autonomous iteration: {decision.reason}",
+        )
+
     def _abort_running_experiments(self, phase_id: str) -> None:
         """Mark all running experiments in a phase as ABORTED.
 
@@ -842,7 +915,13 @@ class Orchestrator:
                 update_status(exp_dir, exp.id, ExperimentStatus.ABORTED)
 
     def _prompt_experiment_context(self, phase: PhaseDefinition) -> str:
-        """Lead prompt section describing the active experiment (Phase 4)."""
+        """Lead prompt section describing the active experiment (Phase 4).
+
+        Includes the autonomous-loop briefing when gate mode allows it —
+        Model Builder must auto-propose from parent's shortfalls without
+        asking the human. Supervised mode keeps the human-in-the-loop
+        phrasing.
+        """
         if phase.phase_id != self._EXPERIMENT_PHASE:
             return ""
         exp = self._ensure_experiment_for_phase(phase.phase_id)
@@ -852,6 +931,17 @@ class Orchestrator:
             f" Parent: `{exp.parent_id}`." if exp.parent_id else
             " This is the root experiment for the phase."
         )
+
+        # Policy + autonomy framing.
+        from zo.experiment_loop import resolve_policy
+
+        policy = resolve_policy(
+            self._plan.experiment_loop if self._plan else None,
+        )
+        autonomous = self._gate_mode != GateMode.SUPERVISED
+
+        loop_section = self._render_loop_briefing(exp, policy, autonomous)
+
         return dedent(f"""\
             # Experiment Capture Layer
 
@@ -883,9 +973,71 @@ class Orchestrator:
             `delta_vs_parent` automatically if the parent used the same
             `primary_metric.name`.
 
-            **Iteration:** if this phase ITERATEs, a fresh experiment is
-            minted with `parent_id = {exp.id}` so lineage is preserved
-            in `.zo/experiments/registry.json`.""")
+            {loop_section}""")
+
+    @staticmethod
+    def _render_loop_briefing(
+        exp: object,
+        policy: object,
+        autonomous: bool,
+    ) -> str:
+        """Build the autonomy + proposer briefing block of the experiment prompt."""
+        parent_id = getattr(exp, "parent_id", None)
+        exp_id = getattr(exp, "id", "exp-???")
+        stop_tier = getattr(policy, "stop_on_tier", "must_pass")
+        max_iter = getattr(policy, "max_iterations", 10)
+        plateau_eps = getattr(policy, "plateau_epsilon", 0.01)
+        plateau_runs = getattr(policy, "plateau_runs", 3)
+
+        if not autonomous:
+            # Supervised mode — human reviews every gate.
+            return dedent(f"""\
+                **Iteration:** if this phase is re-iterated, a fresh
+                experiment is minted with `parent_id = {exp_id}`. In
+                supervised mode the human decides whether to iterate
+                or advance at every gate.""")
+
+        proposer_section = ""
+        if parent_id:
+            proposer_section = dedent(f"""\
+
+                **Auto-proposer (child experiment — DO NOT ask the human):**
+                1. Read `{parent_id}/result.md` — every bullet under `## Shortfalls`
+                   is a candidate target for this iteration.
+                2. Read `{parent_id}/diagnosis.md` if present — it tells you
+                   *why* the shortfalls occurred at the model-internals level.
+                3. Read `{parent_id}/next.md` — Model Builder already proposed
+                   follow-ups; pick the highest-leverage idea.
+                4. Write `{exp_id}/hypothesis.md` addressing the most impactful
+                   shortfall. Rationale MUST cite specific findings from the
+                   parent (not generic statements). No "should I continue?"
+                   prompts — the loop is autonomous.""")
+
+        return dedent("""\
+            # Autonomous Iteration Loop
+
+            This phase runs through an autonomous loop — the orchestrator
+            keeps iterating experiments until one of:
+            - `TARGET_HIT` — latest exp hits `oracle_tier >= {stop_tier}`
+            - `BUDGET_EXHAUSTED` — completed {max_iter} iterations
+            - `PLATEAU` — last {plateau_runs} children all had
+              `|delta_vs_parent| < {plateau_eps}`
+            - `DEAD_END` — no novel hypothesis possible (all candidates
+              near-duplicate past experiments)
+
+            Subtask completion → Oracle result.md → gate check. If the
+            loop verdict is CONTINUE, the orchestrator marks this
+            experiment complete, mints a child with
+            `parent_id = {exp_id}`, and the cycle repeats WITHOUT
+            pausing for human input.{proposer_section}
+
+            Stop conditions and the next hypothesis are decided
+            automatically. Your job is to do one iteration cleanly, not
+            to decide when to stop.""").format(
+                stop_tier=stop_tier, max_iter=max_iter,
+                plateau_runs=plateau_runs, plateau_eps=plateau_eps,
+                exp_id=exp_id, proposer_section=proposer_section,
+            )
 
     def _generate_snapshot(
         self,
