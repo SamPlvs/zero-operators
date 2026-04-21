@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO v1.0.2-pre — **Karpathy-style AutoResearch capture layer landed (capture only, loop deferred)**. Session-019 landed v1.x polish (PR #48: phase snapshots + denylist-first + generic domain-evaluator) then pivoted to the experiment capture layer: new `src/zo/experiments.py` (models + registry I/O + mint + MD parsers), `.zo/experiments/` in the delivery repo, orchestrator mints one experiment per Phase 4 iteration with `parent_id` lineage, `result.md` is a hard gate requirement, orchestrator parses Oracle's result → auto-computes `delta_vs_parent` across the lineage, ITERATE aborts the running exp and mints a child on the next prompt, `ZOTrainingCallback.for_experiment()` factory writes metrics into the exp dir, agent contracts (model-builder, oracle-qa, xai-agent, domain-evaluator) all document the experiment protocol, `zo experiments list/show/diff` CLI group for inspection. Autonomous loop (plateau detector, proposer, dead-end guard, budget-aware selection) explicitly deferred per PR-005 until prod-001 Phase 4 generates ≥5 real iterations to design the heuristics against. 20 core agents + custom library, **617 tests** (+88 over baseline), ruff clean, validate-docs 10/10.
+ZO v1.0.2-pre — **Autonomous Karpathy-style AutoResearch loop shipped**. PR #49 landed the capture layer (session-019); session-020 closes the loop: new `src/zo/experiment_loop.py` with `LoopPolicy` + `LoopVerdict` (TARGET_HIT / BUDGET_EXHAUSTED / PLATEAU / DEAD_END / CONTINUE) + `evaluate_loop_state` (orchestrator auto-iterates phase_4 in non-supervised modes: finalize result.md → consult evaluator → CONTINUE keeps phase ACTIVE and next prompt mints child with parent_id, Model Builder auto-drafts next hypothesis from parent's shortfalls + diagnosis + next.md with no human prompt) + `check_dead_end` (Jaccard) detecting Model Builder stuck rephrasing. Plan schema extends with optional `## Experiment Loop` block so projects override `max_iterations` / `plateau_epsilon` / `plateau_runs` / `stop_on_tier` / `dead_end_threshold`. Supervised mode opts out (every gate pauses for human). 20 core agents + custom library, **669 tests** (+52 this PR, +140 over baseline), ruff clean, validate-docs 10/10.
 
 ## Completed
 
@@ -98,6 +98,7 @@ ZO v1.0.2-pre — **Karpathy-style AutoResearch capture layer landed (capture on
 - [x] v1.0.2-pre: Domain-evaluator refactored to generic shell — domain identity comes exclusively from plan's `**Agent adaptations:**` block at build time. Agent file is reusable across projects; stop-rule prevents generic reports when adaptation missing.
 - [x] v1.0.2-pre: Phase completion snapshots (C1) — `src/zo/snapshots.py`, `PhaseSnapshot` pydantic model with `schema_version`, MD+YAML frontmatter format, orchestrator hooks at both automated+human gate PROCEED paths, uses `memory_root` (auto-portable with `.zo/` layout). 23 unit + 5 integration tests. Test count 529 → 557.
 - [x] v1.0.2-pre: Experiment capture layer (Phase 4) — `src/zo/experiments.py` (models + registry I/O + mint + MD parsers), `.zo/experiments/` in delivery repo, orchestrator mints one exp per Phase 4 iteration with `parent_id` lineage, `result.md` gate requirement, orchestrator parses Oracle's result → computes `delta_vs_parent`, aborts running exps on ITERATE (child gets mounted next prompt), `ZOTrainingCallback.for_experiment()` factory writes into exp dir, agent contracts updated (model-builder hypothesis+next, oracle-qa result, xai/domain-eval diagnosis), `zo experiments list/show/diff` CLI group. 38 unit + 10 orchestrator-flow + 9 CLI tests. Test count 557 → 617.
+- [x] v1.0.2-pre: Autonomous experiment loop (Phase 4) — `src/zo/experiment_loop.py` (`LoopPolicy`, `LoopVerdict`, `evaluate_loop_state`, `check_dead_end`, `resolve_policy`). Orchestrator auto-iterates phase_4 in non-supervised modes: after Oracle's `result.md` is parsed and the experiment marked complete, the evaluator decides TARGET_HIT / BUDGET_EXHAUSTED / PLATEAU / DEAD_END / CONTINUE. CONTINUE → phase stays ACTIVE, subtasks cleared, next prompt mints child with `parent_id`, Model Builder auto-drafts `hypothesis.md` from parent's shortfalls (no human prompt). DEAD_END fires when last N hypotheses all Jaccard-similar ≥ threshold to an earlier exp (Model Builder stuck rephrasing). Plan can override defaults via optional `## Experiment Loop` block. Lead prompt + model-builder contract updated with auto-proposer protocol. 44 unit + 7 integration tests. Test count 617 → 669.
 
 ## Known Issues
 
@@ -118,7 +119,7 @@ ZO v1.0.2-pre — **Karpathy-style AutoResearch capture layer landed (capture on
 6. ~~ZO learning: denylist-first data pipelines~~ (SHIPPED: session-019, codified in workflow.md + data-engineer.md)
 7. ~~Experiment capture layer~~ (SHIPPED: session-019, capture only — the autonomous loop stays deferred per PR-005 until prod-001 Phase 4 generates real iteration data).
 8. **Remote-data manifest for `zo draft`** — cancelled. Portable `.zo/` memory (PR #44) already solves the cross-machine case; run `zo draft` on whichever machine has the data.
-9. **Autonomous experiment loop (deferred)** — plateau detector (`|Δ| < ε` for N runs), next-experiment proposer agent, dead-end guard (cosine-match new hypothesis vs registry), budget-aware selection. Build after prod-001 Phase 4 produces enough experiments to design the heuristics against (≥5 iterations).
+9. ~~Autonomous experiment loop~~ (SHIPPED: session-020, full loop — plateau + budget + target + dead-end + auto-proposer, policy configurable via plan `## Experiment Loop`, supervised mode opts out).
 
 ## Deferred — Post prod-001 First Pass
 
@@ -132,10 +133,10 @@ ZO v1.0.2-pre — **Karpathy-style AutoResearch capture layer landed (capture on
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-20T15:30:00Z
-last_session: session-019
-branch: claude/experiments-capture-layer (worktree)
-test_count: 617 passed, 7 skipped (ZO); 297 passed (prod-001)
+last_checkpoint: 2026-04-20T17:30:00Z
+last_session: session-020
+branch: claude/experiments-autonomous-loop (worktree)
+test_count: 669 passed, 7 skipped (ZO); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 1 warning (stale test-count badge)
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness), #48 (phase snapshots + denylist-first + generic domain-evaluator)

@@ -85,6 +85,30 @@ The orchestrator parses your `hypothesis.md` and `next.md` into the
 registry and computes `delta_vs_parent` from the Oracle's `result.md`.
 Don't write to `registry.json` yourself.
 
+**Autonomous proposer (child experiments).** When your spawn prompt
+tells you this experiment has `parent_id = exp-NNN`, the phase is
+running the autonomous iteration loop. Do NOT ask the human what to
+try next. The protocol is strict:
+
+1. Read `{parent}/result.md` — each bullet under `## Shortfalls` is a
+   candidate target for this iteration. Rank by expected leverage (a
+   shortfall that affects 15% of the test set beats one that affects 2%).
+2. Read `{parent}/diagnosis.md` if present — it tells you *why* the
+   shortfalls happened at the model-internals level. Use it to pick a
+   mechanistic intervention, not just a surface symptom.
+3. Read `{parent}/next.md` — you (or a previous Model Builder) already
+   proposed follow-ups. Pick the highest-leverage idea that isn't a
+   near-duplicate of a past experiment (orchestrator flags dead-ends).
+4. Write `{exp_id}/hypothesis.md` addressing the chosen shortfall. The
+   rationale MUST cite specific findings from the parent ("parent
+   result: MAE at horizon-3 was 0.34 vs 0.21 at horizon-1, so
+   attention over longer windows should close the gap"), not generic
+   statements ("bigger model should help").
+
+The loop decides when to stop (target tier hit, plateau detected,
+budget exhausted). Your job is to execute one iteration cleanly and
+draft the next hypothesis, not to decide when iteration ends.
+
 ### Trained Model Checkpoint
 
 File: `models/checkpoints/<model_name>_v<N>/checkpoint.pt`
