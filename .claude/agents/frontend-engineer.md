@@ -70,8 +70,8 @@ You will generate the following outputs:
   ```
 
 - **UI Component Library**
-  Format: Reusable components following the ZO design system (`design/zero_operators_brand_system.html`).
-  Must use: amber #F0C040 primary, void #080808 background, Share Tech Mono for code, Rajdhani for headings.
+  Format: Reusable components following the ZO design system (`design/brand-system.html`).
+  Must use: canvas #12110F (dark) / paper #F4EFE6 (light) backgrounds, coral #D87A57 accent, Geist for body and headings, Cormorant Garamond italic for emphasis, JetBrains Mono for code.
 
 ## Contract You Consume
 
@@ -81,7 +81,7 @@ You consume these inputs:
   Format: REST or WebSocket endpoints exposing session state, agent statuses, decision log entries, and comms log streams.
   Validation: Endpoints must return JSON matching the schemas defined in module contracts. Test with curl or API client before building UI against them.
 
-- **ZO Design System** (`design/zero_operators_brand_system.html`):
+- **ZO Design System** (`design/brand-system.html`):
   Brand colors, typography, spacing, and component patterns.
   Validation: All UI must visually match the design system. Cross-reference with `CLAUDE.md` design section.
 
@@ -103,7 +103,7 @@ See `specs/agents.md` for full contract template and edge cases.
 - **Message Software Architect** if the API contract is insufficient for a dashboard feature.
 - **Message Documentation Agent** with user-facing documentation for dashboard features.
 - **Message Code Reviewer** when components are ready for review.
-- **Follow the ZO design system** strictly. All colors, fonts, and spacing come from `design/zero_operators_brand_system.html`.
+- **Follow the ZO design system** strictly. All colors, fonts, and spacing come from `design/brand-system.html`.
 - **Keep the dashboard decoupled** from backend internals. Only consume public API contracts. Never import Python code or read backend files directly.
 - **Accessibility**: All interactive elements must be keyboard-navigable. Use semantic HTML. Provide aria labels for status indicators.
 

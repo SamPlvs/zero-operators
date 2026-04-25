@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=1280"/>
+  <title>ZO — Logo & Type round 2</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Newsreader:ital,wght@0,300..700;1,300..700&family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=PP+Editorial+New:ital,wght@0,400;1,400&family=Spectral:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=GT+Sectra&family=Redaction:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── LOCAL EXTRAS FOR THIS PAGE ── */
+    .backlink {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: 11px;
+      color: var(--dim); text-decoration: none;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 10px 0; margin-bottom: 16px;
+    }
+    .backlink:hover { color: var(--coral); }
+
+    .cmp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .cmp-cell {
+      background: var(--canvas-2);
+      padding: 40px 28px 24px;
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      position: relative;
+    }
+    .cmp-cell .stage {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .cmp-cell .tag {
+      position: absolute; top: 12px; left: 14px;
+      font-family: var(--mono); font-size: 10px;
+      color: var(--coral); letter-spacing: 0.18em; text-transform: uppercase;
+    }
+    .cmp-cell .cap {
+      text-align: center;
+      padding-top: 18px; border-top: 1px solid var(--rule);
+      width: 100%;
+    }
+    .cmp-cell .cap .name {
+      font-family: var(--sans); font-size: 13px; font-weight: 500;
+      color: var(--cream); margin-bottom: 4px;
+    }
+    .cmp-cell .cap .desc {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--dim); letter-spacing: 0.08em;
+    }
+    .cmp-cell.paper { background: var(--paper); }
+    .cmp-cell.paper .cap { border-top-color: #d9d0bb; }
+    .cmp-cell.paper .cap .name { color: var(--ink); }
+    .cmp-cell.paper .cap .desc { color: var(--ink-muted); }
+
+    .sizes-row {
+      display: flex; align-items: center; gap: 36px;
+      background: var(--canvas-2); border: 1px solid var(--rule); border-radius: 6px;
+      padding: 28px 32px; margin-bottom: 1px;
+      justify-content: center;
+    }
+    .sizes-row .sz-label {
+      font-family: var(--mono); font-size: 10px; color: var(--dim);
+      letter-spacing: 0.18em; text-transform: uppercase;
+      min-width: 60px; text-align: right;
+    }
+
+    /* font specimens */
+    .fnt-grid {
+      display: grid; grid-template-columns: 180px 1fr;
+      gap: 48px;
+      padding: 40px 48px;
+      border: 1px solid var(--rule); border-top: none;
+      background: var(--canvas-2);
+      align-items: baseline;
+    }
+    .fnt-grid:first-of-type { border-top: 1px solid var(--rule); }
+    .fnt-meta .role { font-family: var(--mono); font-size: 10px; color: var(--coral); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+    .fnt-meta .name { font-family: var(--mono); font-size: 11px; color: var(--cream); margin-bottom: 4px; }
+    .fnt-meta .vibe { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.06em; line-height: 1.5; }
+    .fnt-disp { font-weight: 400; font-size: 56px; line-height: 1.0; letter-spacing: -0.02em; color: var(--cream); }
+    .fnt-disp em { color: var(--coral); }
+
+    .fnt-fraunces     { font-family: 'Fraunces', Georgia, serif;     font-variation-settings: "SOFT" 0, "WONK" 0; }
+    .fnt-fraunces em  { font-style: italic; font-variation-settings: "SOFT" 100, "WONK" 1; }
+    .fnt-newsreader   { font-family: 'Newsreader', Georgia, serif; }
+    .fnt-newsreader em{ font-style: italic; }
+    .fnt-garamond     { font-family: 'EB Garamond', Georgia, serif; font-weight: 500; }
+    .fnt-garamond em  { font-style: italic; }
+    .fnt-spectral     { font-family: 'Spectral', Georgia, serif; font-weight: 400; }
+    .fnt-spectral em  { font-style: italic; }
+    .fnt-instrument   { font-family: 'Instrument Serif', Georgia, serif; }
+    .fnt-instrument em{ font-style: italic; }
+    .fnt-geist-disp   { font-family: 'Geist', -apple-system, system-ui, sans-serif; font-weight: 500; letter-spacing: -0.03em; }
+    .fnt-geist-disp em{ font-style: normal; font-weight: 300; color: var(--coral); }
+
+    /* ── Hero mini-sample: repeated with each font ── */
+    .mini-hero {
+      background: var(--canvas-2); border: 1px solid var(--rule);
+      border-radius: 8px; padding: 56px 56px 48px; margin-bottom: 1px;
+    }
+    .mini-hero .eyebrow {
+      font-family: var(--mono); font-size: 10px; color: var(--coral);
+      letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 18px;
+    }
+    .mini-hero h1 {
+      font-weight: 400; font-size: 54px; line-height: 1.0;
+      letter-spacing: -0.02em; color: var(--cream); margin-bottom: 16px;
+    }
+    .mini-hero p {
+      font-family: var(--sans); font-size: 16px; font-weight: 300;
+      color: var(--cream-2); line-height: 1.55; max-width: 520px;
+    }
+
+    .mini-hero-bad {
+      background: repeating-linear-gradient(45deg, transparent, transparent 16px, rgba(235,227,210,0.02) 16px, rgba(235,227,210,0.02) 17px), var(--canvas);
+      border: 1px dashed var(--rule-2);
+    }
+
+    .big-sub {
+      font-family: var(--serif); font-weight: 400; font-style: italic;
+      font-size: 32px; color: var(--cream-2); line-height: 1.2;
+      margin: 40px 0 16px; max-width: 720px;
+    }
+    .big-sub em { color: var(--coral); }
+  </style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="container">
+      <a class="backlink" href="brand-system.html">← back to brand system</a>
+      <div class="masthead-top">
+        <span class="caps">Zero Operators</span>
+        <span>Round 2 · Logo comparison + display type alternates</span>
+      </div>
+      <h1 style="font-family: 'Newsreader', Georgia, serif;">
+        Round two. <em style="font-family:'Newsreader',Georgia,serif;font-style:italic;">Let's look at the old mark, and try other display faces.</em>
+      </h1>
+      <p class="deck">
+        Two things to settle: (1) put the old orbital mark side-by-side with new proposals so
+        you can feel what you're giving up, and (2) try display faces that aren't Instrument
+        Serif — it's having a moment and you're right to push back. This page is set in
+        <em>Newsreader</em> at the top, but every section shows a different option.
+      </p>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       01 · LOGO FACE-OFF
+       ═══════════════════════════════════════════ -->
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <div class="section-num">01<span class="label">Logo</span></div>
+        <div>
+          <h2 style="font-family:'Newsreader',Georgia,serif;">The old mark, in the <em style="font-style:italic;font-family:'Newsreader',Georgia,serif;color:var(--coral);">new palette.</em></h2>
+          <p>Here's the current orbital, recoloured into the warm-dark system. Same drawing — circle + dashed ring + diagonal slash + cardinal ticks + center dot. Compare it against simplified variants and the round-1 picks.</p>
+        </div>
+      </div>
+
+      <div class="subhead">On the warm dark</div>
+      <div class="cmp-grid">
+        <div class="cmp-cell">
+          <span class="tag">Original · as-is</span>
+          <div class="stage" id="old-asis"></div>
+          <div class="cap"><div class="name">Orbital · amber original</div><div class="desc">#F0C040 on void · the current mark</div></div>
+        </div>
+        <div class="cmp-cell">
+          <span class="tag">Original · recoloured</span>
+          <div class="stage" id="old-recolor"></div>
+          <div class="cap"><div class="name">Orbital · cream + coral tint</div><div class="desc">Same drawing, new palette</div></div>
+        </div>
+        <div class="cmp-cell">
+          <span class="tag">Original · coral accent</span>
+          <div class="stage" id="old-coral"></div>
+          <div class="cap"><div class="name">Orbital · two-tone</div><div class="desc">Slash + center dot in coral</div></div>
+        </div>
+      </div>
+
+      <div class="subhead">Simplified orbitals — keep the DNA, shed the chrome</div>
+      <div class="cmp-grid">
+        <div class="cmp-cell">
+          <span class="tag">Simplified · A</span>
+          <div class="stage" id="simp-a"></div>
+          <div class="cap"><div class="name">Ring + slash + dot</div><div class="desc">No dashed inner ring, no ticks</div></div>
+        </div>
+        <div class="cmp-cell">
+          <span class="tag">Simplified · B</span>
+          <div class="stage" id="simp-b"></div>
+          <div class="cap"><div class="name">Ring + slash (heavy)</div><div class="desc">Thicker, modern geometric, no ticks</div></div>
+        </div>
+        <div class="cmp-cell">
+          <span class="tag">Simplified · C</span>
+          <div class="stage" id="simp-c"></div>
+          <div class="cap"><div class="name">Soft-break orbital</div><div class="desc">Circle · slash split with a gap · coral dot</div></div>
+        </div>
+      </div>
+
+      <div class="subhead">On paper, for contrast</div>
+      <div class="cmp-grid">
+        <div class="cmp-cell paper">
+          <div class="stage" id="paper-old"></div>
+          <div class="cap"><div class="name">Old mark · on paper</div><div class="desc">Ink #1A1712</div></div>
+        </div>
+        <div class="cmp-cell paper">
+          <div class="stage" id="paper-simp-a"></div>
+          <div class="cap"><div class="name">Simplified A · on paper</div><div class="desc">Ink with coral slash</div></div>
+        </div>
+        <div class="cmp-cell paper">
+          <div class="stage" id="paper-simp-c"></div>
+          <div class="cap"><div class="name">Simplified C · on paper</div><div class="desc">Soft-break variant</div></div>
+        </div>
+      </div>
+
+      <div class="subhead">Size test — favicon to hero</div>
+      <div class="sizes-row">
+        <span class="sz-label">Old</span>
+        <span id="sz-old-16"></span>
+        <span id="sz-old-24"></span>
+        <span id="sz-old-40"></span>
+        <span id="sz-old-72"></span>
+      </div>
+      <div class="sizes-row">
+        <span class="sz-label">Simpl A</span>
+        <span id="sz-sa-16"></span>
+        <span id="sz-sa-24"></span>
+        <span id="sz-sa-40"></span>
+        <span id="sz-sa-72"></span>
+      </div>
+      <div class="sizes-row">
+        <span class="sz-label">Simpl C</span>
+        <span id="sz-sc-16"></span>
+        <span id="sz-sc-24"></span>
+        <span id="sz-sc-40"></span>
+        <span id="sz-sc-72"></span>
+      </div>
+
+      <div class="big-sub">
+        My read — <em>the old mark isn't broken</em>, it was just over-decorated.<br/>
+        Simplified A keeps its soul. Simplified C adds one small idea.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       02 · DISPLAY TYPE ALTERNATES
+       ═══════════════════════════════════════════ -->
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <div class="section-num">02<span class="label">Type</span></div>
+        <div>
+          <h2 style="font-family:'Newsreader',Georgia,serif;">Five display faces. <em style="font-style:italic;font-family:'Newsreader',Georgia,serif;color:var(--coral);">Same sentence, different character.</em></h2>
+          <p>Body stays Geist. Mono stays JetBrains. This section only swaps the display face — the thing carrying headlines, section titles, and italic-emphasis moments. Each one has a strong personality; pick by which voice sounds most like ZO to you.</p>
+        </div>
+      </div>
+
+      <!-- Side-by-side glyph samples -->
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 1 · current</div>
+          <div class="name">Instrument Serif</div>
+          <div class="vibe">Warm, slightly literary. Heavy use in 2024–25 AI-era landing pages — what you called overused. Soft italic.</div>
+        </div>
+        <div class="fnt-disp fnt-instrument">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 2 · variable, has range</div>
+          <div class="name">Fraunces</div>
+          <div class="vibe">Contrast serif with axes for SOFT and WONK. The italic is almost cursive. Editorial + a little playful. Used well by Figma's blog, many indie zines.</div>
+        </div>
+        <div class="fnt-disp fnt-fraunces">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 3 · editorial, confident</div>
+          <div class="name">Newsreader</div>
+          <div class="vibe">Google's long-form reading serif. Restrained, confident, excellent italic. Reads like a magazine — less trendy than Instrument. <em>This whole page header uses it.</em></div>
+        </div>
+        <div class="fnt-disp fnt-newsreader">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 4 · classic, warm</div>
+          <div class="name">EB Garamond</div>
+          <div class="vibe">Old-style renaissance serif. Feels like a research paper you trust. Italic is properly calligraphic. Understated — letting content lead.</div>
+        </div>
+        <div class="fnt-disp fnt-garamond">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 5 · modern, tight</div>
+          <div class="name">Spectral</div>
+          <div class="vibe">By Production Type, via Google. Tall x-height, sharp italic. More modern/technical than Newsreader. Good compromise — reads serious, not nostalgic.</div>
+        </div>
+        <div class="fnt-disp fnt-spectral">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+      <div class="fnt-grid">
+        <div class="fnt-meta">
+          <div class="role">Option 6 · no serif · radical</div>
+          <div class="name">Geist · tight display</div>
+          <div class="vibe">Drop serifs entirely. Use Geist at display sizes, with weight + coral as the italic-replacement for emphasis. Reads as Linear / Vercel.</div>
+        </div>
+        <div class="fnt-disp fnt-geist-disp">A quiet <em>workshop</em> that runs overnight.</div>
+      </div>
+
+      <!-- Mini-hero composed with each -->
+      <div class="subhead" style="margin-top: 56px;">The hero sentence, composed</div>
+
+      <div class="mini-hero">
+        <div class="eyebrow">Option 2 · Fraunces</div>
+        <h1 class="fnt-fraunces">You write the plan.<br/><em>Agents ship the project.</em></h1>
+        <p>Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep.</p>
+      </div>
+      <div class="mini-hero">
+        <div class="eyebrow">Option 3 · Newsreader</div>
+        <h1 class="fnt-newsreader">You write the plan.<br/><em>Agents ship the project.</em></h1>
+        <p>Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep.</p>
+      </div>
+      <div class="mini-hero">
+        <div class="eyebrow">Option 4 · EB Garamond</div>
+        <h1 class="fnt-garamond">You write the plan.<br/><em>Agents ship the project.</em></h1>
+        <p>Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep.</p>
+      </div>
+      <div class="mini-hero">
+        <div class="eyebrow">Option 5 · Spectral</div>
+        <h1 class="fnt-spectral">You write the plan.<br/><em>Agents ship the project.</em></h1>
+        <p>Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep.</p>
+      </div>
+      <div class="mini-hero">
+        <div class="eyebrow">Option 6 · Geist only</div>
+        <h1 class="fnt-geist-disp">You write the plan.<br/><em>Agents ship the project.</em></h1>
+        <p>Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep.</p>
+      </div>
+
+      <div class="big-sub" style="font-family:'Newsreader',Georgia,serif;">
+        My read — <em>Newsreader</em> if you want serif without the 2024 Instrument vibe.
+        <em>Fraunces</em> if you want more personality with a cursive italic.
+        <em>Geist-only</em> if you'd rather ditch serifs entirely.
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="footer">
+      Round 2 · tell me which logo variant + which display face
+    </div>
+  </div>
+
+  <script src="logos.js"></script>
+  <script>
+    // ───── OLD LOGO VARIANTS ─────
+    function oldLogo(color = '#EBE3D2', accent = null, size = 120, opts = {}) {
+      const a = accent || color;
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="32" stroke="${color}" stroke-width="1.2"/>
+          <circle cx="36" cy="36" r="24" stroke="${color}" stroke-width="0.6" stroke-dasharray="3 4" opacity="${opts.softInner ? 0.5 : 1}"/>
+          <line x1="12" y1="60" x2="60" y2="12" stroke="${a}" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="36" y1="4"  x2="36" y2="10" stroke="${color}" stroke-width="1" stroke-linecap="round"/>
+          <line x1="36" y1="62" x2="36" y2="68" stroke="${color}" stroke-width="1" stroke-linecap="round"/>
+          <line x1="4"  y1="36" x2="10" y2="36" stroke="${color}" stroke-width="1" stroke-linecap="round"/>
+          <line x1="62" y1="36" x2="68" y2="36" stroke="${color}" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="3" fill="${a}"/>
+        </svg>
+      `;
+    }
+
+    // Simplified A — no dashed inner ring, no cardinal ticks
+    function simpA(color = '#EBE3D2', accent = 'oklch(0.74 0.14 35)', size = 120) {
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="30" stroke="${color}" stroke-width="2"/>
+          <line x1="14" y1="58" x2="58" y2="14" stroke="${accent}" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="3.5" fill="${accent}"/>
+        </svg>
+      `;
+    }
+
+    // Simplified B — heavier, modern
+    function simpB(color = '#EBE3D2', accent = 'oklch(0.74 0.14 35)', size = 120) {
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="28" stroke="${color}" stroke-width="3.5"/>
+          <line x1="16" y1="56" x2="56" y2="16" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="3" fill="${accent}"/>
+        </svg>
+      `;
+    }
+
+    // Simplified C — soft-break slash, coral dot
+    function simpC(color = '#EBE3D2', accent = 'oklch(0.74 0.14 35)', size = 120) {
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="30" stroke="${color}" stroke-width="2"/>
+          <line x1="14" y1="58" x2="30" y2="42" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>
+          <line x1="42" y1="30" x2="58" y2="14" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="3.5" fill="${accent}"/>
+        </svg>
+      `;
+    }
+
+    const $ = (id) => document.getElementById(id);
+
+    // On warm dark
+    $('old-asis').innerHTML    = oldLogo('#F0C040', '#F0C040', 120);
+    $('old-recolor').innerHTML = oldLogo('#EBE3D2', '#EBE3D2', 120);
+    $('old-coral').innerHTML   = oldLogo('#EBE3D2', 'oklch(0.74 0.14 35)', 120);
+
+    $('simp-a').innerHTML = simpA();
+    $('simp-b').innerHTML = simpB();
+    $('simp-c').innerHTML = simpC();
+
+    // On paper
+    $('paper-old').innerHTML    = oldLogo('#1A1712', '#1A1712', 120);
+    $('paper-simp-a').innerHTML = simpA('#1A1712', 'oklch(0.60 0.15 35)', 120);
+    $('paper-simp-c').innerHTML = simpC('#1A1712', 'oklch(0.60 0.15 35)', 120);
+
+    // Size test
+    [16, 24, 40, 72].forEach(s => {
+      $(`sz-old-${s}`).innerHTML = oldLogo('#EBE3D2', 'oklch(0.74 0.14 35)', s);
+      $(`sz-sa-${s}`).innerHTML  = simpA('#EBE3D2', 'oklch(0.74 0.14 35)', s);
+      $(`sz-sc-${s}`).innerHTML  = simpC('#EBE3D2', 'oklch(0.74 0.14 35)', s);
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=1280"/>
+  <title>Zero Operators — Brand System v2 · Light</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      /* LIGHT MODE — inverted from FINAL.html */
+      --canvas: #F4EFE6;      /* paper */
+      --canvas-2: #EDE6D3;    /* panel */
+      --canvas-3: #E4DCC6;    /* elevated */
+      --rule: #D6CDB6;
+      --rule-2: #C5BB9F;
+
+      --paper: #12110F;       /* inverse: dark panels for contrast */
+      --paper-2: #17150F;
+
+      --ink: #1A1712;         /* primary text */
+      --cream: #1A1712;       /* alias → same as ink on light */
+      --cream-2: #3A342A;     /* secondary text */
+      --dim: #6B6254;
+      --ghost: #8A8171;
+
+      /* Accents — nudged DARKER for contrast on paper */
+      --coral: oklch(0.58 0.16 35);
+      --coral-soft: oklch(0.58 0.16 35 / 0.12);
+      --coral-hover: oklch(0.54 0.17 35);
+      --dusk: oklch(0.50 0.12 245);
+      --dusk-soft: oklch(0.50 0.12 245 / 0.12);
+      --moss: oklch(0.48 0.09 150);
+      --moss-soft: oklch(0.48 0.09 150 / 0.12);
+
+      --sans: 'Geist', -apple-system, system-ui, sans-serif;
+      --italic: 'Cormorant Garamond', Georgia, serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      color-scheme: light;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{background:var(--canvas);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+    body{min-height:100vh;padding:0 0 120px;}
+    .container{max-width:1200px;margin:0 auto;padding:0 48px;}
+    em,.it{font-family:var(--italic);font-style:italic;font-weight:400;color:var(--coral);letter-spacing:-0.005em;}
+
+    /* Masthead */
+    .mast{border-bottom:1px solid var(--rule);padding:72px 0 48px;margin-bottom:8px;}
+    .mast-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:0.04em;margin-bottom:48px;}
+    .mast-top .caps{text-transform:uppercase;letter-spacing:0.18em;}
+    .mast h1{font-family:var(--sans);font-weight:500;font-size:clamp(52px,6.5vw,88px);line-height:0.98;letter-spacing:-0.03em;color:var(--ink);margin-bottom:16px;}
+    .mast h1 em{letter-spacing:-0.01em;}
+    .mast .deck{font-size:18px;font-weight:300;color:var(--cream-2);max-width:640px;line-height:1.55;margin-bottom:32px;}
+    .mast .meta{display:flex;gap:32px;font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.16em;}
+    .mast .meta strong{color:var(--ink);font-weight:500;}
+
+    /* Section scaffold */
+    section{padding:88px 0 16px;border-top:1px solid var(--rule);}
+    section:first-of-type{border-top:none;padding-top:64px;}
+    .head{display:grid;grid-template-columns:180px 1fr;gap:48px;margin-bottom:48px;align-items:baseline;}
+    .num{font-family:var(--mono);font-size:11px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;}
+    .num .lbl{color:var(--dim);margin-left:12px;}
+    .head h2{font-family:var(--sans);font-weight:500;font-size:42px;line-height:1.04;letter-spacing:-0.025em;color:var(--ink);margin-bottom:12px;}
+    .head p{font-size:16px;color:var(--cream-2);max-width:560px;line-height:1.55;font-weight:300;}
+
+    .sub{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.22em;text-transform:uppercase;margin:36px 0 14px;display:flex;align-items:center;gap:12px;}
+    .sub::before{content:"";width:8px;height:1px;background:var(--coral);}
+
+    /* Grids */
+    .grid{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden;}
+    .g6{grid-template-columns:repeat(6,1fr);} .g3{grid-template-columns:repeat(3,1fr);} .g2{grid-template-columns:repeat(2,1fr);}
+    .cell{background:var(--canvas-2);padding:24px 20px;min-height:148px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;}
+    .cell.dark{background:#17150F;}
+    .cell .chip{position:absolute;inset:18px 18px 68px 18px;border-radius:3px;border:1px solid rgba(0,0,0,0.06);}
+    .cell .n{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:2px;}
+    .cell .h{font-family:var(--mono);font-size:10px;color:var(--dim);}
+    .cell.dark .n{color:#EBE3D2;} .cell.dark .h{color:#857D6B;}
+
+    /* Type specimens */
+    .tcard{background:var(--canvas-2);border:1px solid var(--rule);border-top:none;padding:40px 48px;display:grid;grid-template-columns:180px 1fr;gap:48px;align-items:baseline;}
+    .tcard:first-child{border-top:1px solid var(--rule);}
+    .tmeta{display:flex;flex-direction:column;gap:4px;}
+    .tmeta .role{font-family:var(--mono);font-size:10px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;}
+    .tmeta .fnt{font-family:var(--mono);font-size:11px;color:var(--ink);}
+    .tmeta .sz{font-family:var(--mono);font-size:10px;color:var(--ghost);}
+    .disp{font-weight:500;font-size:64px;line-height:0.98;letter-spacing:-0.03em;color:var(--ink);}
+    .h1{font-weight:500;font-size:40px;line-height:1.05;letter-spacing:-0.025em;color:var(--ink);}
+    .h2{font-weight:500;font-size:22px;letter-spacing:-0.01em;color:var(--ink);}
+    .body{font-weight:300;font-size:17px;line-height:1.55;color:var(--cream-2);max-width:560px;}
+    .ui{font-weight:500;font-size:13px;color:var(--ink);}
+    .mono{font-family:var(--mono);font-size:13px;color:var(--dusk);}
+    .cap{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);}
+
+    /* Logo stage */
+    .logo-stage{background:var(--canvas-2);border:1px solid var(--rule);border-radius:8px;padding:56px;display:flex;align-items:center;justify-content:center;gap:56px;flex-wrap:wrap;}
+    .logo-stage.dark{background:#12110F;border-color:#2A241C;}
+    .size-row{display:flex;align-items:center;gap:32px;background:var(--canvas-2);border:1px solid var(--rule);border-radius:6px;padding:28px 32px;margin-top:1px;justify-content:center;}
+    .size-row .sz-lbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;min-width:70px;text-align:right;}
+
+    /* Lockup */
+    .lockup{display:inline-flex;align-items:center;gap:14px;}
+    .wordmark{font-weight:500;font-size:28px;letter-spacing:-0.02em;color:var(--ink);}
+    .wordmark em{letter-spacing:-0.005em;font-size:28px;}
+    .wordmark.inv{color:#EBE3D2;}
+    .wordmark.inv em{color:oklch(0.74 0.14 35);}
+
+    /* Components */
+    .comp{background:var(--canvas-2);padding:32px 36px;min-height:180px;display:flex;flex-direction:column;gap:20px;}
+    .comp .lbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.2em;text-transform:uppercase;}
+    .comp .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+
+    .btn{font-family:var(--sans);font-weight:500;font-size:14px;padding:11px 20px;border-radius:6px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all 0.15s var(--ease);line-height:1;}
+    .btn-primary{background:var(--coral);color:#FFF7EC;font-weight:600;}
+    .btn-primary:hover{background:var(--coral-hover);transform:translateY(-1px);}
+    .btn-secondary{background:transparent;color:var(--ink);border-color:var(--rule-2);}
+    .btn-secondary:hover{border-color:var(--ink);background:var(--canvas-3);}
+    .btn-ghost{font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 0;border:none;border-bottom:1px solid var(--rule-2);border-radius:0;text-transform:uppercase;letter-spacing:0.14em;}
+    .btn-ghost:hover{color:var(--coral);border-bottom-color:var(--coral);}
+
+    .badge{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;padding:4px 10px;border-radius:3px;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;}
+    .b-coral{background:var(--coral-soft);color:var(--coral);border-color:oklch(0.58 0.16 35 / 0.28);}
+    .b-dusk{background:var(--dusk-soft);color:var(--dusk);border-color:oklch(0.50 0.12 245 / 0.28);}
+    .b-moss{background:var(--moss-soft);color:var(--moss);border-color:oklch(0.48 0.09 150 / 0.28);}
+    .b-dim{background:transparent;color:var(--dim);border-color:var(--rule-2);}
+    .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+    .field{display:flex;flex-direction:column;gap:6px;width:100%;}
+    .field label{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase;}
+    .inp{font-family:var(--sans);font-size:14px;background:var(--canvas);border:1px solid var(--rule-2);color:var(--ink);padding:10px 14px;border-radius:6px;outline:none;transition:border-color 0.15s var(--ease);}
+    .inp:focus{border-color:var(--coral);}
+
+    /* Terminal stays dark — code is dark by convention */
+    .code{font-family:var(--mono);font-size:13px;background:#12110F;border:1px solid #2A241C;border-radius:8px;padding:18px 20px;color:#C8C0AE;line-height:1.7;overflow-x:auto;}
+    .code .p{color:oklch(0.74 0.14 35);margin-right:8px;}
+    .code .c{color:#EBE3D2;}
+    .code .a{color:oklch(0.70 0.10 245);}
+    .code .cm{color:#4E4738;}
+    .code .ok{color:oklch(0.62 0.08 150);}
+
+    /* Oracle card */
+    .oracle{background:var(--canvas-2);border:1px solid var(--rule);border-radius:8px;padding:24px 28px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;}
+    .metric{font-family:var(--sans);font-weight:500;font-size:56px;line-height:1;color:var(--ink);letter-spacing:-0.03em;}
+    .metric em{font-size:56px;letter-spacing:-0.01em;}
+    .o-lbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px;}
+
+    /* Pipeline */
+    .pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;}
+    .phase{background:var(--canvas-2);padding:24px 18px;position:relative;min-height:140px;display:flex;flex-direction:column;gap:8px;}
+    .phase .p-num{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;}
+    .phase .p-name{font-family:var(--sans);font-weight:500;font-size:20px;color:var(--ink);letter-spacing:-0.02em;}
+    .phase .p-kind{font-family:var(--mono);font-size:10px;color:var(--coral);letter-spacing:0.1em;text-transform:uppercase;margin-top:auto;}
+    .phase[data-g="human"] .p-kind{color:var(--dusk);}
+    .phase.active{background:var(--canvas-3);}
+    .phase.active::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--coral);}
+
+    /* Illustration placeholder */
+    .illo{background:repeating-linear-gradient(45deg,transparent,transparent 14px,rgba(26,23,18,0.03) 14px,rgba(26,23,18,0.03) 15px),linear-gradient(180deg,var(--canvas-3) 0%,var(--canvas-2) 100%);padding:24px;min-height:260px;display:flex;flex-direction:column;justify-content:space-between;position:relative;border:1px dashed var(--rule-2);border-radius:4px;}
+    .illo .tag{font-family:var(--mono);font-size:10px;color:var(--coral);letter-spacing:0.18em;text-transform:uppercase;}
+    .illo .title{font-family:var(--italic);font-style:italic;font-weight:400;font-size:26px;color:var(--cream-2);line-height:1.15;max-width:320px;}
+    .illo .spec{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.1em;}
+
+    /* Hero sample */
+    .sf{border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--canvas);margin-bottom:8px;}
+    .sf-lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--canvas-2);}
+    .hero{padding:80px 72px;display:grid;grid-template-columns:1.1fr 1fr;gap:64px;align-items:center;min-height:520px;}
+    .hero .eye{font-family:var(--mono);font-size:11px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:12px;}
+    .hero .eye::before{content:"";width:16px;height:1px;background:var(--coral);}
+    .hero h1{font-weight:500;font-size:clamp(44px,4.8vw,68px);line-height:0.98;letter-spacing:-0.035em;color:var(--ink);margin-bottom:24px;}
+    .hero p{font-size:18px;font-weight:300;color:var(--cream-2);line-height:1.55;max-width:440px;margin-bottom:36px;}
+    .hero .ctas{display:flex;gap:12px;align-items:center;}
+    .hero .hmeta{margin-top:56px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase;display:flex;gap:24px;padding-top:20px;border-top:1px solid var(--rule);}
+    .hero .hmeta strong{color:var(--ink);font-weight:500;}
+    .hero-illo{aspect-ratio:4/5;border-radius:8px;background:repeating-linear-gradient(45deg,transparent,transparent 14px,rgba(26,23,18,0.03) 14px,rgba(26,23,18,0.03) 15px),linear-gradient(180deg,var(--canvas-3) 0%,var(--canvas-2) 100%);display:flex;flex-direction:column;justify-content:space-between;padding:24px;border:1px dashed var(--rule-2);}
+    .hero-illo .title{font-family:var(--italic);font-style:italic;font-weight:400;font-size:28px;color:var(--cream-2);line-height:1.15;max-width:280px;}
+
+    /* Comparison */
+    .cmp{padding:72px;}
+    .cmp .chead{max-width:720px;margin-bottom:48px;}
+    .cmp .chead .eye{font-family:var(--mono);font-size:11px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;}
+    .cmp h2{font-weight:500;font-size:46px;line-height:1.05;letter-spacing:-0.03em;color:var(--ink);margin-bottom:16px;}
+    .cmp .chead p{font-size:17px;color:var(--cream-2);font-weight:300;line-height:1.55;}
+    .compare{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;}
+    .col{background:var(--canvas-2);padding:28px;display:flex;flex-direction:column;gap:16px;}
+    .col.feat{background:var(--canvas-3);position:relative;}
+    .col.feat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--coral);}
+    .col .kind{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;}
+    .col.feat .kind{color:var(--coral);}
+    .col h3{font-weight:500;font-size:24px;color:var(--ink);line-height:1.15;letter-spacing:-0.015em;}
+    .col ul{list-style:none;display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+    .col li{font-size:14px;font-weight:300;color:var(--cream-2);line-height:1.5;padding-left:18px;position:relative;}
+    .col li::before{content:"—";position:absolute;left:0;color:var(--ghost);}
+    .col.feat li::before{color:var(--coral);}
+
+    /* Motion */
+    @keyframes pulse-dot{0%,100%{opacity:0.5;transform:scale(1);}50%{opacity:1;transform:scale(1.2);}}
+    .pulse{animation:pulse-dot 2.4s var(--ease) infinite;transform-origin:center;transform-box:fill-box;}
+    @keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+    .caret{animation:blink 1s steps(1) infinite;color:oklch(0.74 0.14 35);}
+
+    .foot{text-align:center;padding-top:72px;font-family:var(--mono);font-size:10px;color:var(--ghost);letter-spacing:0.18em;text-transform:uppercase;}
+
+    .pcap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase;margin-top:14px;}
+
+    /* Theme toggle link to dark version */
+    .theme-link{position:fixed;top:24px;right:24px;font-family:var(--mono);font-size:11px;color:var(--dim);text-decoration:none;padding:8px 14px;border:1px solid var(--rule-2);border-radius:6px;background:var(--canvas);letter-spacing:0.14em;text-transform:uppercase;transition:all 0.15s var(--ease);z-index:100;}
+    .theme-link:hover{border-color:var(--coral);color:var(--coral);}
+  </style>
+</head>
+<body>
+
+  <a class="theme-link" href="FINAL.html">← Dark version</a>
+
+  <header class="mast">
+    <div class="container">
+      <div class="mast-top">
+        <span class="caps">Zero Operators</span>
+        <span>Brand System v2 · Light · Apr 2026</span>
+      </div>
+      <h1>Same system.<br/><em>Different light.</em></h1>
+      <p class="deck">
+        The <em>paper</em> variant. Same Geist + Cormorant pairing. Same coral, dusk, moss —
+        with chroma nudged down so accents stay legible on cream.
+        Use for docs, reading views, print, and anyone who <em>prefers the sun.</em>
+      </p>
+      <div class="meta">
+        <span><strong>Canvas</strong>&nbsp;&nbsp;#F4EFE6 paper</span>
+        <span><strong>Ink</strong>&nbsp;&nbsp;#1A1712 warm charcoal</span>
+        <span><strong>Coral</strong>&nbsp;&nbsp;oklch(0.58 0.16 35)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 01 · Color -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">01<span class="lbl">Color</span></div>
+        <div>
+          <h2>Same palette, <em>inverted.</em></h2>
+          <p>Paper is the canvas. Ink is the primary. Accents drop in chroma and lightness to hold contrast on cream — coral from 0.74 → 0.58, dusk 0.70 → 0.50, moss 0.62 → 0.48.</p>
+        </div>
+      </div>
+
+      <div class="sub">Surfaces · paper</div>
+      <div class="grid g6">
+        <div class="cell"><div class="chip" style="background:#F4EFE6;border:1px solid #D6CDB6;"></div><div class="n">Canvas</div><div class="h">#F4EFE6</div></div>
+        <div class="cell"><div class="chip" style="background:#EDE6D3;"></div><div class="n">Panel</div><div class="h">#EDE6D3</div></div>
+        <div class="cell"><div class="chip" style="background:#E4DCC6;"></div><div class="n">Elevated</div><div class="h">#E4DCC6</div></div>
+        <div class="cell"><div class="chip" style="background:#D6CDB6;"></div><div class="n">Rule</div><div class="h">#D6CDB6</div></div>
+        <div class="cell"><div class="chip" style="background:#C5BB9F;"></div><div class="n">Rule · strong</div><div class="h">#C5BB9F</div></div>
+        <div class="cell"><div class="chip" style="background:#1A1712;"></div><div class="n" style="color:#F4EFE6;">Ink · text</div><div class="h" style="color:#857D6B;">#1A1712</div></div>
+      </div>
+
+      <div class="sub">Text scale</div>
+      <div class="grid g6">
+        <div class="cell"><div class="chip" style="background:#1A1712;"></div><div class="n" style="color:#F4EFE6;">Ink</div><div class="h" style="color:#857D6B;">#1A1712</div></div>
+        <div class="cell"><div class="chip" style="background:#3A342A;"></div><div class="n" style="color:#F4EFE6;">Secondary</div><div class="h" style="color:#857D6B;">#3A342A</div></div>
+        <div class="cell"><div class="chip" style="background:#6B6254;"></div><div class="n">Dim</div><div class="h">#6B6254</div></div>
+        <div class="cell"><div class="chip" style="background:#8A8171;"></div><div class="n">Ghost</div><div class="h">#8A8171</div></div>
+        <div class="cell"><div class="chip" style="background:#C5BB9F;"></div><div class="n">Rule</div><div class="h">#C5BB9F</div></div>
+        <div class="cell"><div class="chip" style="background:#FFF7EC;"></div><div class="n">Inverse</div><div class="h">#FFF7EC</div></div>
+      </div>
+
+      <div class="sub">Accents · re-tuned for paper</div>
+      <div class="grid g3">
+        <div class="cell" style="min-height:180px;"><div class="chip" style="inset:18px 18px 72px 18px;background:oklch(0.58 0.16 35);"></div><div class="n">Coral · primary</div><div class="h">oklch(0.58 0.16 35) · was 0.74 on dark</div></div>
+        <div class="cell" style="min-height:180px;"><div class="chip" style="inset:18px 18px 72px 18px;background:oklch(0.50 0.12 245);"></div><div class="n">Dusk · semantic</div><div class="h">oklch(0.50 0.12 245) · was 0.70</div></div>
+        <div class="cell" style="min-height:180px;"><div class="chip" style="inset:18px 18px 72px 18px;background:oklch(0.48 0.09 150);"></div><div class="n">Moss · success</div><div class="h">oklch(0.48 0.09 150) · was 0.62</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 · Type -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">02<span class="lbl">Type</span></div>
+        <div>
+          <h2>Same pairing. <em>Reading sings on paper.</em></h2>
+          <p>Geist for everything. Cormorant italic for emphasis. JetBrains mono for code. Paper is where Cormorant really earns its keep — editorial rhythm, magazine feel.</p>
+        </div>
+      </div>
+
+      <div class="tcard"><div class="tmeta"><span class="role">Display</span><span class="fnt">Geist · 500</span><span class="sz">56–88px · -0.03em</span></div><div class="disp">You write the plan. <em>Agents ship the project.</em></div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">Heading</span><span class="fnt">Geist · 500</span><span class="sz">36–46px · -0.025em</span></div><div class="h1">The oracle <em>verifies</em> every claim.</div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">Subhead</span><span class="fnt">Geist · 500</span><span class="sz">20–22px</span></div><div class="h2">Persistent memory · decision log · semantic recall · <em>it never forgets.</em></div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">Body</span><span class="fnt">Geist · 300</span><span class="sz">16–18px · 1.55</span></div><div class="body">Zero Operators is an autonomous research and engineering team. You write a plan. Agents decompose it, execute it, and verify it against hard metrics. You approve the gates. Everything in between <em>is autonomous.</em></div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">UI</span><span class="fnt">Geist · 500</span><span class="sz">13–14px</span></div><div class="ui">Deploy agent team · View phase log · Edit plan</div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">Mono</span><span class="fnt">JetBrains Mono · 400</span><span class="sz">12–14px</span></div><div class="mono">zo build plans/prod-001.md &nbsp;<span class="caret">▊</span></div></div>
+      <div class="tcard"><div class="tmeta"><span class="role">Caption</span><span class="fnt">JetBrains Mono</span><span class="sz">10–11px · 0.18em</span></div><div class="cap">Phase 04 · Training · Oracle iteration loop</div></div>
+    </div>
+  </section>
+
+  <!-- 03 · Logo -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">03<span class="lbl">Logo</span></div>
+        <div>
+          <h2>On paper, <em>ink-stroked.</em></h2>
+          <p>The mark in ink on cream — what it'll look like in print, docs, or the light-mode website. Side-by-side with the inverse (cream on dark) so you can see both living on the page at once.</p>
+        </div>
+      </div>
+
+      <div class="logo-stage">
+        <div id="mark-hero-light"></div>
+        <div class="lockup">
+          <div id="mark-lockup-light"></div>
+          <span class="wordmark">Zero<em>Operators</em></span>
+        </div>
+      </div>
+
+      <div class="sub">On dark · for contrast</div>
+      <div class="logo-stage dark">
+        <div id="mark-hero-dark"></div>
+        <div class="lockup">
+          <div id="mark-lockup-dark"></div>
+          <span class="wordmark inv">Zero<em>Operators</em></span>
+        </div>
+      </div>
+
+      <div class="sub">Size test · favicon to hero · on paper</div>
+      <div class="size-row">
+        <span class="sz-lbl">Mark</span>
+        <span id="sz-16"></span><span id="sz-24"></span><span id="sz-40"></span><span id="sz-72"></span><span id="sz-120"></span>
+      </div>
+
+      <div class="pcap"><span>Construction — circle r30, stroke 2px ink · slash split at (30,42)→(42,30) · coral dot r3.5</span><span>v2 · light</span></div>
+    </div>
+  </section>
+
+  <!-- 04 · Components -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">04<span class="lbl">Components</span></div>
+        <div><h2>Every component, <em>on paper.</em></h2><p>Buttons, badges, inputs, oracle card, pipeline — all inverted. Terminal stays dark because code always looks better in a dark well.</p></div>
+      </div>
+
+      <div class="grid g2">
+        <div class="cell comp">
+          <span class="lbl">Buttons</span>
+          <div class="row">
+            <button class="btn btn-primary">Deploy plan</button>
+            <button class="btn btn-secondary">View phases</button>
+            <button class="btn btn-ghost">Read docs →</button>
+          </div>
+        </div>
+        <div class="cell comp">
+          <span class="lbl">Badges</span>
+          <div class="row">
+            <span class="badge b-coral"><span class="dot"></span>Active</span>
+            <span class="badge b-dusk">Phase 04</span>
+            <span class="badge b-moss">Oracle · pass</span>
+            <span class="badge b-dim">v1.0.2</span>
+          </div>
+        </div>
+        <div class="cell comp">
+          <span class="lbl">Form field</span>
+          <div class="field"><label>Plan file</label><input class="inp" value="plans/prod-001.md"/></div>
+          <div class="field"><label>Max iterations</label><input class="inp" placeholder="5"/></div>
+        </div>
+        <div class="cell comp">
+          <span class="lbl">Terminal · stays dark</span>
+<pre class="code" style="margin:0;"><span class="cm"># Draft, validate, build.</span>
+<span class="p">❯</span><span class="c">zo init</span> <span class="a">prod-001</span>
+<span class="p">❯</span><span class="c">zo build</span> <span class="a">plans/prod-001.md</span>
+<span class="cm"># → Oracle: all gates <span class="ok">PASS</span></span></pre>
+        </div>
+      </div>
+
+      <div class="sub">Oracle metric</div>
+      <div class="oracle">
+        <div>
+          <div class="metric"><em>99.1%</em>&nbsp;&nbsp;accuracy on held-out set</div>
+          <div class="o-lbl">Phase 04 · Oracle verdict · seed 42 · reproducible</div>
+        </div>
+        <span class="badge b-moss"><span class="dot"></span>Pass</span>
+      </div>
+
+      <div class="sub">Pipeline · 6 phases</div>
+      <div class="pipe">
+        <div class="phase" data-g="auto"><span class="p-num">01</span><span class="p-name">Data</span><span class="p-kind">Auto</span></div>
+        <div class="phase" data-g="human"><span class="p-num">02</span><span class="p-name">Features</span><span class="p-kind">Human gate</span></div>
+        <div class="phase" data-g="auto"><span class="p-num">03</span><span class="p-name">Model</span><span class="p-kind">Auto</span></div>
+        <div class="phase active" data-g="auto"><span class="p-num">04</span><span class="p-name">Training</span><span class="p-kind">Active · iterating</span></div>
+        <div class="phase" data-g="human"><span class="p-num">05</span><span class="p-name">Analysis</span><span class="p-kind">Human gate</span></div>
+        <div class="phase" data-g="auto"><span class="p-num">06</span><span class="p-name">Packaging</span><span class="p-kind">Auto</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · Hero composition -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">05<span class="lbl">Hero composition · light</span></div>
+        <div><h2>The site, <em>in daylight.</em></h2><p>Same structure, paper canvas. The italic word still earns its moment. Coral CTA still pops. The whole thing reads quieter — which suits a research tool.</p></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-lbl"><span>Hero · 1440×900 · desktop · light</span><span>index.astro · light</span></div>
+        <div class="hero">
+          <div>
+            <div class="eye"><span id="hero-mark"></span><span>Zero Operators · v1.0.2</span></div>
+            <h1>You write the plan.<br/><em>We ship the project.</em></h1>
+            <p>An autonomous research and engineering team. Twenty agents, six phases, one oracle. You approve the gates. <em>Everything in between runs while you sleep.</em></p>
+            <div class="ctas">
+              <button class="btn btn-primary">Get started</button>
+              <button class="btn btn-secondary">View on GitHub · 2.4k ★</button>
+            </div>
+            <div class="hmeta">
+              <span><strong>20</strong>&nbsp;agents</span>
+              <span><strong>669</strong>&nbsp;tests</span>
+              <span><strong>$11</strong>&nbsp;MNIST demo</span>
+              <span><strong>99%</strong>&nbsp;accuracy</span>
+            </div>
+          </div>
+          <div class="hero-illo">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--coral);letter-spacing:0.18em;text-transform:uppercase;">Hero illustration</span>
+            <span class="title">Workshop at dusk — plan on the desk, agents quietly lit on the monitors, the city going amber through the glass.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 · Comparison -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">06<span class="lbl">Comparison · light</span></div>
+        <div><h2>Three columns, <em>editorial feel.</em></h2><p>ZO's column still gets the coral accent line, but everything else steps down into newsprint-greys. Reads like a considered paragraph, not a dashboard.</p></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-lbl"><span>What makes it different · light</span><span>&lt;Differentiation /&gt;</span></div>
+        <div class="cmp">
+          <div class="chead">
+            <div class="eye" style="font-family:var(--mono);font-size:11px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;">What makes it different</div>
+            <h2>Most tools help you <em>write code.</em><br/>ZO replaces the need to <em>coordinate it.</em></h2>
+            <p>Coding assistants help you write lines. Agent frameworks help you chain tasks. Zero Operators gives you a team that owns the project end-to-end — from plan to verified delivery.</p>
+          </div>
+
+          <div class="compare">
+            <div class="col">
+              <span class="kind">Coding assistants</span>
+              <h3>Cursor · Copilot · Oh My Claude</h3>
+              <ul><li>Unit of work: a line or a function</li><li>Human is the pair programmer</li><li>Verification: "looks right to me"</li><li>Memory: current session only</li></ul>
+            </div>
+            <div class="col">
+              <span class="kind">Agent frameworks</span>
+              <h3>CrewAI · AutoGen · LangGraph</h3>
+              <ul><li>Unit of work: a task in a DAG</li><li>Human is the prompt engineer</li><li>Verification: optional checks</li><li>Memory: basic scratchpad state</li></ul>
+            </div>
+            <div class="col feat">
+              <span class="kind">Zero Operators</span>
+              <h3>Zero<em style="font-size:24px;">Operators</em></h3>
+              <ul><li>Unit of work: the <em>entire project</em></li><li>Human is the research director</li><li>Oracle-mandated, tiered, statistical</li><li>Persistent memory · decision log · <em>self-evolving</em> rules</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · Both together -->
+  <section>
+    <div class="container">
+      <div class="head">
+        <div class="num">07<span class="lbl">Side by side</span></div>
+        <div><h2>Dark and light, <em>same soul.</em></h2><p>The test: does the system feel coherent across both? Hero card on paper, next to the same hero card on canvas. If it reads as one voice in two registers, we're done.</p></div>
+      </div>
+
+      <div class="grid g2" style="border-radius:12px;">
+        <div style="background:#F4EFE6;padding:48px;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:24px;">Light · paper</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--coral);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;">Phase 04 · oracle</div>
+          <div style="font-weight:500;font-size:32px;line-height:1.05;letter-spacing:-0.025em;color:var(--ink);margin-bottom:12px;">The oracle<br/><em style="color:oklch(0.58 0.16 35);">verifies</em> every claim.</div>
+          <div style="font-size:15px;color:#3A342A;font-weight:300;line-height:1.55;max-width:320px;margin-bottom:24px;">Tiered, deterministic, statistical. No agent ever marks its own homework.</div>
+          <button class="btn btn-primary">Read the spec</button>
+        </div>
+        <div style="background:#12110F;padding:48px;">
+          <div style="font-family:var(--mono);font-size:10px;color:#857D6B;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:24px;">Dark · canvas</div>
+          <div style="font-family:var(--mono);font-size:11px;color:oklch(0.74 0.14 35);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;">Phase 04 · oracle</div>
+          <div style="font-weight:500;font-size:32px;line-height:1.05;letter-spacing:-0.025em;color:#EBE3D2;margin-bottom:12px;">The oracle<br/><em style="font-family:var(--italic);font-style:italic;font-weight:400;color:oklch(0.74 0.14 35);">verifies</em> every claim.</div>
+          <div style="font-size:15px;color:#C8C0AE;font-weight:300;line-height:1.55;max-width:320px;margin-bottom:24px;">Tiered, deterministic, statistical. No agent ever marks its own homework.</div>
+          <button style="font-family:var(--sans);font-weight:600;font-size:14px;padding:11px 20px;border-radius:6px;border:none;background:oklch(0.74 0.14 35);color:#1A0F06;cursor:pointer;">Read the spec</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container"><div class="foot">Brand system v2 · light · <a href="FINAL.html" style="color:var(--coral);text-decoration:none;">see dark →</a></div></div>
+
+  <script>
+    // Same Simplified C mark — inked for paper mode
+    function zoMark(color, accent, size = 120, animate = false) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 72 72" fill="none">
+        <circle cx="36" cy="36" r="30" stroke="${color}" stroke-width="2"/>
+        <line x1="14" y1="58" x2="30" y2="42" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>
+        <line x1="42" y1="30" x2="58" y2="14" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="36" cy="36" r="3.5" fill="${accent}" ${animate ? 'class="pulse"' : ''}/>
+      </svg>`;
+    }
+    const $ = (id) => document.getElementById(id);
+
+    // Paper mode: ink mark with darker coral dot
+    const inkColor = '#1A1712';
+    const paperCoral = 'oklch(0.58 0.16 35)';
+    const creamColor = '#EBE3D2';
+    const darkCoral = 'oklch(0.74 0.14 35)';
+
+    $('mark-hero-light').innerHTML = zoMark(inkColor, paperCoral, 120, true);
+    $('mark-lockup-light').innerHTML = zoMark(inkColor, paperCoral, 36);
+    $('mark-hero-dark').innerHTML = zoMark(creamColor, darkCoral, 120, true);
+    $('mark-lockup-dark').innerHTML = zoMark(creamColor, darkCoral, 36);
+
+    [16,24,40,72,120].forEach(s => $(`sz-${s}`).innerHTML = zoMark(inkColor, paperCoral, s));
+    $('hero-mark').innerHTML = zoMark(inkColor, paperCoral, 18);
+  </script>
+
+</body>
+</html>

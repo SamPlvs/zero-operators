@@ -1,6 +1,0 @@
-{
-  "accuracy": { "value": 99, "suffix": "%", "label": "MNIST test accuracy" },
-  "cost": { "value": 11, "prefix": "$", "label": "Total build cost" },
-  "tests": { "value": 476, "suffix": "", "label": "Platform tests passing" },
-  "agents": { "value": 20, "suffix": "", "label": "Agents defined" }
-}
