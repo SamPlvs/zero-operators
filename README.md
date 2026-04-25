@@ -253,7 +253,7 @@ Other session commands:
 
 ## Slash Commands
 
-ZO provides 24 slash commands for Claude Code. See [docs/COMMANDS.md](docs/COMMANDS.md) for the full reference.
+ZO provides 24 slash commands for Claude Code. See [docs/COMMANDS.md](docs/COMMANDS.md) for the full reference. If something breaks, check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) before filing an issue.
 
 | Category | Key Commands |
 |----------|-------------|
@@ -458,20 +458,20 @@ mnist-delivery/          ← delivery repo (clean)
 
 ## Status
 
-**v1.0.1 — All phases complete. Validated end-to-end. Pre-production hardening done.**
+**v1.0.2 — All phases complete. Validated end-to-end. Brand v2 + autonomous experiment loop shipped.**
 
 | Phase | What | Status |
 |-------|------|--------|
-| 0 | Agent definitions (17) + Claude Code setup | Done |
+| 0 | Agent definitions (20) + Claude Code setup | Done |
 | 1 | Plan parser, target parser, comms logger, setup | Done |
 | 2 | Memory layer, semantic index | Done |
 | 3 | Orchestration engine + lifecycle wrapper | Done |
 | 4 | Evolution engine, CLI, integration tests | Done |
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
-| pre-F5 | Phase persistence, auto-notebooks, delivery scaffold + Docker, preflight | Done |
+| 1.0.2 | Phase snapshots, experiment capture + autonomous loop, brand v2, website v2 | Done |
 
-476 platform tests. ruff clean. 20 agents. 24 slash commands.
+669 platform tests. ruff clean. 20 agents. 24 slash commands.
 
 ---
 
