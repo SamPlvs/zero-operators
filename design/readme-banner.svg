@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" font-family="Geist, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="fade" x1="640" y1="0" x2="820" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12110F" stop-opacity="1"></stop>
+      <stop offset="1" stop-color="#12110F" stop-opacity="0"></stop>
+    </linearGradient>
+    <radialGradient id="glowL" cx="0" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#D87A57" stop-opacity="0.18"></stop>
+      <stop offset="1" stop-color="#D87A57" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="glowR" cx="0.95" cy="1.1" r="0.5">
+      <stop offset="0" stop-color="#7896C8" stop-opacity="0.16"></stop>
+      <stop offset="1" stop-color="#7896C8" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="vg" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0.3" stop-color="#12110F" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="#12110F" stop-opacity="0.55"></stop>
+    </radialGradient>
+    <clipPath id="rightHalf"><rect x="640" y="0" width="640" height="640"></rect></clipPath>
+    <filter id="capShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"></feGaussianBlur>
+      <feOffset dy="2"></feOffset>
+      <feComponentTransfer><feFuncA type="linear" slope="0.6"></feFuncA></feComponentTransfer>
+      <feMerge><feMergeNode></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+    </filter>
+  </defs>
+
+  
+  <rect width="1280" height="640" fill="#12110F"></rect>
+  <rect width="1280" height="640" fill="url(#glowL)"></rect>
+  <rect width="1280" height="640" fill="url(#glowR)"></rect>
+
+  
+  <g clip-path="url(#rightHalf)">
+    <image x="640" y="-100" width="800" height="800" preserveAspectRatio="xMidYMid slice" filter="brightness(0.92) contrast(1.05) saturate(0.95)"></image>
+    <rect x="640" y="0" width="640" height="640" fill="url(#vg)"></rect>
+    <rect x="640" y="0" width="240" height="640" fill="url(#fade)"></rect>
+  </g>
+
+  
+  <g stroke="#D87A57" stroke-width="2" fill="none" opacity="0.85">
+    <path d="M676 68 L676 36 L708 36"></path>
+    <path d="M1244 68 L1244 36 L1212 36"></path>
+    <path d="M676 572 L676 604 L708 604"></path>
+    <path d="M1244 572 L1244 604 L1212 604"></path>
+  </g>
+
+  
+  <g transform="translate(88,88)">
+    <circle cx="22" cy="22" r="20" stroke="#EBE3D2" stroke-width="2" fill="none"></circle>
+    <line x1="4" y1="38" x2="16" y2="24" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"></line>
+    <line x1="28" y1="20" x2="40" y2="6" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"></line>
+    <circle cx="22" cy="22" r="3.5" fill="#D87A57"></circle>
+  </g>
+
+  
+  <text x="148" y="118" font-size="26" font-weight="500" fill="#EBE3D2">Zero<tspan font-family="Cormorant Garamond, Georgia, serif" font-style="italic" fill="#D87A57" dx="2">Operators</tspan></text>
+
+  
+  <line x1="88" y1="230" x2="110" y2="230" stroke="#D87A57" stroke-width="1"></line>
+  <text x="124" y="234" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12" font-weight="500" fill="#D87A57" letter-spacing="2">AUTONOMOUS RESEARCH TEAM FOR ML</text>
+
+  
+  <text x="88" y="304" font-size="64" font-weight="500" fill="#EBE3D2" letter-spacing="-2">You write the plan.</text>
+  <text x="88" y="384" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="70" font-weight="500" fill="#D87A57" letter-spacing="-1">We ship the model.</text>
+
+  
+  <g font-size="17" fill="#C8C0AE" font-weight="300">
+    <text x="88" y="438">A specialised agent <tspan font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="19" font-weight="500" fill="#D87A57">team</tspan> that turns a <tspan id="planmd-anchor"></tspan></text>
+  </g>
+  
+  <g transform="translate(322,422)">
+    <rect width="76" height="22" fill="#7896C8" fill-opacity="0.14"></rect>
+    <text x="6" y="16" font-family="JetBrains Mono, ui-monospace, monospace" font-size="15" fill="#8FAACB">plan.md</text>
+  </g>
+  <text x="402" y="438" font-size="17" fill="#C8C0AE" font-weight="300">into an audit-ready</text>
+  <text x="88" y="464" font-size="17" fill="#C8C0AE" font-weight="300">trained model — recipe, checkpoint, audit log included.</text>
+
+  
+  <g transform="translate(88,556)">
+    <rect width="68" height="28" y="-14" fill="#D87A57" fill-opacity="0.14" stroke="#D87A57" stroke-opacity="0.32"></rect>
+    <text x="12" y="5" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11" font-weight="500" fill="#D87A57">V1.0.2</text>
+  </g>
+  <g transform="translate(170,556)">
+    <rect width="48" height="28" y="-14" fill="none" stroke="#35301F"></rect>
+    <text x="12" y="5" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11" font-weight="500" fill="#C8C0AE">MIT</text>
+  </g>
+  <text x="240" y="561" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11" font-weight="500" fill="#857D6B" letter-spacing="1.6">20 AGENTS · 6 PHASES · TIERED ORACLE</text>
+
+  
+  <g font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="22" font-weight="500" filter="url(#capShadow)">
+    <text x="1232" y="582" text-anchor="end">
+      <tspan fill="#D87A57">A quiet workshop</tspan>
+      <tspan fill="#EBE3D2"> that runs overnight.</tspan>
+    </text>
+  </g>
+</svg>

@@ -35,7 +35,7 @@ console = Console()
 _AMBER = "bold #F0C040"
 _DIM = "#8a6020"
 _VOID = "#080808"
-_VERSION = "1.0.1"
+_VERSION = "1.0.2"
 
 
 def _zo_root() -> Path:

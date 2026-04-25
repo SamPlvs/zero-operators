@@ -1,23 +1,18 @@
 <div align="center">
 
-<img src="design/banner-dark.svg" alt="Zero Operators — Autonomous AI Systems" width="800"/>
+<img src="design/readme-banner.png" alt="Zero Operators — You write the plan. We ship the model." width="1000"/>
 
 <br/>
 <br/>
 
-<img src="design/logo-dark.svg" alt="ZO orbital mark" width="64"/>
-
-<br/>
-<br/>
-
-**You input a plan. Agents execute. The oracle verifies.**
+**You write the plan. We ship the model.**
 
 <br/>
 
-[![Status](https://img.shields.io/badge/status-validated-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Tests](https://img.shields.io/badge/tests-524_passing-F0C040?style=flat-square&labelColor=080808)](#status)
-[![Agents](https://img.shields.io/badge/agents-20_defined-F0C040?style=flat-square&labelColor=080808)](#agent-teams)
-[![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-F0C040?style=flat-square&labelColor=080808)](#e2e-validation)
+[![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-669_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
+[![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
 
 ---
 
@@ -483,12 +478,12 @@ mnist-delivery/          ← delivery repo (clean)
 <div align="center">
 <br/>
 
-<img src="design/logo-dark.svg" alt="ZO" width="32"/>
+<img src="design/logo-dark.svg" alt="Zero Operators mark" width="32"/>
 
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v1.0.1` · `validated` · `99% MNIST accuracy`
+`ZERO OPERATORS` · `v1.0.2` · `validated` · `99% MNIST accuracy`
 
 <br/>
 </div>

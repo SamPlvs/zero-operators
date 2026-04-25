@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Zero Operators — You write the plan. We ship the model.</title>
+  <meta name="description" content="The autonomous research team for production ML. You define the oracle on your data — Zero Operators delivers an audit-ready trained model your domain expert will sign off on."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <span class="mark" id="nav-mark"></span>
+        <span class="wordmark">Zero<em>Operators</em></span>
+      </a>
+      <div class="nav-right">
+        <a class="nav-link" href="#idea">The idea</a>
+        <a class="nav-link" href="#handoff">Handoff</a>
+        <a class="nav-link" href="#team">The team</a>
+        <a class="nav-link" href="#how">How it works</a>
+        <a class="nav-link" href="#different">Different</a>
+        <a class="nav-link" href="#start">Quick start</a>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <span class="theme-icon" id="theme-icon"></span>
+        </button>
+        <a class="btn btn-ghost-sm nav-github" href="https://github.com/SamPlvs/zero-operators" target="_blank" rel="noopener">
+          GitHub →
+        </a>
+        <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
+          <span class="burger-line"></span>
+          <span class="burger-line"></span>
+          <span class="burger-line"></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+    <div class="md-scrim" data-md-close></div>
+    <aside class="md-panel" role="dialog" aria-label="Site navigation">
+      <div class="md-head">
+        <span class="md-kind">Menu</span>
+        <button class="md-close" data-md-close aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <nav class="md-links">
+        <a href="#idea" class="md-link" data-md-close><span class="md-num">02</span><span class="md-label">The idea</span></a>
+        <a href="#handoff" class="md-link" data-md-close><span class="md-num">03</span><span class="md-label">Handoff</span></a>
+        <a href="#team" class="md-link" data-md-close><span class="md-num">04</span><span class="md-label">The team</span></a>
+        <a href="#how" class="md-link" data-md-close><span class="md-num">05</span><span class="md-label">How it works</span></a>
+        <a href="#oracle" class="md-link" data-md-close><span class="md-num">06</span><span class="md-label">Oracle &amp; memory</span></a>
+        <a href="#different" class="md-link" data-md-close><span class="md-num">07</span><span class="md-label">Different</span></a>
+        <a href="#start" class="md-link" data-md-close><span class="md-num">08</span><span class="md-label">Quick start</span></a>
+      </nav>
+      <div class="md-foot">
+        <a class="btn btn-ghost-sm md-github" href="https://github.com/SamPlvs/zero-operators" target="_blank" rel="noopener">GitHub →</a>
+        <span class="md-version">v1.0.2 · MIT</span>
+      </div>
+    </aside>
+  </div>
+
+  <!-- HERO -->
+  <header class="hero" id="top">
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <div class="eyebrow reveal" data-delay="0">
+          <span class="tick"></span>
+          <span>Zero Operators · v1.0.2 · by <a href="https://samtukra.com/" target="_blank" rel="noopener" class="author-link"><em>Samyakh (Sam) Tukra</em></a></span>
+        </div>
+        <h1 class="display reveal" data-delay="120">
+          You write the plan.<br/>
+          <em>We ship the model.</em>
+        </h1>
+        <p class="lede reveal" data-delay="260">
+          The autonomous research <em>team</em> for production ML. You define the oracle
+          on your data — Zero Operators delivers an audit-ready trained model your
+          domain expert will sign off on. <em>Built by specialised agents that cross-check each other.</em>
+        </p>
+        <div class="ctas reveal" data-delay="400">
+          <a class="btn btn-primary" href="#start">
+            Get started
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn-secondary" href="https://github.com/SamPlvs/zero-operators" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+        </div>
+        <dl class="hero-meta reveal" data-delay="560">
+          <div><dt>Agents</dt><dd>20</dd></div>
+          <div><dt>Phases</dt><dd>6</dd></div>
+          <div><dt>Oracle</dt><dd>Tiered</dd></div>
+          <div><dt>Memory</dt><dd>Persistent</dd></div>
+        </dl>
+      </div>
+
+      <figure class="hero-art reveal" data-delay="340">
+        <div class="hero-art-frame">
+          <img src="assets/hero-workshop.png" alt="A quiet workshop at dusk — plan on the desk, agents glowing on the monitors, the city going amber through the glass." loading="eager"/>
+          <span class="art-corner tl"></span>
+          <span class="art-corner tr"></span>
+          <span class="art-corner bl"></span>
+          <span class="art-corner br"></span>
+        </div>
+        <figcaption class="hero-figcaption">
+          <span class="fc-title-lg"><em>A quiet workshop</em> that runs overnight.</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="hero-scroll">
+      <span>Scroll</span>
+      <span class="scroll-line"></span>
+    </div>
+  </header>
+
+  <!-- SECTION 02 · THE IDEA -->
+  <section class="section" id="idea">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">02<span class="section-kind">The idea</span></span>
+        <h2 class="section-title">
+          Write one file. <em>Walk away.</em><br/>
+          Come back to verified work.
+        </h2>
+      </div>
+
+      <div class="idea-grid">
+        <div class="idea-copy reveal">
+          <p>
+            Most AI tools help you <em>write code</em>. Zero Operators delivers a
+            <em>trained model</em> — and the recipe to reproduce it.
+          </p>
+          <p>
+            You write a <span class="mono-inline">plan.md</span> with your data, your
+            metrics, your tiered success criteria. A lead orchestrator decomposes it.
+            Specialist agents — data engineer, model builder, oracle, domain evaluator,
+            code reviewer — run the work in parallel and check each other's output.
+            Memory persists across sessions, so the same mistake can't happen twice.
+          </p>
+          <p>
+            Your part is the <em>research direction</em>, not the typing. You approve the
+            plan, review the gates, read the final report. Out the other end:
+            a <em>checkpoint, a recipe, an audit log</em> — everything a domain expert
+            needs to sign off on the work.
+          </p>
+        </div>
+
+        <div class="idea-diagram reveal" aria-hidden="true">
+          <svg viewBox="-40 0 560 440" class="flow" id="flow-svg" preserveAspectRatio="xMidYMid meet">
+            <!-- side labels (in left gutter, fully clear of chips) -->
+            <text x="-32" y="56" class="flow-sub flow-it">decompose</text>
+            <text x="-32" y="194" class="flow-sub flow-it">verify</text>
+            <text x="-32" y="388" class="flow-sub flow-it">ship</text>
+
+            <!-- TOP: plan.md document -->
+            <g class="flow-node" data-step="1" transform="translate(176, 16)">
+              <rect width="128" height="92" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <text x="64" y="22" text-anchor="middle" class="flow-label">plan.md</text>
+              <line x1="14" y1="36" x2="114" y2="36" stroke="var(--rule-2)" stroke-width="1"/>
+              <line x1="14" y1="48" x2="96" y2="48" stroke="var(--rule-2)" stroke-width="1"/>
+              <line x1="14" y1="60" x2="108" y2="60" stroke="var(--rule-2)" stroke-width="1"/>
+              <line x1="14" y1="72" x2="84" y2="72" stroke="var(--rule-2)" stroke-width="1"/>
+              <line x1="14" y1="84" x2="100" y2="84" stroke="var(--rule-2)" stroke-width="1"/>
+            </g>
+
+            <!-- Decompose fanout: plan → 6 phases (terminate at top of chips, y=180) -->
+            <path class="flow-arrow flow-fan" d="M 240 108 L 78 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 144 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 208 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 272 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 336 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 402 180" />
+
+            <!-- MIDDLE: 6 phase chips (with 2px gaps, centered on x=240) -->
+            <g class="flow-node" data-step="2">
+              <g class="phase-chip" transform="translate(46, 180)">
+                <rect width="64" height="28" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+                <text x="32" y="18" text-anchor="middle" class="flow-sub">data</text>
+              </g>
+              <g class="phase-chip" transform="translate(112, 180)">
+                <rect width="64" height="28" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+                <text x="32" y="18" text-anchor="middle" class="flow-sub">features</text>
+              </g>
+              <g class="phase-chip" transform="translate(178, 180)">
+                <rect width="60" height="28" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+                <text x="30" y="18" text-anchor="middle" class="flow-sub">model</text>
+              </g>
+              <g class="phase-chip is-active" transform="translate(240, 180)">
+                <rect width="64" height="28" rx="3" fill="var(--coral-soft)" stroke="var(--coral)"/>
+                <text x="32" y="18" text-anchor="middle" class="flow-sub flow-it">training</text>
+              </g>
+              <g class="phase-chip" transform="translate(306, 180)">
+                <rect width="64" height="28" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+                <text x="32" y="18" text-anchor="middle" class="flow-sub">analysis</text>
+              </g>
+              <g class="phase-chip" transform="translate(372, 180)">
+                <rect width="64" height="28" rx="3" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+                <text x="32" y="18" text-anchor="middle" class="flow-sub">package</text>
+              </g>
+            </g>
+
+            <!-- Oracle gate: phases bottom (y=208) → oracle top (y=270) -->
+            <path class="flow-arrow" d="M 78 208 L 240 270" />
+            <path class="flow-arrow" d="M 144 208 L 240 270" />
+            <path class="flow-arrow" d="M 208 208 L 240 270" />
+            <path class="flow-arrow" d="M 272 208 L 240 270" />
+            <path class="flow-arrow" d="M 336 208 L 240 270" />
+            <path class="flow-arrow" d="M 402 208 L 240 270" />
+
+            <!-- Oracle box -->
+            <g class="flow-node" data-step="3" transform="translate(180, 270)">
+              <rect width="120" height="44" rx="3" fill="var(--canvas)" stroke="var(--coral)" stroke-width="1.4"/>
+              <text x="60" y="20" text-anchor="middle" class="flow-label">oracle</text>
+              <text x="60" y="34" text-anchor="middle" class="flow-sub">must · should · could</text>
+            </g>
+
+            <!-- Oracle → delivery -->
+            <path class="flow-arrow" d="M 240 314 L 240 360" />
+
+            <!-- BOTTOM: trained model delivery -->
+            <g class="flow-node" data-step="4" transform="translate(140, 360)">
+              <rect width="200" height="60" rx="3" fill="var(--canvas-2)" stroke="var(--coral)" stroke-width="1.4"/>
+              <text x="24" y="26" class="flow-tick">✓</text>
+              <text x="110" y="26" text-anchor="middle" class="flow-label">trained model</text>
+              <text x="110" y="44" text-anchor="middle" class="flow-sub">+ recipe · + audit log</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 03 · WHAT YOU GIVE / WHAT YOU GET -->
+  <section class="section section-handoff" id="handoff">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">03<span class="section-kind">The handoff</span></span>
+        <h2 class="section-title">
+          You bring two things. <em>You get four.</em>
+        </h2>
+        <p class="section-lede">
+          The contract is small on your end and large on ours. <em>Everything between is autonomous.</em>
+        </p>
+      </div>
+
+      <div class="handoff-grid reveal">
+        <!-- INPUT -->
+        <div class="handoff-col handoff-in">
+          <div class="hc-head">
+            <span class="hc-kind">You provide</span>
+            <span class="hc-num">01</span>
+          </div>
+          <ul class="hc-list">
+            <li>
+              <span class="hc-name">Path to your data</span>
+              <span class="hc-note">a directory, a bucket, a database — wherever it lives</span>
+            </li>
+            <li>
+              <span class="hc-name"><span class="mono-inline">plan.md</span></span>
+              <span class="hc-note">objective &amp; tiered oracle: <em>must · should · could</em>. Draft it yourself, or write it <em>jointly with ZO</em>.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- ARROW / ENGINE -->
+        <div class="handoff-engine">
+          <div class="he-pulse"></div>
+          <div class="he-label">Zero<em>Operators</em></div>
+          <div class="he-sub">research → train → evaluate → iterate</div>
+          <svg class="he-flow" viewBox="0 0 240 12" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="0" y1="6" x2="240" y2="6" stroke="var(--coral)" stroke-width="1" stroke-dasharray="2 4"/>
+          </svg>
+        </div>
+
+        <!-- OUTPUT -->
+        <div class="handoff-col handoff-out">
+          <div class="hc-head">
+            <span class="hc-kind">You receive</span>
+            <span class="hc-num">02</span>
+          </div>
+          <ul class="hc-list">
+            <li>
+              <span class="hc-name">Trained model</span>
+              <span class="hc-note">checkpoint, tokenizer / preprocessor, eval scorecard</span>
+            </li>
+            <li>
+              <span class="hc-name">Reproducible recipe</span>
+              <span class="hc-note">configs, seeds, commands — re-run from scratch</span>
+            </li>
+            <li>
+              <span class="hc-name">Audit log</span>
+              <span class="hc-note">every decision, every failure, signed by the oracle</span>
+            </li>
+            <li>
+              <span class="hc-name">Clean delivery repo</span>
+              <span class="hc-note">zero infra artifacts — your team can ship it</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 03 · DIGITAL RESEARCH TEAM (tmux live view) -->
+  <section class="section section-team" id="team">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">04<span class="section-kind">A digital research team</span></span>
+        <h2 class="section-title">
+          A <em>team</em>, not a single agent.
+        </h2>
+        <p class="section-lede">
+          One generalist agent judges its own work. <em>Zero Operators is a team</em> — five
+          specialised roles working in parallel against a shared task list. Different
+          cognition checks the work. The lead assigns. Peers communicate directly.
+          <em>Nobody marks their own homework.</em>
+        </p>
+      </div>
+
+      <!-- Peer-to-peer team diagram -->
+      <div class="team-diagram reveal" aria-hidden="true">
+        <svg viewBox="0 0 880 360" preserveAspectRatio="xMidYMid meet" class="team-svg">
+          <!-- Lead at top -->
+          <g class="td-node td-lead">
+            <rect x="320" y="20" width="240" height="48" rx="4" fill="var(--coral-soft)" stroke="var(--coral)" stroke-width="1.4"/>
+            <text x="440" y="42" text-anchor="middle" class="td-label td-label-lg">Lead orchestrator</text>
+            <text x="440" y="58" text-anchor="middle" class="td-sub">spawn · assign · gate</text>
+          </g>
+
+          <!-- Lead → shared task list -->
+          <path class="td-arrow" d="M 440 68 L 440 110" />
+          <text x="450" y="92" class="td-edge">spawn &amp; assign</text>
+
+          <!-- Shared task list -->
+          <g class="td-node">
+            <rect x="180" y="110" width="520" height="40" rx="4" fill="var(--canvas-2)" stroke="var(--dusk)" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <text x="440" y="128" text-anchor="middle" class="td-label">Shared task list</text>
+            <text x="440" y="142" text-anchor="middle" class="td-sub">claim · update · gate-check</text>
+          </g>
+
+          <!-- Task list → 5 teammates -->
+          <path class="td-arrow td-claim" d="M 230 150 L 110 220" />
+          <path class="td-arrow td-claim" d="M 320 150 L 270 220" />
+          <path class="td-arrow td-claim" d="M 440 150 L 440 220" />
+          <path class="td-arrow td-claim" d="M 560 150 L 610 220" />
+          <path class="td-arrow td-claim" d="M 650 150 L 770 220" />
+
+          <!-- Teammate row -->
+          <g class="td-team">
+            <!-- 1 Data engineer -->
+            <g class="td-node td-mate">
+              <rect x="40" y="220" width="140" height="48" rx="4" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+              <text x="110" y="242" text-anchor="middle" class="td-label">Data engineer</text>
+              <text x="110" y="258" text-anchor="middle" class="td-sub">data · features</text>
+            </g>
+            <!-- 2 Model builder -->
+            <g class="td-node td-mate">
+              <rect x="200" y="220" width="140" height="48" rx="4" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+              <text x="270" y="242" text-anchor="middle" class="td-label">Model builder</text>
+              <text x="270" y="258" text-anchor="middle" class="td-sub">arch · train</text>
+            </g>
+            <!-- 3 Oracle / QA -->
+            <g class="td-node td-mate td-mate-oracle">
+              <rect x="370" y="220" width="140" height="48" rx="4" fill="var(--coral-soft)" stroke="var(--coral)" stroke-width="1.2"/>
+              <text x="440" y="242" text-anchor="middle" class="td-label">Oracle / QA</text>
+              <text x="440" y="258" text-anchor="middle" class="td-sub">verify · gate</text>
+            </g>
+            <!-- 4 Domain evaluator -->
+            <g class="td-node td-mate">
+              <rect x="540" y="220" width="140" height="48" rx="4" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+              <text x="610" y="242" text-anchor="middle" class="td-label">Domain evaluator</text>
+              <text x="610" y="258" text-anchor="middle" class="td-sub">sign-off · context</text>
+            </g>
+            <!-- 5 Code reviewer -->
+            <g class="td-node td-mate">
+              <rect x="700" y="220" width="140" height="48" rx="4" fill="var(--canvas-2)" stroke="var(--rule-2)"/>
+              <text x="770" y="242" text-anchor="middle" class="td-label">Code reviewer</text>
+              <text x="770" y="258" text-anchor="middle" class="td-sub">audit · clean</text>
+            </g>
+          </g>
+
+          <!-- Peer-to-peer communication arrows (between adjacent teammates) -->
+          <g class="td-peer">
+            <path d="M 180 244 L 200 244" />
+            <path d="M 340 244 L 370 244" />
+            <path d="M 510 244 L 540 244" />
+            <path d="M 680 244 L 700 244" />
+          </g>
+
+          <!-- "communicate" label centered -->
+          <text x="440" y="290" text-anchor="middle" class="td-edge td-edge-it">peers communicate directly</text>
+
+          <!-- Output: each does work -->
+          <g class="td-work">
+            <text x="110" y="322" text-anchor="middle" class="td-sub">↓ work</text>
+            <text x="270" y="322" text-anchor="middle" class="td-sub">↓ work</text>
+            <text x="440" y="322" text-anchor="middle" class="td-sub">↓ verify</text>
+            <text x="610" y="322" text-anchor="middle" class="td-sub">↓ sign</text>
+            <text x="770" y="322" text-anchor="middle" class="td-sub">↓ audit</text>
+          </g>
+        </svg>
+      </div>
+
+      <p class="team-diagram-note reveal">
+        <em>Lead</em> spawns a <em>shared task list</em>. Five specialised agents claim
+        and complete tasks in parallel — and talk directly to each other to coordinate.
+        Cross-checking is built into the topology, not asked of one model.
+      </p>
+
+      <!-- Tmux subhead -->
+      <div class="section-subhead reveal">
+        <h3 class="section-subtitle">
+          Live session — <em>the team in motion.</em>
+        </h3>
+        <p class="section-sublede">
+          Run <span class="mono-inline">zo build</span> and this is what happens —
+          a real tmux session, the lead on the left, a spawned <em>research-scout</em>
+          on the right.
+        </p>
+      </div>
+
+      <div class="tmux-stage reveal">
+        <!-- Real tmux window bar: session name + tab list in tmux format -->
+        <div class="tmux-winbar">
+          <span class="wb-session">[zo]</span>
+          <span class="wb-tab">0:bash-1.1<span class="wb-sep">*</span></span>
+          <span class="wb-tab">1:zo-build-lead</span>
+          <span class="wb-tab wb-tab-active">2:research-scout<span class="wb-sep">Z</span></span>
+          <span class="wb-tab">3:data-engineer</span>
+          <span class="wb-tab">4:feature-synth</span>
+          <span class="wb-tab">5:trainer</span>
+          <span class="wb-tab">6:oracle</span>
+          <span class="wb-tab">7:logs</span>
+          <span class="wb-host">"zo-build"  sam@zo  <span id="wb-date">19:45 26-Apr-26</span></span>
+        </div>
+
+        <!-- Two-pane split: lead orchestrator (left, with chat input) + stacked agent panes (right) -->
+        <div class="tmux-split">
+          <!-- LEFT PANE · Lead orchestrator -->
+          <div class="tmux-pane tmux-lead">
+            <div class="pane-head">
+              <span class="ph-dot"></span>
+              <span class="ph-name">lead-orchestrator</span>
+              <span class="ph-meta">phase 0 · spawning</span>
+            </div>
+            <div class="pane-body" id="lead-stream">
+              <div class="tmx-line t-header"><span class="t-y">"RL experiment orchestration and training"</span></div>
+              <div class="tmx-line t-out">- Evaluation protocol: 100 episodes, deterministic actions, report mean ± std</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">5. Environment Setup — spawn data-engineer to:</div>
+              <div class="tmx-line t-out">   - Add dependencies to pyproject.toml (gymnasium, stable-baselines3)</div>
+              <div class="tmx-line t-out">   - Write a minimal env verification script</div>
+              <div class="tmx-line t-out">   - Set up configs for both algorithms</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">Should I proceed? I'll create a todo list and spawn the agents in parallel —</div>
+              <div class="tmx-line t-out">research-scout for the survey, data-engineer for environment setup.</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-m">&gt; Select 1 or 2/3</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-g">Yes please</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">● Starting Phase 0. Spawning both agents in parallel.</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">● 2 agents launched <span class="t-dim">(ctrl+o to expand)</span></div>
+              <div class="tmx-line t-out">     └ research-scout</div>
+              <div class="tmx-line t-out">         1. Prior art survey and baselines</div>
+              <div class="tmx-line t-out">     └ data-engineer</div>
+              <div class="tmx-line t-out">         1. Environment setup and dependencies</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">● Both agents running in parallel:</div>
+              <div class="tmx-line t-out">  - research-scout — surveying prior art for A2C/PPO on Pendulum-v1</div>
+              <div class="tmx-line t-out">  - data-engineer — adding dependencies, writing configs, verifying env</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">  Waiting on both before advancing the phase gate.</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-g">&lt;system-reminder&gt; data-engineer done: env and deps set up</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-out">● data-engineer is done (env verified — passes baseline at ±26).</div>
+              <div class="tmx-line t-out">  Waiting on research-scout to finish before advancing.</div>
+              <div class="tmx-line t-out"></div>
+              <div class="tmx-line t-p">▪ hook <span class="t-dim">— tmuxmate running</span></div>
+            </div>
+
+            <!-- Chat input docked at bottom -->
+            <div class="pane-chat">
+              <div class="chat-prompt">
+                <span class="t-g">&gt;</span>
+                <span class="t-dim chat-placeholder">How would you like to proceed?</span>
+                <span class="t-caret"></span>
+              </div>
+              <div class="chat-hints">
+                <span class="t-y">⌃B + R for Research</span>
+                <span class="t-dim">·</span>
+                <span class="t-dim">⇧↹ to switch</span>
+                <span class="t-dim">·</span>
+                <span class="t-dim">2 background agents (ctrl+o to show)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT PANE · stacked agent boxes -->
+          <div class="tmux-pane tmux-right">
+            <!-- Agent 1: research-scout -->
+            <div class="agent-box agent-active">
+              <div class="pane-head">
+                <span class="ph-dot ph-dot-blue"></span>
+                <span class="ph-name">research-scout</span>
+                <span class="ph-meta">running · 4m 26s · 7.2k tokens</span>
+              </div>
+              <div class="agent-body">
+                <div class="tmx-line t-out">● Fetch<span class="t-b">(stable-baselines3.readthedocs.io/.../rl_tips)</span></div>
+                <div class="tmx-line t-out">   └ Received 1,768 <span class="t-dim">(200 OK)</span></div>
+                <div class="tmx-line t-out">● Fetch<span class="t-b">(gymnasium.farama.org/.../pendulum)</span></div>
+                <div class="tmx-line t-out">   └ Received 40,768 <span class="t-dim">(200 OK)</span></div>
+                <div class="tmx-line t-out">● Writing prior_art_survey.md</div>
+                <div class="tmx-line t-out"><span class="t-dim">Determining…</span> <span class="t-caret"></span></div>
+              </div>
+            </div>
+
+            <!-- Agent 2: data-engineer -->
+            <div class="agent-box">
+              <div class="pane-head">
+                <span class="ph-dot ph-dot-green"></span>
+                <span class="ph-name">data-engineer</span>
+                <span class="ph-meta">done · env verified ✓</span>
+              </div>
+              <div class="agent-body">
+                <div class="tmx-line t-out">● Added 4 deps to pyproject.toml</div>
+                <div class="tmx-line t-out">● Wrote <span class="t-b">configs/a2c.yaml</span>, <span class="t-b">configs/ppo.yaml</span></div>
+                <div class="tmx-line t-out">● Verified env: Pendulum-v1 obs/action spaces ✓</div>
+                <div class="tmx-line t-out">● Baseline policy hits ±26 — within plan target</div>
+                <div class="tmx-line t-b">→ Task #3 → ok-engineer (peer)</div>
+              </div>
+            </div>
+
+            <!-- Agent 3: oracle (idle) -->
+            <div class="agent-box agent-idle">
+              <div class="pane-head">
+                <span class="ph-dot ph-dot-dim"></span>
+                <span class="ph-name">oracle</span>
+                <span class="ph-meta">idle · awaiting phase 1</span>
+              </div>
+              <div class="agent-body">
+                <div class="tmx-line t-dim">─ contract loaded: must · should · could</div>
+                <div class="tmx-line t-dim">─ tier-0 gate armed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Green tmux status bar (full width) -->
+        <div class="tmux-status">
+          <span class="ts-left">[zo] <span class="ts-dim">0:bash-1.1 1:lead-2.1* 2:scout-3.1 3:engineer-4.1</span></span>
+          <span class="ts-right"><span class="ts-dim">"RL experiment orchestration"</span> <span class="ts-clock" id="tmux-time">19:45 26-Apr-26</span></span>
+        </div>
+      </div>
+
+      <p class="tmux-caption reveal">
+        A real tmux session — the <em>lead</em> on the left with your chat input, and the <em>spawned agents</em>
+        stacked on the right, each running its own task. The orchestrator decomposes your
+        <span class="mono-inline">plan.md</span>, peers report back, and gates only advance when the oracle says so.
+      </p>
+    </div>
+  </section>
+
+  <!-- SECTION 04 · HOW IT WORKS -->
+  <section class="section section-pipeline" id="how">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">05<span class="section-kind">How it works</span></span>
+        <h2 class="section-title">
+          Six phases. <em>Gated at every transition.</em>
+        </h2>
+        <p class="section-lede">
+          Each phase has a contract — inputs, outputs, success criteria, budget. Human
+          gates sit at feature selection and analysis. Everything else runs until the
+          oracle says <em>pass</em>.
+        </p>
+      </div>
+
+      <ol class="pipeline">
+        <li class="phase reveal" data-phase="1" data-delay="0">
+          <div class="phase-head">
+            <span class="phase-num">01</span>
+            <span class="phase-kind phase-auto">Auto</span>
+          </div>
+          <h3 class="phase-name">Data</h3>
+          <p class="phase-body">Source, validate, version. Nothing leaves this phase unlabelled, unseeded, or un-hashed.</p>
+          <span class="phase-tag">agents · data-engineer · scout</span>
+        </li>
+        <li class="phase reveal" data-phase="2" data-delay="80">
+          <div class="phase-head">
+            <span class="phase-num">02</span>
+            <span class="phase-kind phase-human">Human gate</span>
+          </div>
+          <h3 class="phase-name">Features</h3>
+          <p class="phase-body">Proposals from the feature bench. You approve the set. This is the only place the agents wait on you.</p>
+          <span class="phase-tag">agents · feature-synth · statistician</span>
+        </li>
+        <li class="phase reveal" data-phase="3" data-delay="160">
+          <div class="phase-head">
+            <span class="phase-num">03</span>
+            <span class="phase-kind phase-auto">Auto</span>
+          </div>
+          <h3 class="phase-name">Model</h3>
+          <p class="phase-body">Architecture drafted, hyperparameters defined, baselines proposed. Contract spawned for training.</p>
+          <span class="phase-tag">agents · model-builder · architect</span>
+        </li>
+        <li class="phase reveal phase-active" data-phase="4" data-delay="240">
+          <div class="phase-head">
+            <span class="phase-num">04</span>
+            <span class="phase-kind phase-auto">Auto <span class="loop">↻ iterates</span></span>
+          </div>
+          <h3 class="phase-name">Training</h3>
+          <p class="phase-body">Run, evaluate, learn, retry. The oracle decides when a model is done — not the model.</p>
+          <span class="phase-tag">agents · trainer · oracle · analyst</span>
+          <div class="phase-glow"></div>
+        </li>
+        <li class="phase reveal" data-phase="5" data-delay="320">
+          <div class="phase-head">
+            <span class="phase-num">05</span>
+            <span class="phase-kind phase-human">Human gate</span>
+          </div>
+          <h3 class="phase-name">Analysis</h3>
+          <p class="phase-body">Results, failures, confusion. You read the report. You approve the narrative. You decide if it ships.</p>
+          <span class="phase-tag">agents · analyst · writer</span>
+        </li>
+        <li class="phase reveal" data-phase="6" data-delay="400">
+          <div class="phase-head">
+            <span class="phase-num">06</span>
+            <span class="phase-kind phase-auto">Auto</span>
+          </div>
+          <h3 class="phase-name">Packaging</h3>
+          <p class="phase-body">Clean delivery repo. Zero infrastructure artifacts. A bundle your team can deploy without reading our docs.</p>
+          <span class="phase-tag">agents · packager · release-eng</span>
+        </li>
+      </ol>
+
+      <div class="pipeline-note reveal">
+        <span class="note-glyph">↻</span>
+        <span>
+          <em>Phase 04 iterates.</em> The model builder drafts child hypotheses,
+          trains, evaluates against the oracle, and either hits the target, plateaus,
+          or gives up cleanly. Karpathy-style experiment loop, fully automated.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 05 · ORACLE & MEMORY -->
+  <section class="section section-split" id="oracle">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">06<span class="section-kind">Oracle &amp; memory</span></span>
+        <h2 class="section-title">
+          <em>Every claim</em> verified. <em>Every failure</em> remembered.
+        </h2>
+        <p class="section-lede">
+          No agent marks its own homework. And no mistake gets to happen twice.
+        </p>
+      </div>
+
+      <div class="split-grid">
+        <div class="split-card reveal" data-card="oracle">
+          <div class="split-head">
+            <span class="split-kind">Oracle</span>
+            <span class="badge b-moss" id="oracle-badge">
+              <span class="dot"></span>
+              <span class="badge-text">Verifying…</span>
+            </span>
+          </div>
+          <h3 class="split-title">The source of truth.</h3>
+
+          <p class="oracle-intro">
+            Every phase ends with a verdict. <em>Must-pass</em> gates block delivery.
+            <em>Should-pass</em> flag concerns. <em>Could-pass</em> surface warnings.
+            Your targets, not ours.
+          </p>
+
+          <ul class="oracle-checks" aria-label="verification tiers">
+            <li data-check="1">
+              <span class="check-tier">Must-pass</span>
+              <span class="check-name">meets target metric</span>
+              <span class="check-state" data-state="pending">pending</span>
+            </li>
+            <li data-check="2">
+              <span class="check-tier">Must-pass</span>
+              <span class="check-name">reproducible from seed</span>
+              <span class="check-state" data-state="pending">pending</span>
+            </li>
+            <li data-check="3">
+              <span class="check-tier">Should-pass</span>
+              <span class="check-name">coverage threshold</span>
+              <span class="check-state" data-state="pending">pending</span>
+            </li>
+            <li data-check="4">
+              <span class="check-tier">Could-pass</span>
+              <span class="check-name">statistical significance</span>
+              <span class="check-state" data-state="pending">pending</span>
+            </li>
+          </ul>
+
+          <p class="split-foot">
+            Tiered. Deterministic. <em>Your targets become the oracle's contract.</em>
+            No agent marks its own homework.
+          </p>
+        </div>
+
+        <div class="split-card reveal" data-card="memory">
+          <div class="split-head">
+            <span class="split-kind">Memory</span>
+            <span class="badge b-dusk">portable · persistent</span>
+          </div>
+          <h3 class="split-title">It never forgets.</h3>
+
+          <p class="oracle-intro">
+            The entire project state lives in a portable <span class="mono-inline">.zo/</span>
+            directory. <em>Pause here, resume anywhere.</em> Laptop to cloud, GPU rig to CI
+            runner — the context moves with the work.
+          </p>
+
+          <div class="memory-stream" id="memory-stream">
+            <div class="mem-line" data-t="0">
+              <span class="mem-stamp">14:02</span>
+              <span class="mem-kind mem-decision">DECISION</span>
+              <span class="mem-text">Architecture: <em>hybrid orchestration model</em></span>
+            </div>
+            <div class="mem-line" data-t="1">
+              <span class="mem-stamp">14:47</span>
+              <span class="mem-kind mem-gate">GATE</span>
+              <span class="mem-text">Phase 01 complete — context snapshot saved</span>
+            </div>
+            <div class="mem-line" data-t="2">
+              <span class="mem-stamp">15:12</span>
+              <span class="mem-kind mem-error">ERROR</span>
+              <span class="mem-text">Doc-codebase drift — 10 files stale</span>
+            </div>
+            <div class="mem-line" data-t="3">
+              <span class="mem-stamp">15:14</span>
+              <span class="mem-kind mem-prior">PRIOR</span>
+              <span class="mem-text">PR-005 · <em>aspirational rules without enforcement are dead letter</em></span>
+            </div>
+            <div class="mem-line" data-t="4">
+              <span class="mem-stamp">09:30</span>
+              <span class="mem-kind mem-resume">RESUME</span>
+              <span class="mem-text">session-020 · resumed on <em>gpu-server-03</em> — full context restored</span>
+            </div>
+          </div>
+
+          <p class="split-foot">
+            STATE · DECISION_LOG · PRIORS · semantic recall.
+            <em>Same mistake? Literally cannot happen twice.</em>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 06 · WHAT MAKES IT DIFFERENT -->
+  <section class="section" id="different">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">07<span class="section-kind">What makes it different</span></span>
+        <h2 class="section-title">
+          Three tools. <em>Three units of work.</em><br/>
+          Only one ships <em>a trained model.</em>
+        </h2>
+        <p class="section-lede">
+          Each category operates at a different level of abstraction. Coding assistants
+          work a line at a time. Agent frameworks work a task at a time. <em>Zero Operators
+          ships a verified, audit-ready model — on your data, against your oracle.</em>
+        </p>
+      </div>
+
+      <div class="compare reveal">
+        <div class="col">
+          <span class="col-kind">Coding assistants</span>
+          <h3 class="col-name">Cursor · Copilot · Oh My Claude</h3>
+          <ul class="col-list">
+            <li><span>Unit of work</span><em>a line or a function</em></li>
+            <li><span>Human is</span><em>the pair programmer</em></li>
+            <li><span>Verification</span><em>"looks right to me"</em></li>
+            <li><span>Memory</span><em>current session only</em></li>
+            <li><span>Delivery</span><em>code in your editor</em></li>
+          </ul>
+        </div>
+
+        <div class="col">
+          <span class="col-kind">Agent frameworks</span>
+          <h3 class="col-name">CrewAI · AutoGen · LangGraph</h3>
+          <ul class="col-list">
+            <li><span>Unit of work</span><em>a task in a DAG</em></li>
+            <li><span>Human is</span><em>the prompt engineer</em></li>
+            <li><span>Verification</span><em>optional checks</em></li>
+            <li><span>Memory</span><em>basic scratchpad state</em></li>
+            <li><span>Delivery</span><em>output files</em></li>
+          </ul>
+        </div>
+
+        <div class="col col-feat">
+          <span class="col-kind">Zero Operators</span>
+          <h3 class="col-name">Zero<em>Operators</em></h3>
+          <ul class="col-list">
+            <li><span>Unit of work</span><em>a trained model</em></li>
+            <li><span>Human is</span><em>the research director</em></li>
+            <li><span>Verification</span><em>oracle-mandated, tiered, cross-checked</em></li>
+            <li><span>Memory</span><em>persistent · <span class="nobreak">self-evolving</span></em></li>
+            <li><span>Delivery</span><em>checkpoint, recipe, audit log</em></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 07 · QUICK START -->
+  <section class="section section-start" id="start">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-num">08<span class="section-kind">Quick start</span></span>
+        <h2 class="section-title">
+          Four commands. <em>Then walk away.</em>
+        </h2>
+      </div>
+
+      <div class="terminal reveal" id="terminal">
+        <div class="term-chrome">
+          <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+          <span class="term-title">zsh · ~/zero-operators</span>
+          <button class="copy-btn" id="copy-btn">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M10 5V2.5a.5.5 0 0 0-.5-.5H4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span id="copy-label">Copy</span>
+          </button>
+        </div>
+        <pre class="term-body" id="term-body"><span class="term-cmt"># Clone and set up.</span>
+<span class="term-prompt">❯</span> <span class="term-cmd">git clone</span> <span class="term-arg">https://github.com/SamPlvs/zero-operators.git</span>
+<span class="term-prompt">❯</span> <span class="term-cmd">cd</span> <span class="term-arg">zero-operators &amp;&amp; ./setup.sh</span>
+
+<span class="term-cmt"># Initialize a project.</span>
+<span class="term-prompt">❯</span> <span class="term-cmd">zo init</span> <span class="term-arg">my-project</span>
+<span class="term-prompt">❯</span> <span class="term-cmd">zo draft</span> <span class="term-arg">--project my-project</span>
+
+<span class="term-cmt"># Build. Walk away.</span>
+<span class="term-prompt">❯</span> <span class="term-cmd">zo build</span> <span class="term-arg">plans/my-project.md</span>
+<span class="term-out-dim"># ⏵ phase 01 · data       <span class="term-pass">pass</span></span>
+<span class="term-out-dim"># ⏵ phase 02 · features   <span class="term-wait">awaiting gate</span></span>
+<span class="term-out-dim"># ⏵ phase 03 · model      <span class="term-pass">pass</span></span>
+<span class="term-out-dim"># ⏵ phase 04 · training   <span class="term-pass">pass</span> · oracle ✓</span>
+<span class="term-out-dim"># ⏵ phase 05 · analysis   <span class="term-wait">awaiting gate</span></span>
+<span class="term-out-dim"># ⏵ phase 06 · packaging  <span class="term-pass">pass</span></span>
+<span class="term-cmt"># → delivered to ~/deliveries/my-project · all gates <span class="term-pass">PASS</span><span class="caret">▊</span></span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="mark-lg" id="footer-mark"></span>
+        <div>
+          <div class="footer-wordmark">Zero<em>Operators</em></div>
+          <div class="footer-tag"><em>A quiet, precise workshop that runs overnight.</em></div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <div class="fm-row"><span>Version</span><strong>v1.0.2</strong></div>
+        <div class="fm-row"><span>License</span><strong>MIT</strong></div>
+        <div class="fm-row"><span>Source</span><a href="https://github.com/SamPlvs/zero-operators" target="_blank" rel="noopener">GitHub →</a></div>
+      </div>
+      <div class="footer-links">
+        <a href="#idea">The idea</a>
+        <a href="#how">How it works</a>
+        <a href="#oracle">Oracle &amp; memory</a>
+        <a href="#different">Different</a>
+        <a href="#start">Quick start</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 · Created by <a href="https://samtukra.com/" target="_blank" rel="noopener" class="author-link"><em>Samyakh (Sam) Tukra</em></a></span>
+      <span>Built with the system, on the system.</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+
+</body>
+</html>

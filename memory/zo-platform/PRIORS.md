@@ -906,3 +906,33 @@ so commits with client names are physically blocked.
 2 consecutive stable readings with >100 chars. `_verify_prompt_submitted()` checks
 post-paste content and retries once if the paste appears to have missed. Falls back
 gracefully with logged error + prompt file path for manual recovery.
+
+---
+
+## PR-032: Tests Targeting Downstream Logic Must Mock Upstream Environment Guardrails
+**Source:** Session 021 (2026-04-25), full pytest run on a no-tmux host
+**Root cause category:** missing_rule
+**Failure:** `tests/unit/test_cli.py::TestInitDryRun::test_dry_run_rejected_in_conversational_mode` failed on a host without tmux installed. The test invokes `zo init foo --dry-run` (no `--no-tmux`) and asserts the error mentions `--dry-run`. But `zo init` checks tmux availability *before* validating flag combinations: on a no-tmux host, `shutil.which("tmux") is None` short-circuits to "Install tmux..." and the `--dry-run` rejection branch is never reached. The test passed in dev/CI (tmux available) but fails on any contributor machine without tmux. This is the inverse of PR-025: PR-025 said don't mock objects whose interfaces you're testing; PR-032 says *do* mock environment guardrails that aren't your test's subject.
+
+### Rules
+
+1. **Mock upstream environment checks when the test targets downstream behavior.**
+   `shutil.which`, `os.environ`, `Path.exists` for system tools, `subprocess.run` for external CLIs — patch these when they sit between the test invocation and the code path you're actually exercising. The test isn't about whether tmux exists; it's about whether `--dry-run` is correctly gated.
+   - *Failure ref:* No-tmux machine, version-bump PR triggered full pytest, surfaced the latent dep on host tooling.
+
+2. **A passing CI is not proof of a portable test — it's proof of a working CI environment.**
+   Tests that depend on installed binaries (tmux, docker, gh, claude CLI) need explicit mocks even when CI has those binaries. Future contributors will check out the repo on stripped-down dev machines.
+
+3. **Order-of-operations matters in CLI argument validation.**
+   When the CLI checks env (tmux/docker/gh availability) *before* flag validation, tests for flag-validation paths must short-circuit the env check. Document the order in the CLI source so test authors know what to mock.
+
+### Verified Solution
+
+Patch `shutil.which` to return a non-None path inside the test's context manager:
+```python
+with patch("zo.cli._zo_root", return_value=tmp_path), \
+     patch("zo.cli._main_repo_root", return_value=tmp_path), \
+     patch("shutil.which", return_value="/usr/bin/tmux"):
+    result = runner.invoke(cli, ["init", "foo", "--dry-run"])
+```
+669 tests now pass on a no-tmux host. The fix would have caught the original failure: with the patch, the test reaches the `--dry-run` rejection regardless of whether tmux is on PATH.
