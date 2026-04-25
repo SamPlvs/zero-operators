@@ -16,6 +16,8 @@ This is upstream of ZO. ZO launches **one** Claude Code session in tmux; the Lea
 
 macOS enforces a per-UID process cap (`kern.maxprocperuid`, default **2666**). Heavy Electron users (Chrome with many tabs, VSCode, Slack, Discord, Spotify, Docker Desktop) routinely sit at 1500–2000 procs already. Adding the team pushes them over the cap → `fork()` fails → cascading session deaths.
 
+**Specific reproducer: the MNIST demo plan.** `classical_ml` Phase 1 is configured to spawn **5 agents in parallel** (`data-engineer`, `test-engineer`, `research-scout`, `code-reviewer`, `domain-evaluator`) at the very first phase — see [src/zo/\_orchestrator\_phases.py](../src/zo/_orchestrator_phases.py). That's the heaviest spawn burst in any default workflow. If you're hitting the crash specifically on `zo build plans/mnist-digit-classifier.md`, this is the burst doing it. Other workflow modes (`deep_learning`, `research`) and custom plans typically default to 2 agents per phase (`code-reviewer` + `research-scout`), which is far less likely to trip the cap.
+
 **Fix — try in order**
 
 1. **Upgrade Claude Code.** 2.1.119+ shipped two relevant fixes: an agent-teams permission-dialog crash and a 50 MB/hr MCP HTTP buffer leak. If you're on anything older, this might fix it outright.
@@ -43,6 +45,23 @@ macOS enforces a per-UID process cap (`kern.maxprocperuid`, default **2666**). H
    ```
 
 5. **Capture the crash for upstream.** Look in `~/Library/Logs/DiagnosticReports/` for crash reports timestamped at the spawn moment, plus `~/.claude/logs/` for the Claude Code session log. File those at https://github.com/anthropics/claude-code/issues — Anthropic engineers can debug from the dump.
+
+---
+
+## Do I need to set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` manually?
+
+**Symptom**
+You see this prefix in older docs or example commands and aren't sure if you still need it.
+
+**Cause**
+Claude Code's agent teams feature is gated behind that env var. ZO's project-level `.claude/settings.json` already sets it (`"env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" }`), so when you `zo build` from inside the ZO repo, Claude Code picks it up automatically — the manual prefix is **redundant but harmless**.
+
+If you `zo build` from a directory without ZO's `.claude/settings.json` (e.g. running against a portable `.zo/` delivery repo on a fresh machine), you may need to either copy the env block into a project-level `.claude/settings.json`, or set the var in your shell rc:
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+**Note:** prefixing the var on the `zo build` command itself (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 zo build ...`) sets it on the Python process but **does not propagate to the tmux child window** — `tmux new-window` inherits from the tmux server's environment, not from the calling shell. Either rely on `.claude/settings.json` (preferred) or `export` it before starting tmux.
 
 ---
 
