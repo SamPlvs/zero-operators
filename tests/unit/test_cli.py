@@ -545,8 +545,12 @@ class TestInitDryRun:
     ) -> None:
         """--dry-run without --no-tmux is a UsageError (conversational
         mode has its own preview flow)."""
+        # Patch shutil.which so the tmux-availability guardrail (which
+        # fires earlier in the same code path) doesn't preempt the
+        # --dry-run rejection on hosts where tmux isn't installed.
         with patch("zo.cli._zo_root", return_value=tmp_path), \
-             patch("zo.cli._main_repo_root", return_value=tmp_path):
+             patch("zo.cli._main_repo_root", return_value=tmp_path), \
+             patch("shutil.which", return_value="/usr/bin/tmux"):
             result = runner.invoke(
                 cli, ["init", "foo", "--dry-run"],
             )

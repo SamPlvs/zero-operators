@@ -137,7 +137,7 @@ ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 +
 last_checkpoint: 2026-04-25T22:00:00Z
 last_session: session-021
 branch: claude/brand-redesign-v2 (worktree from main)
-test_count: 669 passed, 7 skipped (ZO); 297 passed (prod-001)
+test_count: 669 passed, 7 skipped (ZO, verified on no-tmux host); 297 passed (prod-001)
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 1 warning (stale test-count badge — pre-existing)
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness), #48 (phase snapshots + denylist-first + generic domain-evaluator), #49 (experiment capture layer), #50 (autonomous experiment loop), #51 (brand redesign v2 + website v2 + v1.0.2)
