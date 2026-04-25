@@ -1,15 +1,6 @@
-<svg width="120" height="120" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer ring -->
-  <circle cx="36" cy="36" r="32" stroke="#F0C040" stroke-width="1.2"/>
-  <!-- Inner dashed ring -->
-  <circle cx="36" cy="36" r="24" stroke="#F0C040" stroke-width="0.6" stroke-dasharray="3 4"/>
-  <!-- Diagonal slash (the zero mark) -->
-  <line x1="12" y1="60" x2="60" y2="12" stroke="#F0C040" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Cardinal tick marks -->
-  <line x1="36" y1="4" x2="36" y2="10" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
-  <line x1="36" y1="62" x2="36" y2="68" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
-  <line x1="4" y1="36" x2="10" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
-  <line x1="62" y1="36" x2="68" y2="36" stroke="#F0C040" stroke-width="1" stroke-linecap="round"/>
-  <!-- Center node -->
-  <circle cx="36" cy="36" r="3" fill="#F0C040"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true">
+  <circle cx="36" cy="36" r="30" stroke="#EBE3D2" stroke-width="2"/>
+  <line x1="14" y1="58" x2="30" y2="42" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="42" y1="30" x2="58" y2="14" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="36" cy="36" r="3.5" fill="#D87A57"/>
 </svg>

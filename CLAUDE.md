@@ -63,14 +63,18 @@ The alias mapping lives ONLY in the gitignored `memory/{project}/` directory.
 
 ## Design System
 
-All ZO outputs (dashboard, reports, documentation, diagrams, presentations) follow the ZO brand system defined in `design/`:
+All ZO outputs (dashboard, reports, documentation, diagrams, presentations) follow the ZO brand system v2 defined in `design/`:
 
-- **Primary:** amber #F0C040 | **Dim:** #8a6020 | **Void:** #080808 | **Surface:** #0d0d0d
-- **Paper (light):** #f5f0e8 | **Ink (light):** #1a1400
-- **Monospace:** Share Tech Mono | **Headings:** Rajdhani (300/400/600/700)
-- **Logo:** orbital mark (concentric rings, amber on void)
+- **Canvas:** #12110F (dark) · **Paper:** #F4EFE6 (light)
+- **Ink (light):** #1A1712 · **Cream (dark):** #EBE3D2
+- **Coral accent:** oklch(0.74 0.14 35) ≈ #D87A57 — the primary highlight (italic emphases, focus states, status dots)
+- **Dusk:** oklch(0.70 0.10 245) · **Moss:** oklch(0.62 0.08 150) — secondary status colors
+- **Sans:** Geist (300/400/500/600/700) — body, UI, headings
+- **Italic / display:** Cormorant Garamond — emphasized prose, taglines
+- **Monospace:** JetBrains Mono — code, terminal, plan refs
+- **Mark:** simplified C — circle with a diagonal slash and centered coral dot. Replaces the prior orbital mark.
 
-Canonical reference: `design/zero_operators_brand_system.html`
+Canonical references: `design/brand-system.html` (dark) · `design/brand-system-light.html` (light) · `design/logos.html` (mark exploration) · `design/font-pairings.html`. Shared CSS variables live in `design/styles.css`.
 
 
 ## Coding Conventions

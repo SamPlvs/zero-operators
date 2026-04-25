@@ -116,7 +116,7 @@ You consume these inputs:
 - **CLAUDE.md** coding conventions:
   For contributing guide content and ensuring doc style is consistent.
 
-- **Design system** (`design/zero_operators_brand_system.html`):
+- **Design system** (`design/brand-system.html`):
   For any documentation that includes visual references or branding.
 
 See `specs/agents.md` for full contract template and edge cases.

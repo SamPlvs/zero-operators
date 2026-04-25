@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=1280"/>
+  <title>ZO — Dual-font pairings</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Newsreader:ital,wght@0,300..700;1,300..700&family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Spectral:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Instrument+Serif:ital@0;1&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    .backlink{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--dim);text-decoration:none;letter-spacing:0.14em;text-transform:uppercase;padding:10px 0;margin-bottom:16px;}
+    .backlink:hover{color:var(--coral);}
+
+    /* ── Pairing card ── */
+    .pair {
+      background: var(--canvas-2); border: 1px solid var(--rule);
+      border-radius: 8px; padding: 48px 56px 40px; margin-bottom: 1px;
+    }
+    .pair-meta {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+      text-transform: uppercase; margin-bottom: 32px;
+    }
+    .pair-meta .num { color: var(--coral); }
+    .pair-meta .ids { color: var(--dim); }
+
+    .pair h1 {
+      font-weight: 500; font-size: 58px; line-height: 1.0;
+      letter-spacing: -0.03em; color: var(--cream); margin-bottom: 16px;
+    }
+    .pair h1 em { font-weight: 400; letter-spacing: -0.01em; }
+
+    .pair .deck {
+      font-family: 'Geist', sans-serif; font-size: 16px; font-weight: 300;
+      color: var(--cream-2); line-height: 1.55; max-width: 540px; margin-bottom: 32px;
+    }
+
+    .pair .sub {
+      font-weight: 400; font-style: italic;
+      font-size: 26px; color: var(--cream-2); line-height: 1.25;
+      max-width: 620px; margin: 28px 0 10px;
+    }
+    .pair .sub em { color: var(--coral); font-style: italic; }
+
+    .pair .caption {
+      font-family: var(--mono); font-size: 11px; color: var(--dim);
+      letter-spacing: 0.12em; line-height: 1.7;
+    }
+
+    /* ── Geist display ── */
+    .geist { font-family: 'Geist', -apple-system, system-ui, sans-serif; }
+
+    /* Serif families used for italics */
+    .s-fraunces   { font-family: 'Fraunces', Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1; }
+    .s-newsreader { font-family: 'Newsreader', Georgia, serif; }
+    .s-garamond   { font-family: 'EB Garamond', Georgia, serif; font-weight: 500; }
+    .s-spectral   { font-family: 'Spectral', Georgia, serif; }
+    .s-instrument { font-family: 'Instrument Serif', Georgia, serif; }
+    .s-cormorant  { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; }
+    .s-ptserif    { font-family: 'PT Serif', Georgia, serif; }
+    .s-caslon     { font-family: 'Libre Caslon Text', Georgia, serif; }
+    .s-crimson    { font-family: 'Crimson Pro', Georgia, serif; font-weight: 400; }
+
+    .big-note {
+      font-family: 'Newsreader', Georgia, serif;
+      font-style: italic; font-size: 28px;
+      color: var(--cream-2); line-height: 1.25;
+      margin: 40px 0 16px; max-width: 720px;
+    }
+    .big-note em { color: var(--coral); }
+  </style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="container">
+      <a class="backlink" href="logo-type-round2.html">← back to round 2</a>
+      <div class="masthead-top">
+        <span class="caps">Zero Operators</span>
+        <span>Round 3 · Dual-font pairings · Geist + italic serif</span>
+      </div>
+      <h1 class="geist" style="font-weight: 500; letter-spacing: -0.03em;">
+        Geist does the headlines.<br/>
+        <em class="s-fraunces" style="font-weight: 400; font-style: italic; letter-spacing: -0.01em; color: var(--coral);">A serif does the italic.</em>
+      </h1>
+      <p class="deck" style="font-family: 'Geist', sans-serif;">
+        Nine pairings below — each one is <strong style="font-weight:500;color:var(--cream);">Geist</strong>
+        for display + body, with a different serif doing the italic-emphasis work only.
+        The italic face handles: emphasis words in headlines, subheads, pull-quotes, playful
+        asides. Everything else is Geist.
+      </p>
+    </div>
+  </header>
+
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <div class="section-num">01<span class="label">Pairings</span></div>
+        <div>
+          <h2 class="geist" style="font-weight: 500; letter-spacing: -0.02em;">
+            Nine combinations. <em class="s-fraunces" style="font-weight:400;font-style:italic;color:var(--coral);">Pick a voice for the italic.</em>
+          </h2>
+          <p>Each card is a mini landing-page moment: headline (Geist), sub-headline with italic emphasis (serif), body (Geist), a pull-quote (serif italic), and a caption. You'll see very quickly which serif voice matches ZO.</p>
+        </div>
+      </div>
+
+      <!-- ═══════ Pairing 1 — Fraunces ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 01</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Fraunces · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-fraunces" style="color: var(--coral);">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-fraunces">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">FRAUNCES · variable axes SOFT + WONK · the most <em class="s-fraunces">characterful</em> italic here</p>
+      </div>
+
+      <!-- ═══════ Pairing 2 — Newsreader ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 02</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Newsreader · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-newsreader" style="color: var(--coral);">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-newsreader">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">NEWSREADER · restrained editorial italic · magazine-like · reads <em class="s-newsreader">confident</em></p>
+      </div>
+
+      <!-- ═══════ Pairing 3 — EB Garamond ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 03</span><span class="ids">Geist · display + body &nbsp;/&nbsp; EB Garamond · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-garamond" style="color: var(--coral);">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-garamond">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">EB GARAMOND · classical renaissance italic · feels like a <em class="s-garamond">research paper</em></p>
+      </div>
+
+      <!-- ═══════ Pairing 4 — Spectral ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 04</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Spectral · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-spectral" style="color: var(--coral);">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-spectral">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">SPECTRAL · modern technical serif · sharp italic · <em class="s-spectral">serious without nostalgia</em></p>
+      </div>
+
+      <!-- ═══════ Pairing 5 — Instrument Serif ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 05</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Instrument Serif · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-instrument" style="color: var(--coral);">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-instrument">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">INSTRUMENT SERIF · warm, soft italic · <em class="s-instrument">the 2024 vibe</em> · isolated here to italic only</p>
+      </div>
+
+      <!-- ═══════ Pairing 6 — Cormorant Garamond ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 06</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Cormorant Garamond · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-cormorant" style="color: var(--coral); font-style: italic;">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-cormorant" style="font-style: italic;">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">CORMORANT · very high contrast italic · <em class="s-cormorant" style="font-style:italic;">the most elegant / editorial</em> of the bunch</p>
+      </div>
+
+      <!-- ═══════ Pairing 7 — PT Serif ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 07</span><span class="ids">Geist · display + body &nbsp;/&nbsp; PT Serif · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-ptserif" style="color: var(--coral); font-style: italic;">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-ptserif" style="font-style: italic;">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">PT SERIF · workhorse · pragmatic italic · <em class="s-ptserif" style="font-style:italic;">understated, news-like</em></p>
+      </div>
+
+      <!-- ═══════ Pairing 8 — Libre Caslon ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 08</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Libre Caslon · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-caslon" style="color: var(--coral); font-style: italic;">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-caslon" style="font-style: italic;">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">LIBRE CASLON · historical, literary · <em class="s-caslon" style="font-style:italic;">feels like a trade journal</em></p>
+      </div>
+
+      <!-- ═══════ Pairing 9 — Crimson Pro ═══════ -->
+      <div class="pair">
+        <div class="pair-meta"><span class="num">Pairing 09</span><span class="ids">Geist · display + body &nbsp;/&nbsp; Crimson Pro · italic</span></div>
+        <h1 class="geist">You write the plan.<br/><em class="s-crimson" style="color: var(--coral); font-style: italic;">Agents ship the project.</em></h1>
+        <p class="deck">Twenty agents, six phases, one oracle. You approve the gates. Everything in between runs while you sleep — that's the promise, and the oracle verifies every claim before anything leaves the workshop.</p>
+        <div class="sub s-crimson" style="font-style: italic;">A <em>quiet, precise workshop</em> that runs overnight.</div>
+        <p class="caption">CRIMSON PRO · book-serif italic · <em class="s-crimson" style="font-style:italic;">warm, generous, readable</em></p>
+      </div>
+
+      <div class="big-note">
+        <em>My picks, in order.</em><br/>
+        02 · Newsreader — confident, editorial, not trendy.<br/>
+        01 · Fraunces — the most character, best italic.<br/>
+        06 · Cormorant — most elegant if you want "research journal" over "dev tool."
+      </div>
+
+    </div>
+  </section>
+
+  <div class="container"><div class="footer">Round 3 · tell me the pairing number</div></div>
+
+</body>
+</html>
