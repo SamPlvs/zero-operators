@@ -1,0 +1,166 @@
+---
+title: "Quickstart"
+description: "Five minutes from zero to your first ZO run, training a real model end-to-end."
+---
+
+By the end of this page you'll have ZO installed, a project initialised, a plan drafted, preflight passing, and the agent team launched on a real ML problem.
+
+<Note>
+  This quickstart uses the **MNIST digit classifier** as the target. ZO's v1 ships with this as a known-good demo: it converges in under two minutes on Apple Silicon and exercises every phase, gate, agent, and memory operation.
+</Note>
+
+## Prerequisites
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="circle-c">
+    The Claude CLI is required. Install via the official curl method — see [installation](/installation).
+  </Card>
+  <Card title="Python 3.11+" icon="python">
+    Plus `uv` for dependency management. ZO is built on PyTorch.
+  </Card>
+  <Card title="tmux" icon="window-restore">
+    Used for the conversational init/draft/build flow. Optional with `--no-tmux`.
+  </Card>
+</CardGroup>
+
+## 1. Clone and install
+
+```bash
+git clone https://github.com/SamPlvs/zero-operators.git
+cd zero-operators
+./setup.sh
+```
+
+`setup.sh` validates prerequisites and offers to install missing ones (Claude CLI, uv, tmux). It also symlinks the `zo` binary onto your `PATH`.
+
+After it succeeds:
+
+```bash
+zo --version
+# cli, version 1.0.2
+```
+
+## 2. Initialise a project
+
+```bash
+zo init mnist-demo
+```
+
+This launches the **Init Architect** in a tmux pane. The agent interviews you (target dataset, repo location, accelerator), inspects the host environment (GPU? Docker? CUDA version?), then writes:
+
+- `memory/mnist-demo/{STATE,DECISION_LOG,PRIORS}.md` — project memory
+- `targets/mnist-demo.target.md` — delivery repo path
+- `plans/mnist-demo.md` — auto-populated `## Environment` section
+- `<delivery-path>/.zo/` — portable project state in the delivery repo
+- `<delivery-path>/{src,configs,experiments,reports,docker}/` — scaffolded structure
+
+Want to skip the conversational interview? Run `zo init mnist-demo --no-tmux --branch main --base-image pytorch/pytorch:2.4.0-cpu` for headless one-shot init.
+
+## 3. Draft the plan
+
+```bash
+zo draft -p mnist-demo
+```
+
+The **Plan Architect** + Data Scout + Research Scout collaborate to populate every section of `plan.md` against the v1 schema: objective, oracle, workflow mode, data sources, domain priors, agents, constraints, milestones, delivery.
+
+You confirm each section before it lands. The agent runs `--dry-run` first so you see exactly what will be written.
+
+## 4. Preflight
+
+```bash
+zo preflight plans/mnist-demo.md
+```
+
+Local-only checks before you spend any agent compute:
+
+```
+PASS  Claude CLI: Found at /usr/local/bin/claude
+PASS  tmux: Found at /opt/homebrew/bin/tmux
+PASS  Plan: All 8 sections valid
+PASS  Agents: All 6 agent definitions found
+PASS  Memory: Write/read round-trip OK
+PASS  Docker: Docker version 28.2.2
+WARN  GPU: nvidia-smi not found (no GPU or not on GPU server)
+
+6/7 passed, 1 warnings, 0 failures.
+Ready for zo build.
+```
+
+The `WARN` on `nvidia-smi` is expected on macOS — Docker Desktop has no GPU passthrough; ZO emits a CPU-only compose template automatically.
+
+## 5. Build
+
+```bash
+zo build plans/mnist-demo.md
+```
+
+The **Lead Orchestrator** reads the plan, decomposes it into phases, builds contracts for each agent, and launches the team. You'll see:
+
+- A tmux pane with the orchestrator's live session
+- Phase progress + gate status streamed to your terminal
+- Haiku-summarised headline events every 60 seconds
+- A live training dashboard (split-pane) once Phase 4 starts
+
+<Tip>
+  Press <kbd>Ctrl-b n</kbd> to switch into the agent pane and watch the team work in real time. <kbd>Ctrl-b p</kbd> jumps back.
+</Tip>
+
+## 6. Verify
+
+When the build completes, the delivery repo contains a complete project:
+
+```
+<delivery>/
+├── src/{data,model,engineering,inference,utils}/  # production code
+├── configs/experiment/base.yaml                    # frozen config
+├── experiments/exp-001/                            # training artifacts
+│   ├── best.pt
+│   ├── metrics.jsonl
+│   └── summary.json
+├── models/                                         # serve-time exports
+│   ├── mnist_cnn.pt                                # PyTorch slim
+│   ├── mnist_cnn.onnx                              # ONNX (cross-runtime)
+│   └── mnist_cnn.onnx.data                         # weights sidecar
+├── reports/                                        # phase outputs
+│   ├── data_quality_report.md
+│   ├── training_report.md
+│   ├── analysis_report.md
+│   ├── model_card.md
+│   ├── validation_report.md
+│   └── drift_reference.json
+├── tests/{unit,ml}/                                # tests
+├── docker/{Dockerfile,docker-compose.yml}          # platform-aware
+└── .zo/                                            # portable project state
+```
+
+Run the test suite:
+
+```bash
+cd <delivery>
+PYTHONPATH=. pytest tests/
+# 16 passed in 13s
+```
+
+The **MNIST oracle threshold** is 95% test accuracy must-pass; v1 reference run hit **99.66%** in 64 seconds on Apple Silicon.
+
+## What just happened
+
+You ran a complete six-phase ML project — data review, feature engineering, model design, training, analysis, packaging — driven by a coordinated team of AI agents, with you involved only at plan approval and two gates.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Read the concepts" icon="book" href="/concepts/overview">
+    The plan, the oracle, agents, phases, memory — the mental model.
+  </Card>
+  <Card title="Try CIFAR-10" icon="image">
+    Same pattern, different dataset, harder problem. The v1 reference run hit 91.62%.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/overview">
+    Every command, flag, and example.
+  </Card>
+  <Card title="Architecture" icon="diagram-project">
+    How orchestration, contracts, and memory actually work.
+  </Card>
+</CardGroup>

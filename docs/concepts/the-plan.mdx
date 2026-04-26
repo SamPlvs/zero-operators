@@ -1,0 +1,104 @@
+---
+title: "The plan"
+description: "A single Markdown file is the human's only lever of control. This is what makes ZO autonomous — and what keeps it grounded."
+---
+
+The `plan.md` file is the **brief, the contract, and the source of truth** for every project. The human's role is to write it (or approve a drafted version); the agent team's role is to execute against it.
+
+## Why a single file
+
+ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous specification*, not natural-language ambiguity. A single Markdown file enforces three things:
+
+1. **Reviewable as a unit.** The human can read the full brief in 5–10 minutes before approving.
+2. **Diff-able.** Plan edits mid-project produce clean Git diffs that agents can detect and re-plan against.
+3. **One source of truth.** No ambiguity about which document represents the current intent.
+
+## Eight required sections
+
+<Steps>
+  <Step title="Frontmatter">
+    YAML metadata: project name, version, owner, status. Used for routing and registry.
+  </Step>
+  <Step title="Objective">
+    What you're building, in business or research terms. Two paragraphs maximum. **No technical solution language** — that comes later.
+  </Step>
+  <Step title="Oracle definition">
+    The verifiable success metric. Includes primary metric, ground-truth source, evaluation method, target threshold (must/should/could tiers), evaluation frequency. See [the oracle](/concepts/the-oracle).
+  </Step>
+  <Step title="Workflow configuration">
+    Mode (`classical_ml`, `deep_learning`, or `research`), gate behavior per phase, iteration budget, human checkpoints.
+  </Step>
+  <Step title="Data sources">
+    Where the data lives, format, access method, known issues. Each source gets its own subsection.
+  </Step>
+  <Step title="Domain priors">
+    What you already know — ML knowledge, expected relationships, known risks, edge cases. This is where domain expertise lands.
+  </Step>
+  <Step title="Agents">
+    Active agents (executed every phase), phase-in agents (activated for specific phases), inactive agents (explicitly skipped). Optional `**Custom agents:**` for project-specific specialists, and `**Agent adaptations:**` for per-project tuning of generic agents.
+  </Step>
+  <Step title="Constraints">
+    What's off-limits: language/framework restrictions, hardware limits, time budgets, compliance requirements, simplicity bounds.
+  </Step>
+</Steps>
+
+Three additional **optional sections** complete the schema:
+
+- **Milestones** — phase-level deadlines tied to gates.
+- **Delivery specification** — target repo path, branch, output structure.
+- **Environment** — auto-populated from `zo.environment.detect_environment()` at `init` time. Captures host platform, Python version, GPU/CUDA details, base image, data layout.
+
+## Authoring options
+
+<Tabs>
+  <Tab title="Hand-written">
+    Read the schema in [`specs/plan.md`](https://github.com/SamPlvs/zero-operators/blob/main/specs/plan.md), copy a template from `plans/mnist-digit-classifier.md`, fill in your project. Validate with:
+
+    ```bash
+    zo preflight plans/your-project.md
+    ```
+  </Tab>
+  <Tab title="Agent-drafted">
+    The recommended path. After `zo init`, run:
+
+    ```bash
+    zo draft -p your-project
+    ```
+
+    The **Plan Architect** + Data Scout + Research Scout collaborate to populate every section. You confirm each section before it lands. The agent runs `--dry-run` first so you see exactly what will be written.
+  </Tab>
+</Tabs>
+
+## Editing a plan mid-project
+
+Plans aren't immutable. Edit `plan.md` at any time, then re-run `zo build`:
+
+- **Smart mode detection** — ZO auto-detects whether to start fresh, continue, or re-decompose due to plan edits.
+- **Gate confirmation** — before re-execution, the orchestrator surfaces a diff and asks for human approval if the change crosses a phase boundary.
+- **Memory continuity** — completed phase artifacts are preserved; the orchestrator only re-runs what the diff requires.
+
+## What a good plan looks like
+
+The reference example is [`plans/mnist-digit-classifier.md`](https://github.com/SamPlvs/zero-operators/blob/main/plans/mnist-digit-classifier.md):
+
+- ~80 lines total
+- Oracle with explicit must/should/could tiers (0.95 / 0.98 / 0.99)
+- Domain priors that capture *why* (e.g. "MNIST is a solved benchmark — simple CNNs achieve >99%")
+- Constraints that explicitly limit complexity ("max 2 conv layers, no pre-trained models")
+
+The CIFAR-10 plan ([`plans/cifar10-classifier.md`](https://github.com/SamPlvs/zero-operators/blob/main/plans/cifar10-classifier.md)) is a longer example covering a harder problem with richer domain priors (cat-dog confusion, augmentation criticality, animal-vs-vehicle pose variation).
+
+<Tip>
+  **The plan is the only place agents look for project context.** Anything not in the plan won't influence behavior. Be specific.
+</Tip>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="The oracle" icon="bullseye" href="/concepts/the-oracle">
+    The hard verifiable metric every plan must define.
+  </Card>
+  <Card title="Plan schema" icon="code" href="https://github.com/SamPlvs/zero-operators/blob/main/specs/plan.md">
+    Full reference for every section.
+  </Card>
+</CardGroup>

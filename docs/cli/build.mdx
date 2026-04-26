@@ -1,0 +1,193 @@
+---
+title: "zo build"
+description: "Launch the agent team against a plan. Smart mode detection (fresh / continue / re-decompose). The flagship command."
+---
+
+`zo build` is the flagship command. It reads the plan, decomposes it into phases, generates contracts for every active agent, and launches the **Lead Orchestrator** in a tmux session that drives the team to completion.
+
+## Synopsis
+
+```bash
+zo build PLAN_PATH [OPTIONS]
+```
+
+## Smart mode detection
+
+`zo build` auto-detects what to do based on the project's current state:
+
+| State | Behaviour |
+|-------|-----------|
+| **Fresh** (no `STATE.md` or phase = `init`) | Build from scratch. Phase 1 is the entry point. |
+| **In-progress** | Continue from the recorded phase. Loads the previous phase's snapshot for context. |
+| **Plan edited since last run** | Detects the diff via timestamp + content hash. Re-decomposes. Surfaces the change to the human if the diff crosses a phase boundary. |
+
+You don't pass a flag for this — `zo build` figures it out.
+
+## What it does
+
+<Steps>
+  <Step title="Validate plan">
+    Parses the plan and runs full validation. Aborts on any error before launching the agent session.
+  </Step>
+  <Step title="Resolve project context">
+    Finds memory, target, and delivery repo via `_load_project_context()`. Supports both `.zo/`-portable layout and legacy top-level `memory/`.
+  </Step>
+  <Step title="Build orchestrator">
+    Decomposes the plan into phases (mode-specific). Generates contracts: per-agent inputs, outputs, success criteria, time budget, precedent. Builds the Lead Orchestrator's spawn prompt with full context (plan + phases + agent roster + memory + coordination instructions + per-project agent adaptations).
+  </Step>
+  <Step title="Launch session">
+    Creates a tmux pane (default) or runs headless (`--no-tmux`). Pastes the Lead Orchestrator's prompt. The Lead reads the full plan, creates the team via `TeamCreate`, and drives execution.
+  </Step>
+  <Step title="Monitor">
+    The Python `LifecycleWrapper` observes via `~/.claude/tasks/` and the tmux pane. Captures lifecycle events, pipes them to JSONL comms log, surfaces Haiku-summarised headlines every 60 seconds in your terminal. Auto-launches the training dashboard split-pane during Phase 4.
+  </Step>
+  <Step title="Gate handling">
+    At every phase boundary, checks artifact contracts and oracle thresholds. Automated gates auto-PROCEED. Blocking gates pause; you approve via `/gates:approve` or reject via `/gates:reject`.
+  </Step>
+  <Step title="Finalise">
+    On Phase 6 PROCEED, writes the final phase snapshot, generates a session summary, kills the tmux window, prints a Haiku 2-3 bullet summary, returns control to the invoking terminal.
+  </Step>
+</Steps>
+
+## Gate modes
+
+`--gate-mode` controls human involvement:
+
+<Tabs>
+  <Tab title="supervised (default)">
+    Every gate pauses for human review. Maximum oversight. Best for the first run of a new project.
+
+    ```bash
+    zo build plans/my-project.md
+    ```
+  </Tab>
+  <Tab title="auto">
+    Automated gates auto-PROCEED. Blocking gates (Gate 2 representation review, Gate 5 model review) still pause. Standard production setting.
+
+    ```bash
+    zo build plans/my-project.md --gate-mode auto
+    ```
+  </Tab>
+  <Tab title="full-auto">
+    All gates auto-PROCEED when checks pass. No human in the loop. For replays, overnight runs, batch CI.
+
+    ```bash
+    zo build plans/my-project.md --gate-mode full-auto
+    ```
+  </Tab>
+</Tabs>
+
+Toggle mid-session with `zo gates set <mode> -p <project>`.
+
+## Cross-machine: --repo
+
+When you've moved a project from one machine to another (Mac dev → GPU server), use `--repo` to point at the delivery repo containing the `.zo/` layout:
+
+```bash
+zo build /path/to/<plan>.md --repo /path/to/delivery
+```
+
+`zo build` auto-detects `--repo` from the plan path when it's inside `.zo/plans/`. So if you `cd` into the delivery repo and run `zo continue`, the inference happens for free.
+
+## Live monitoring
+
+While `zo build` is running, you have several windows into what the team is doing:
+
+<CardGroup cols={2}>
+  <Card title="tmux pane" icon="window-restore">
+    `Ctrl-b n` switches to the agent session. Watch the Lead Orchestrator coordinate the team in real time. `Ctrl-b p` returns.
+  </Card>
+  <Card title="Headlines" icon="bullhorn">
+    Every 60 seconds, your invoking terminal gets a 1-line Haiku summary of recent agent events. Lightweight live signal.
+  </Card>
+  <Card title="Training dashboard" icon="chart-line">
+    Auto-launched as a split-pane during Phase 4. Rich Live panel: progress bar, metrics table, sparkline, checkpoints. See `zo watch-training`.
+  </Card>
+  <Card title="Comms log" icon="file-lines">
+    JSONL events at `logs/comms/<date>.jsonl`. Five event types: message, decision, gate, error, checkpoint. Replayable.
+  </Card>
+</CardGroup>
+
+## Options
+
+| Option | Default | Purpose |
+|--------|---------|---------|
+| `--gate-mode` | `supervised` | `supervised` / `auto` / `full-auto` |
+| `--no-tmux` | (off) | Disable interactive tmux flow. Headless mode for one-shot agents. **Note:** multi-phase orchestration requires the interactive session; `--no-tmux` is for `init` and `draft`, not full builds. |
+| `--repo PATH` | (auto) | Path to delivery repo with `.zo/`. Auto-inferred when the plan path is inside `.zo/plans/`. |
+
+## Examples
+
+<AccordionGroup>
+  <Accordion title="First run of a fresh project">
+    ```bash
+    zo build plans/mnist-demo.md
+    ```
+    Default `supervised` gate mode. The Lead Orchestrator runs Phase 1; you approve at every gate.
+  </Accordion>
+  <Accordion title="Auto-mode after first validation">
+    ```bash
+    zo build plans/mnist-demo.md --gate-mode auto
+    ```
+    Automated gates auto-PROCEED; blocking gates still pause.
+  </Accordion>
+  <Accordion title="Resume on a new machine">
+    ```bash
+    cd /path/to/delivery
+    zo continue --repo $(pwd)
+    ```
+    `zo continue` is shorthand for `zo build` against the project's known plan, with `.zo/` auto-detected.
+  </Accordion>
+  <Accordion title="Overnight unattended run">
+    ```bash
+    zo build plans/replay.md --gate-mode full-auto
+    ```
+    Use only for plans that have run successfully before — full-auto skips all human review.
+  </Accordion>
+</AccordionGroup>
+
+## What you'll see
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│   ◎ Zero Operators  v1.0.2                                  │
+│      Autonomous AI Research & Engineering Teams              │
+│                                                              │
+│   Project:   mnist-demo                                      │
+│   Mode:      build                                           │
+│   Phase:     starting                                        │
+│   Gates:     supervised                                      │
+╰──────────────────────────────────────────────────────────────╯
+
+Plan validated: 8 sections, oracle defined, 6 active agents.
+6 phases, 14 contracts decomposed.
+
+Launching lead session: team=zo-mnist-demo
+Agent session running in tmux.
+Ctrl-b n → agent window  |  Ctrl-b p → back here
+Ctrl-b q N → jump to pane N  |  Ctrl-b z → zoom pane
+
+▸ Phase 1 — Data Engineer loading MNIST, validating schema
+▸ Phase 1 — Test Engineer writing data pipeline tests
+▸ Gate 1 PROCEED — all artifacts present, all tests pass
+...
+```
+
+## When `zo build` stops
+
+The session ends cleanly when:
+- **Phase 6 completes** — all artifacts present, all tests pass, oracle confirmed. The final delivery is in the delivery repo.
+- **A blocking gate is hit** — human input required. The session stays alive in tmux; you approve/reject via slash commands.
+- **The autonomous experiment loop returns DEAD_END or BUDGET_EXHAUSTED** — escalates to human.
+- **You `/exit`** — graceful shutdown. Session summary written, tmux window killed.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Phases & gates" icon="diagram-next" href="/concepts/phases-and-gates">
+    What happens at each phase and gate.
+  </Card>
+  <Card title="Memory & continuity" icon="brain" href="/concepts/memory-and-continuity">
+    How `zo build` resumes across sessions.
+  </Card>
+</CardGroup>

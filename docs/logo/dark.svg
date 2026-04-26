@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="36" viewBox="0 0 180 36" fill="none" aria-hidden="true">
+  <circle cx="18" cy="18" r="13" stroke="#EBE3D2" stroke-width="2"/>
+  <line x1="6.5" y1="29.5" x2="13.5" y2="22.5" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="22.5" y1="13.5" x2="29.5" y2="6.5" stroke="#EBE3D2" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="18" cy="18" r="2.4" fill="#D87A57"/>
+  <text x="42" y="24" font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="600" letter-spacing="0.02em" fill="#EBE3D2">ZERO OPERATORS</text>
+</svg>
