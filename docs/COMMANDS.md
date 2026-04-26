@@ -20,7 +20,15 @@ Launch an agent team to execute a plan. Parses the plan, shows a phase review, a
 
 ```
 zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
+                          [--low-token] [--lead-model opus|sonnet|haiku]
+                          [--max-iterations N] [--no-headlines]
 ```
+
+**Cost-saving options:**
+- `--low-token` — activates the cost-saving preset (Sonnet lead, 2 max iterations, full-auto gates, no headlines, earlier auto-compaction). Equivalent to `low_token: true` in plan frontmatter. ~70-80% reduction. See `docs/concepts/low-token-mode.mdx`.
+- `--lead-model` — override lead orchestrator model. Composes with `--low-token`.
+- `--max-iterations N` — hard cap on Phase-4 experiment iterations. Wins over plan and preset.
+- `--no-headlines` — disable the Haiku headline ticker (saves ~60 small calls/hour).
 
 ### zo continue
 
@@ -28,11 +36,14 @@ Resume a paused project. Shorthand for `zo build` with an existing plan -- finds
 
 ```
 zo continue [project-name] [--repo PATH] [--gate-mode supervised|auto|full-auto]
+                           [--low-token] [--lead-model opus|sonnet|haiku]
+                           [--max-iterations N] [--no-headlines]
 ```
 
 **Options:**
 - `project-name` — optional if cwd contains `.zo/config.yaml` (auto-detected)
 - `--repo PATH` — path to delivery repo (overrides target file lookup)
+- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines` — same semantics as `zo build`
 
 ### zo draft
 

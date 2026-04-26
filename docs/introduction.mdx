@@ -49,6 +49,10 @@ The human is the research director. The plan is the only communication medium. A
 
 The human is involved at plan approval and two blocking gates. Everything else is autonomous. You can edit `plan.md` at any time to change direction; agents detect the delta and re-plan.
 
+<Tip>
+  **Cost-conscious?** Pass `--low-token` to `zo build` (or set `low_token: true` in plan frontmatter) to swap the lead orchestrator from Opus to Sonnet, cap Phase-4 iterations at 2, and disable several auxiliary calls. ~70-80% reduction in token spend at a slight quality trade. See [low-token mode](/concepts/low-token-mode).
+</Tip>
+
 ## The thesis
 
 ZO combines four sources that haven't previously been combined:

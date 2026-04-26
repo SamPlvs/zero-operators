@@ -250,20 +250,77 @@ def _gate_mode_from_str(value: str) -> GateMode:
     return mapping[value]
 
 
+# ---------------------------------------------------------------------------
+# Low-token preset
+# ---------------------------------------------------------------------------
+# Single source of truth for the cost-saving profile activated by
+# ``--low-token`` or plan field ``low_token: true``. Each entry below
+# is documented in docs/concepts/low-token-mode.mdx — keep in sync.
+#
+# Precedence (highest first): CLI flag > plan field > preset > base default.
+_LOW_TOKEN_PRESET: dict[str, object] = {
+    "lead_model": "sonnet",         # was "opus" — ~5x cheaper
+    "max_iterations": 2,             # cuts the dominant Phase-4 multiplier
+    "stop_on_tier": "could_pass",    # earlier stop on weakest acceptable tier
+    "drop_research_scout": True,     # skip cross-cutting literature review
+    "headlines_disabled": True,      # disable Haiku ticker (~60 calls/hr)
+    "gate_mode": "full-auto",        # no human-loop overhead
+    "compact_threshold": "60",       # CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+}
+
+
+def _resolve_lead_model(
+    *,
+    cli_lead_model: str | None,
+    plan_lead_model: str | None,
+    low_token: bool,
+) -> str:
+    """Resolve effective lead model: CLI > plan > preset > base default."""
+    if cli_lead_model is not None:
+        return cli_lead_model
+    if plan_lead_model is not None:
+        return plan_lead_model
+    if low_token:
+        return str(_LOW_TOKEN_PRESET["lead_model"])
+    return "opus"
+
+
+def _resolve_gate_mode(
+    *,
+    cli_gate_mode: str | None,
+    low_token: bool,
+) -> str:
+    """Resolve effective gate mode. None => preset default if low_token, else 'supervised'."""
+    if cli_gate_mode is not None:
+        return cli_gate_mode
+    if low_token:
+        return str(_LOW_TOKEN_PRESET["gate_mode"])
+    return "supervised"
+
+
 def _show_banner(
     project: str = "",
     mode: str = "",
     phase: str = "",
     gate_mode: str = "",
+    low_token: bool = False,
 ) -> None:
-    """Display the ZO brand panel at startup."""
+    """Display the ZO brand panel at startup.
+
+    When ``low_token`` is True, appends a "low-token" badge to the
+    banner so the user has constant visual confirmation that the
+    cost-saving preset is active.
+    """
     from rich.panel import Panel
     from rich.text import Text
 
     logo = Text()
     logo.append("  ◎ ", style="#F0C040 bold")
     logo.append("Zero Operators", style="#F0C040 bold")
-    logo.append(f"  v{_VERSION}\n", style=_DIM)
+    logo.append(f"  v{_VERSION}", style=_DIM)
+    if low_token:
+        logo.append("  [low-token]", style="#F0C040 bold")
+    logo.append("\n", style=_DIM)
     logo.append("     Autonomous AI Research & Engineering Teams\n", style=_DIM)
     if project:
         logo.append("\n  Project:   ", style=_DIM)
@@ -635,14 +692,25 @@ def _launch_and_monitor(
     project_name: str = "",
     delivery_repo: Path | None = None,
     add_dirs: list[str] | None = None,
+    extra_env: dict[str, str] | None = None,
+    headlines_disabled: bool = False,
 ) -> None:
-    """Shared launch → monitor → end-session flow for build and draft."""
+    """Shared launch → monitor → end-session flow for build and draft.
+
+    Args:
+        extra_env: Extra environment variables passed to the Claude Code
+            subprocess. The low-token preset uses this to set
+            ``CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60``.
+        headlines_disabled: When True, skips the periodic Haiku headline
+            summaries. Set by ``--low-token`` and ``--no-headlines``.
+    """
     use_tmux = not no_tmux
     console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
     process = wrapper.launch_lead_session(
         prompt, cwd=str(zo_root), team_name=team_name,
         model=model, max_turns=max_turns, use_tmux=use_tmux,
         add_dirs=add_dirs or [],
+        extra_env=extra_env or {},
     )
 
     if process.tmux_pane_id:
@@ -670,6 +738,8 @@ def _launch_and_monitor(
         import time as _time
 
         nonlocal _last_headline_time
+        if headlines_disabled:
+            return
         now = _time.monotonic()
         if not _headline_buffer:
             return
@@ -798,7 +868,8 @@ def _launch_and_monitor(
         console.print(f"[red bold]Session ended with status:[/] {process.status}")
 
     # Generate a Haiku summary of the session from buffered events.
-    if _headline_buffer:
+    # Low-token / --no-headlines opts out of this auxiliary call too.
+    if _headline_buffer and not headlines_disabled:
         _generate_session_summary(_headline_buffer, team_name)
 
     # Always print next steps based on what command just ran.
@@ -815,11 +886,39 @@ def _launch_and_monitor(
 @click.option(
     "--gate-mode",
     type=click.Choice(["supervised", "auto", "full-auto"]),
-    default="supervised",
-    help="Gate evaluation mode (default: supervised)",
+    default=None,
+    help="Gate evaluation mode. Default: 'supervised' (or 'full-auto' if --low-token).",
 )
 @click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
-def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
+@click.option(
+    "--low-token", is_flag=True,
+    help="Activate the cost-saving preset: Sonnet lead, 2 max iterations, "
+    "stop on could_pass tier, no headlines, full-auto gates, earlier "
+    "auto-compaction. Plan-level 'low_token: true' achieves the same.",
+)
+@click.option(
+    "--lead-model",
+    type=click.Choice(["opus", "sonnet", "haiku"]),
+    default=None,
+    help="Override the lead orchestrator model. Composes with --low-token.",
+)
+@click.option(
+    "--max-iterations", type=int, default=None,
+    help="Hard cap on Phase-4 experiment iterations. Wins over plan and preset.",
+)
+@click.option(
+    "--no-headlines", is_flag=True,
+    help="Disable the Haiku headline ticker (saves ~60 small calls/hour).",
+)
+def build(
+    plan_path: Path,
+    gate_mode: str | None,
+    no_tmux: bool,
+    low_token: bool,
+    lead_model: str | None,
+    max_iterations: int | None,
+    no_headlines: bool,
+) -> None:
     """Launch a project from a plan.md file.
 
     Smart mode detection:
@@ -850,6 +949,26 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 
     project_name = plan.frontmatter.project_name
 
+    # 1a. Resolve low-token + override settings.
+    #     Precedence: CLI flag > plan field > preset default > base default.
+    effective_low_token = low_token or plan.frontmatter.low_token
+    effective_gate_mode = _resolve_gate_mode(
+        cli_gate_mode=gate_mode, low_token=effective_low_token,
+    )
+    effective_lead_model = _resolve_lead_model(
+        cli_lead_model=lead_model,
+        plan_lead_model=plan.frontmatter.lead_model,
+        low_token=effective_low_token,
+    )
+    effective_headlines_disabled = (
+        no_headlines or effective_low_token
+    )
+    extra_env: dict[str, str] = {}
+    if effective_low_token:
+        extra_env["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"] = str(
+            _LOW_TOKEN_PRESET["compact_threshold"],
+        )
+
     # 2. Resolve project context (.zo/ or legacy)
     # If the plan lives inside a .zo/plans/ directory, infer delivery repo
     # from the plan path so build inherits context from continue --repo.
@@ -870,7 +989,8 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         project=project_name,
         mode=detected_mode,
         phase=state_check.phase if detected_mode == "continue" else "starting",
-        gate_mode=gate_mode,
+        gate_mode=effective_gate_mode,
+        low_token=effective_low_token,
     )
 
     # 5. Create CommsLogger and SemanticIndex
@@ -890,12 +1010,14 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         semantic.index_priors(priors)
 
     # 6. Create Orchestrator
-    gm = _gate_mode_from_str(gate_mode)
+    gm = _gate_mode_from_str(effective_gate_mode)
     memory.write_gate_mode(gm.value)
     orchestrator = Orchestrator(
         plan=plan, target=target, memory=memory, comms=comms,
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
         plan_path=plan_path,
+        low_token=effective_low_token,
+        max_iterations_override=max_iterations,
     )
     orchestrator.start_session()
 
@@ -916,8 +1038,8 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         raise SystemExit(0)
 
     # 9. Phase review + additional instructions
-    _show_phase_review(phase, decomp, plan, gate_mode)
-    extra = _ask_additional_instructions(gate_mode)
+    _show_phase_review(phase, decomp, plan, effective_gate_mode)
+    extra = _ask_additional_instructions(effective_gate_mode)
 
     prompt = orchestrator.build_lead_prompt(phase)
     if extra:
@@ -934,10 +1056,13 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
         orchestrator=orchestrator,
         semantic=semantic,
         no_tmux=no_tmux,
+        model=effective_lead_model,
         gate_mode_file=memory.memory_root / "gate_mode",
         project_name=project_name,
         delivery_repo=delivery_path,
         add_dirs=[str(delivery_path)],
+        extra_env=extra_env,
+        headlines_disabled=effective_headlines_disabled,
     )
 
 
@@ -952,14 +1077,36 @@ def build(plan_path: Path, gate_mode: str, no_tmux: bool) -> None:
 @click.option(
     "--gate-mode",
     type=click.Choice(["supervised", "auto", "full-auto"]),
-    default="supervised",
+    default=None,
 )
 @click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility")
+@click.option(
+    "--low-token", is_flag=True,
+    help="Activate the cost-saving preset (see `zo build --help`).",
+)
+@click.option(
+    "--lead-model",
+    type=click.Choice(["opus", "sonnet", "haiku"]),
+    default=None,
+    help="Override the lead orchestrator model.",
+)
+@click.option(
+    "--max-iterations", type=int, default=None,
+    help="Hard cap on Phase-4 experiment iterations.",
+)
+@click.option(
+    "--no-headlines", is_flag=True,
+    help="Disable the Haiku headline ticker.",
+)
 def continue_(
     project_name: str | None,
     repo: str | None,
-    gate_mode: str,
+    gate_mode: str | None,
     no_tmux: bool,
+    low_token: bool,
+    lead_model: str | None,
+    max_iterations: int | None,
+    no_headlines: bool,
 ) -> None:
     """Resume a paused project or reconnect on a new machine.
 
@@ -1017,7 +1164,14 @@ def continue_(
     # Delegate to build
     click_ctx = click.get_current_context()
     click_ctx.invoke(
-        build, plan_path=plan_path, gate_mode=gate_mode, no_tmux=no_tmux,
+        build,
+        plan_path=plan_path,
+        gate_mode=gate_mode,
+        no_tmux=no_tmux,
+        low_token=low_token,
+        lead_model=lead_model,
+        max_iterations=max_iterations,
+        no_headlines=no_headlines,
     )
 
 

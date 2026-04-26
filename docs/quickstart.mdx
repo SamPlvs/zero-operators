@@ -106,6 +106,16 @@ The **Lead Orchestrator** reads the plan, decomposes it into phases, builds cont
   Press <kbd>Ctrl-b n</kbd> to switch into the agent pane and watch the team work in real time. <kbd>Ctrl-b p</kbd> jumps back.
 </Tip>
 
+<Note>
+  **On a Pro plan, student account, or otherwise watching your token budget?** Add `--low-token`:
+
+  ```bash
+  zo build plans/mnist-demo.md --low-token
+  ```
+
+  Sonnet lead instead of Opus, 2 Phase-4 iterations instead of 10, full-auto gates, no headlines, earlier auto-compaction. ~70-80% cost reduction (MNIST: ~$11 → ~$2-3). Slight quality trade at the lead step. See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
+</Note>
+
 ## 6. Verify
 
 When the build completes, the delivery repo contains a complete project:
