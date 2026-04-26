@@ -6,7 +6,7 @@ description: "Methodology and measured results for ZO's --low-token cost-saving 
 This page documents the methodology and results for the `--low-token` cost benchmark — a controlled comparison between default and low-token modes on ZO's canonical MNIST end-to-end reference run.
 
 <Note>
-  **Status:** the benchmark harness is in place ([`scripts/benchmark_low_token.sh`](https://github.com/SamPlvs/zero-operators/blob/main/scripts/benchmark_low_token.sh)). Final measured numbers will land in this page once the benchmark has been executed end-to-end. The estimates below are derived from the session-005 MNIST run cost (~$11) and the architectural analysis of where tokens flow.
+  **Status:** the benchmark harness is in place ([`scripts/benchmark_low_token.sh`](https://github.com/SamPlvs/zero-operators/blob/main/scripts/benchmark_low_token.sh)). A first attempted measurement on 2026-04-26 was aborted at ~17 min wall time (\$13.59 spent) when the team-lead session went idle waiting for sub-agent permission requests it never auto-approved — see the **Findings from the partial run** section below. The estimates below are still derived from the session-005 MNIST run cost (~\$11) and the architectural analysis of where tokens flow; full measured numbers pending a second attempt that resolves the permission-interaction blocker.
 </Note>
 
 ## Why benchmark MNIST
@@ -17,7 +17,7 @@ MNIST is ZO's canonical reference because:
 - **Six full phases** — exercises Phase 1 (data) through Phase 6 (packaging), the full lifecycle
 - **Phase-4 iterations matter** — non-trivially, the autonomous loop matters for cost
 - **Reproducible** — the plan, data, and oracle don't drift between runs
-- **Documented baseline** — session-005 gave us a precise cost ($11) and wall-time (~50min) anchor point
+- **Documented baseline** — session-005 gave us a precise cost (\$11) and wall-time (~50min) anchor point
 
 ## Methodology
 
@@ -51,21 +51,43 @@ For fair comparison, **both runs use `--gate-mode full-auto`** so the only diffe
 
 ### Run frequency
 
-The benchmark is single-shot per release. Re-running on every PR would cost ~$13 each cycle and provide minimal signal — variance is dominated by stochastic agent decisions, not measurement noise.
+The benchmark is single-shot per release. Re-running on every PR would cost ~\$13 each cycle and provide minimal signal — variance is dominated by stochastic agent decisions, not measurement noise.
 
 ## Estimated results (pre-measurement)
 
-Based on the session-005 MNIST cost (~$11) and the architectural analysis of token flows:
+Based on the session-005 MNIST cost (~\$11) and the architectural analysis of token flows:
 
 | Metric | Default | Low-token | Reduction |
 |---|---|---|---|
 | Lead input tokens | ~50K-100K (Opus) | ~50K-100K (Sonnet) | (raw count similar; rate is ~5× cheaper) |
 | Lead output tokens | ~30K-50K (Opus) | ~30K-50K (Sonnet) | (raw count similar; rate is ~5× cheaper) |
 | Phase-4 iterations | 1-3 (MNIST converges fast) | 1 | Marginal — MNIST is too easy to hit the iteration cap |
-| Headline tokens | ~30 calls × ~1.5 KB | 0 | ~$0.01 saved |
-| **Total cost** | ~$11 | ~$2-3 | **~70-80% reduction** |
+| Headline tokens | ~30 calls × ~1.5 KB | 0 | ~\$0.01 saved |
+| **Total cost** | ~\$11 | ~\$2-3 | **~70-80% reduction** |
 | Wall time | ~50 min | ~20-25 min | ~50% faster (mostly from skipped human-loop overhead, not from token savings) |
 | Oracle tier reached | `could_pass` (99.66%) | `could_pass` (≥99% expected) | Same — MNIST too easy to differentiate quality at the lead step |
+
+## Findings from the partial run (2026-04-26)
+
+The first attempted low-token MNIST bench was aborted at ~17 min wall time after the lead session went idle. Even though the run didn't complete a phase, the partial data confirms two things and surfaces one architectural finding:
+
+**Confirmed working:**
+
+- **Lead orchestrator runs on Sonnet under `--low-token`.** Process inspection during the run showed `claude --model sonnet --max-turns 200` for the lead — the preset is being applied correctly at the CLI layer.
+- **Plan parsing + decomposition + lead launch + sub-agent spawn** all complete in ~3 min with no errors. The infrastructure is solid.
+
+**Architectural finding (independent of low-token mode):**
+
+- **Sub-agents spawned via Claude Code's `TeamCreate` use `claude-opus-4-6` regardless of the agent's `.md` frontmatter `model:` field.** During the partial run, `data-engineer` was spawned with `--model claude-opus-4-6` even though its agent definition declares `model: claude-sonnet-4-6`. This is a Claude Code 2.1.92 behaviour, not a ZO bug — but it materially affects cost expectations: low-token mode's lead-model swap (Opus → Sonnet) saves on the lead's token spend, but sub-agent token spend is unaffected. The savings ratio depends on lead-vs-sub-agent share of total tokens for a given run.
+- **In 17 min the partial run consumed \$13.59** — almost all of it cache reads (24.6M tokens at ~\$0.30/M) from the lead repeatedly reading the plan + specs while it built spawn prompts. Output tokens were only 33K. This suggests the lead-prompt construction is cache-read-heavy and that prompt caching makes the absolute cost of "lead-side" work surprisingly high even on Sonnet.
+- **The team-lead idles after the initial planning prompt and does not auto-approve sub-agent permission requests.** The `data-engineer` requested a `mkdir` and the request stayed pending. This is a Claude Code interactive-mode interaction issue (the lead needs an explicit nudge to monitor the team panes) and not specific to low-token mode — but it's the reason the bench couldn't complete autonomously.
+
+**Implications for the savings estimate:**
+
+- The original estimate (~70-80% reduction, ~\$11 → ~\$2-3) assumed the lead model swap dominated. With sub-agents staying on Opus, the actual savings on a long Phase-4-heavy run would be smaller — maybe **~30-50% reduction** depending on the lead-vs-sub-agent token split. The lead-side savings (~5× cheaper at Sonnet rates) and the iteration cap (Phase-4 max-iterations 10 → 2) still apply, but they only reach the lead's prompt-building work, not the agents doing the actual training and evaluation.
+- A more representative future estimate, pending a complete bench: **MNIST: ~\$11 → ~\$5-7 (50-65% reduction)**. The original ~70-80% target is achievable only if Claude Code's TeamCreate honours agent `model:` frontmatter — which it currently does not.
+
+These findings will be incorporated into the planned Anthropic SDK refactor scope (the [out-of-scope section](/concepts/low-token-mode#whats-not-in-this-mode-yet) on the concept page) — direct SDK use lets ZO control sub-agent models explicitly, which is a prerequisite for hitting the original savings target.
 
 ## Caveats and known limitations
 
@@ -104,7 +126,7 @@ The script:
 9. Writes `benchmark-results-{timestamp}.json` with the comparison
 10. Prints a summary table
 
-Total wall time: ~75 minutes (default ~50 + low-token ~25). Total cost: ~$13-14 (~$11 + ~$2-3).
+Total wall time: ~75 minutes (default ~50 + low-token ~25). Total cost: ~\$13-14 (~\$11 + ~\$2-3).
 
 <Warning>
   **The benchmark spends real tokens.** Don't run it on a free tier. The methodology assumes API access (or a Max plan with comfortable headroom).
