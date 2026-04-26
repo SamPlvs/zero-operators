@@ -1144,3 +1144,71 @@ class TestPlanPathOverride:
         decomp = orch.decompose_plan()
         prompt = orch.build_lead_prompt(decomp.phases[0])
         assert str(custom_path) in prompt
+
+
+# ---------------------------------------------------------------------------
+# Low-token mode
+# ---------------------------------------------------------------------------
+
+
+class TestLowTokenOrchestrator:
+    """``low_token=True`` filters cross-cutting agents and trims the prompt."""
+
+    def test_low_token_attribute_default(self, plan: Plan, tmp_path: Path) -> None:
+        orch = _make_orchestrator(plan, tmp_path)
+        assert orch.low_token is False
+
+    def test_low_token_attribute_set(self, plan: Plan, tmp_path: Path) -> None:
+        target = _make_target()
+        memory = MemoryManager(
+            project_dir=tmp_path, project_name="test-project",
+        )
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-project", session_id="test-session-001",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, low_token=True,
+        )
+        assert orch.low_token is True
+
+    def test_low_token_skips_dedicated_adaptations_section(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """The full ``# Per-project Agent Adaptations`` section is dropped
+        when low_token is on. Inline adaptations in contracts are kept,
+        but they only fire when the plan has adaptations declared."""
+        target = _make_target()
+        memory = MemoryManager(
+            project_dir=tmp_path, project_name="test-project",
+        )
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-project", session_id="test-session-001",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch_low = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, low_token=True,
+        )
+        decomp_low = orch_low.decompose_plan()
+        prompt_low = orch_low.build_lead_prompt(decomp_low.phases[0])
+
+        # The dedicated header phrase from _prompt_adaptations is gone.
+        assert "Per-project Agent Adaptations" not in prompt_low
+        # And the verbose roster blurb is replaced by a compact list.
+        assert "Available:" in prompt_low
+        assert "Create new specialists" not in prompt_low
+
+    def test_low_token_off_keeps_full_roster(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        orch = _make_orchestrator(plan, tmp_path)  # low_token=False default
+        decomp = orch.decompose_plan()
+        prompt = orch.build_lead_prompt(decomp.phases[0])
+        # The descriptive blurb is present in default mode.
+        assert "Create new specialists" in prompt

@@ -70,6 +70,15 @@ Most project-aware commands also accept:
 | `--gate-mode` | `supervised` / `auto` / `full-auto`. See [phases & gates](/concepts/phases-and-gates#gate-modes). |
 | `--no-tmux` | Disable interactive tmux flow. Falls through to headless / CI-friendly behaviour where applicable. |
 
+`zo build` and `zo continue` additionally accept the **cost-saving flags**:
+
+| Option | Purpose |
+|--------|---------|
+| `--low-token` | Activate the cost-saving preset (Sonnet lead, max-iterations 2, full-auto gates, no headlines, earlier auto-compaction). See [low-token mode](/concepts/low-token-mode). |
+| `--lead-model` | Override the lead orchestrator model (`opus`/`sonnet`/`haiku`). Composes with `--low-token`. |
+| `--max-iterations N` | Hard cap on Phase-4 experiment iterations. Wins over plan-level `## Experiment Loop` and the low-token preset. |
+| `--no-headlines` | Disable the Haiku headline ticker. |
+
 ## Modes of operation
 
 <Tabs>

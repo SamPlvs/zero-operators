@@ -912,6 +912,131 @@ class TestBuildCommand:
         assert "no such option: --no-tmux" not in result.output
 
 
+class TestLowTokenFlags:
+    """Tests for ``--low-token`` and the override flags it composes with."""
+
+    def test_low_token_flag_accepted(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text("empty", encoding="utf-8")
+        result = runner.invoke(cli, ["build", str(plan_path), "--low-token"])
+        assert "no such option: --low-token" not in result.output
+
+    def test_lead_model_flag_choices(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text("empty", encoding="utf-8")
+        for model in ("opus", "sonnet", "haiku"):
+            result = runner.invoke(
+                cli, ["build", str(plan_path), "--lead-model", model],
+            )
+            assert "Invalid value for '--lead-model'" not in result.output
+
+    def test_lead_model_invalid_choice_rejected(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text("empty", encoding="utf-8")
+        result = runner.invoke(
+            cli, ["build", str(plan_path), "--lead-model", "gpt"],
+        )
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output
+
+    def test_max_iterations_accepted(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text("empty", encoding="utf-8")
+        result = runner.invoke(
+            cli, ["build", str(plan_path), "--max-iterations", "3"],
+        )
+        assert "no such option: --max-iterations" not in result.output
+
+    def test_no_headlines_flag_accepted(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.md"
+        plan_path.write_text("empty", encoding="utf-8")
+        result = runner.invoke(
+            cli, ["build", str(plan_path), "--no-headlines"],
+        )
+        assert "no such option: --no-headlines" not in result.output
+
+    def test_resolve_lead_model_precedence(self) -> None:
+        """CLI > plan field > preset (when low_token) > base 'opus'."""
+        from zo.cli import _resolve_lead_model
+
+        # CLI flag wins over everything.
+        assert _resolve_lead_model(
+            cli_lead_model="opus", plan_lead_model="haiku", low_token=True,
+        ) == "opus"
+        # Plan field wins when CLI not set.
+        assert _resolve_lead_model(
+            cli_lead_model=None, plan_lead_model="haiku", low_token=True,
+        ) == "haiku"
+        # Low-token preset applies when neither CLI nor plan set.
+        assert _resolve_lead_model(
+            cli_lead_model=None, plan_lead_model=None, low_token=True,
+        ) == "sonnet"
+        # Base default (opus) when nothing else applies.
+        assert _resolve_lead_model(
+            cli_lead_model=None, plan_lead_model=None, low_token=False,
+        ) == "opus"
+
+    def test_resolve_gate_mode_precedence(self) -> None:
+        from zo.cli import _resolve_gate_mode
+
+        # CLI flag wins.
+        assert _resolve_gate_mode(
+            cli_gate_mode="supervised", low_token=True,
+        ) == "supervised"
+        # Low-token swaps default to full-auto.
+        assert _resolve_gate_mode(
+            cli_gate_mode=None, low_token=True,
+        ) == "full-auto"
+        # Default supervised when no flags.
+        assert _resolve_gate_mode(
+            cli_gate_mode=None, low_token=False,
+        ) == "supervised"
+
+    def test_low_token_preset_constant_shape(self) -> None:
+        """The preset has the documented keys with documented values."""
+        from zo.cli import _LOW_TOKEN_PRESET
+
+        assert _LOW_TOKEN_PRESET["lead_model"] == "sonnet"
+        assert _LOW_TOKEN_PRESET["max_iterations"] == 2
+        assert _LOW_TOKEN_PRESET["stop_on_tier"] == "could_pass"
+        assert _LOW_TOKEN_PRESET["drop_research_scout"] is True
+        assert _LOW_TOKEN_PRESET["headlines_disabled"] is True
+        assert _LOW_TOKEN_PRESET["gate_mode"] == "full-auto"
+        assert _LOW_TOKEN_PRESET["compact_threshold"] == "60"
+
+    def test_banner_renders_low_token_badge(
+        self, runner: click.testing.CliRunner
+    ) -> None:
+        """``_show_banner(low_token=True)`` includes the badge text."""
+        from io import StringIO
+        from rich.console import Console
+        import zo.cli as cli_module
+
+        # Redirect zo.cli.console to a buffer so we can inspect output.
+        buf = StringIO()
+        original = cli_module.console
+        cli_module.console = Console(
+            file=buf, force_terminal=True, color_system="truecolor",
+            width=100, highlight=False, emoji=False,
+        )
+        try:
+            cli_module._show_banner(project="demo", low_token=True)
+        finally:
+            cli_module.console = original
+        out = buf.getvalue()
+        assert "low-token" in out
+
+
 # ---------------------------------------------------------------------------
 # continue command
 # ---------------------------------------------------------------------------

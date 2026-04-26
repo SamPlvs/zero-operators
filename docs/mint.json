@@ -55,7 +55,8 @@
         "concepts/the-oracle",
         "concepts/the-team",
         "concepts/phases-and-gates",
-        "concepts/memory-and-continuity"
+        "concepts/memory-and-continuity",
+        "concepts/low-token-mode"
       ]
     },
     {
@@ -65,6 +66,13 @@
         "cli/init",
         "cli/draft",
         "cli/build"
+      ]
+    },
+    {
+      "group": "Reference",
+      "pages": [
+        "reference/low-token-preset",
+        "reference/cost-benchmark"
       ]
     }
   ],

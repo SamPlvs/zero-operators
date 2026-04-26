@@ -94,6 +94,7 @@ class LifecycleWrapper:
         max_turns: int = 200,
         use_tmux: bool = True,
         add_dirs: list[str] | None = None,
+        extra_env: dict[str, str] | None = None,
     ) -> LeadProcess:
         """Launch one Claude Code session as the Lead Orchestrator.
 
@@ -105,15 +106,22 @@ class LifecycleWrapper:
             add_dirs: Extra directories to grant Claude Code access to
                 via ``--add-dir``.  Use for delivery repos, data paths,
                 and other directories agents need to read/write.
+            extra_env: Extra environment variables to set for the
+                Claude Code subprocess. For tmux launches, prepended
+                inline to the shell command. For headless launches,
+                merged into the subprocess ``env``. Used by the
+                low-token preset to set
+                ``CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60``.
         """
         extra = add_dirs or []
+        env = extra_env or {}
         if use_tmux and self._is_in_tmux():
             return self._launch_tmux(prompt, cwd=cwd, team_name=team_name,
                                      model=model, max_turns=max_turns,
-                                     add_dirs=extra)
+                                     add_dirs=extra, extra_env=env)
         return self._launch_headless(prompt, cwd=cwd, team_name=team_name,
                                      model=model, max_turns=max_turns,
-                                     add_dirs=extra)
+                                     add_dirs=extra, extra_env=env)
 
     def _launch_tmux(
         self,
@@ -124,6 +132,7 @@ class LifecycleWrapper:
         model: str,
         max_turns: int,
         add_dirs: list[str] | None = None,
+        extra_env: dict[str, str] | None = None,
     ) -> LeadProcess:
         """Launch Claude Code interactively in a visible tmux window.
 
@@ -160,7 +169,11 @@ class LifecycleWrapper:
         add_dir_flags = f' --add-dir {shlex.quote(cwd)}'
         for d in (add_dirs or []):
             add_dir_flags += f' --add-dir {shlex.quote(d)}'
+        env_prefix = ""
+        for k, v in (extra_env or {}).items():
+            env_prefix += f'{k}={shlex.quote(v)} '
         interactive_cmd = (
+            f'{env_prefix}'
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
@@ -351,6 +364,7 @@ class LifecycleWrapper:
         model: str,
         max_turns: int,
         add_dirs: list[str] | None = None,
+        extra_env: dict[str, str] | None = None,
     ) -> LeadProcess:
         """Launch Claude Code as a headless subprocess (--print mode)."""
         cmd: list[str] = [
@@ -370,7 +384,14 @@ class LifecycleWrapper:
         stdout_fh = open(stdout_log, "w", encoding="utf-8")  # noqa: SIM115
         stderr_fh = open(stderr_log, "w", encoding="utf-8")  # noqa: SIM115
 
-        proc = subprocess.Popen(cmd, stdout=stdout_fh, stderr=stderr_fh, text=True)
+        import os
+        env = os.environ.copy()
+        if extra_env:
+            env.update(extra_env)
+
+        proc = subprocess.Popen(
+            cmd, stdout=stdout_fh, stderr=stderr_fh, text=True, env=env,
+        )
         lead = LeadProcess(
             pid=proc.pid, status=AgentStatus.SPAWNING,
             started_at=datetime.now(UTC), team_name=team_name,

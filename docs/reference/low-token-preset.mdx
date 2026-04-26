@@ -1,0 +1,125 @@
+---
+title: "Low-token preset"
+description: "The compact reference card for what --low-token actually flips, with override flags and precedence rules."
+---
+
+A one-page reference for the `--low-token` cost-saving preset. For motivation, trade-offs, and FAQ, see the [low-token mode concept page](/concepts/low-token-mode).
+
+## Activation
+
+| Method | Where | Persistence |
+|---|---|---|
+| `--low-token` flag | `zo build`, `zo continue` | Per-invocation |
+| `low_token: true` | Plan YAML frontmatter | Per project |
+
+When either is on, the preset below applies. CLI flag wins over plan field if both are set.
+
+## The preset
+
+```python
+_LOW_TOKEN_PRESET = {
+    "lead_model": "sonnet",
+    "max_iterations": 2,
+    "stop_on_tier": "could_pass",
+    "drop_research_scout": True,
+    "headlines_disabled": True,
+    "gate_mode": "full-auto",
+    "compact_threshold": "60",
+}
+```
+
+Authoritative location: [`src/zo/cli.py`](https://github.com/SamPlvs/zero-operators/blob/main/src/zo/cli.py) — search for `_LOW_TOKEN_PRESET`.
+
+## Knob reference
+
+| Knob | Default | Low-token | Where in code |
+|---|---|---|---|
+| Lead model | `opus` | `sonnet` | `_resolve_lead_model` in `cli.py` |
+| Phase-4 `max_iterations` | `10` | `2` | `_LOW_TOKEN_LOOP_CLAMPS` in `experiment_loop.py` |
+| Phase-4 `stop_on_tier` | `must_pass` | `could_pass` | `_LOW_TOKEN_LOOP_CLAMPS` in `experiment_loop.py` |
+| Cross-cutting `research-scout` | enabled | disabled | `_agents_for_phase` in `orchestrator.py` |
+| Cross-cutting `code-reviewer` | enabled | enabled (kept) | (not filtered — quality safety) |
+| Haiku headline ticker | every 60s | disabled | `_maybe_print_headline` in `cli.py` |
+| End-of-session Haiku summary | generated | skipped | `_generate_session_summary` in `cli.py` |
+| Default gate mode | `supervised` | `full-auto` | `_resolve_gate_mode` in `cli.py` |
+| Lead prompt: dedicated adaptations section | included | omitted | `build_lead_prompt` in `orchestrator.py` |
+| Lead prompt: roster | full descriptive | compact comma-list | `_prompt_roster` in `orchestrator.py` |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` env | unset | `60` | `extra_env` in `cli.py` → wrapper |
+
+## Override flags
+
+These compose with `--low-token` to fine-tune individual knobs:
+
+| Flag | Type | Effect |
+|---|---|---|
+| `--lead-model {opus,sonnet,haiku}` | choice | Override the lead model |
+| `--max-iterations N` | int | Hard cap on Phase-4 iterations |
+| `--no-headlines` | bool | Disable the headline ticker (independent of low-token) |
+| `--gate-mode {supervised,auto,full-auto}` | choice | Override the gate mode |
+
+## Plan-level fields
+
+Two YAML frontmatter fields complement the CLI flags:
+
+```yaml
+---
+project_name: "..."
+# ... required fields ...
+low_token: true        # optional, default false
+lead_model: sonnet     # optional, default unset
+---
+```
+
+Plan-level `## Experiment Loop` section overrides individual loop fields with full granularity:
+
+```markdown
+## Experiment Loop
+
+max_iterations: 5
+plateau_epsilon: 0.005
+stop_on_tier: should_pass
+```
+
+When `low_token` is on AND a plan `## Experiment Loop` field is set, the plan field wins (the preset is a "sensible defaults" layer, not a hard clamp).
+
+## Precedence (highest first)
+
+1. **CLI flag** — `--lead-model`, `--max-iterations`, `--gate-mode`, `--no-headlines`
+2. **Plan YAML frontmatter** — `lead_model`, `low_token`
+3. **Plan body section** — `## Experiment Loop` for loop knobs
+4. **Low-token preset** — applied when `--low-token` or `low_token: true` is set
+5. **Base default** — Opus, 10 iterations, supervised, etc.
+
+Concrete examples:
+
+| Invocation | Plan has | Effective lead | Effective max-iterations |
+|---|---|---|---|
+| `zo build x.md` | (nothing relevant) | `opus` | `10` |
+| `zo build x.md --low-token` | (nothing relevant) | `sonnet` | `2` |
+| `zo build x.md --low-token` | `lead_model: opus` | `opus` (plan wins over preset) | `2` |
+| `zo build x.md --low-token --lead-model haiku` | `lead_model: opus` | `haiku` (CLI wins over plan) | `2` |
+| `zo build x.md --low-token` | `## Experiment Loop`<br/>`max_iterations: 8` | `sonnet` | `8` (plan wins over preset clamp) |
+| `zo build x.md --low-token --max-iterations 4` | `## Experiment Loop`<br/>`max_iterations: 8` | `sonnet` | `4` (CLI wins over plan) |
+
+## Visual confirmation
+
+When low-token is active, the ZO banner shows a `[low-token]` badge:
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│   ◎ Zero Operators  v1.0.2  [low-token]                     │
+│      Autonomous AI Research & Engineering Teams              │
+│                                                              │
+│   Project:   mnist-demo                                      │
+│   Mode:      build                                           │
+│   Phase:     starting                                        │
+│   Gates:     full-auto                                       │
+╰──────────────────────────────────────────────────────────────╯
+```
+
+## See also
+
+- [Low-token mode concept](/concepts/low-token-mode) — motivation, trade-offs, FAQ
+- [Cost benchmark](/reference/cost-benchmark) — measured savings on the MNIST reference run
+- [`zo build` CLI reference](/cli/build)
+- [The plan](/concepts/the-plan) — frontmatter fields
