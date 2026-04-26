@@ -700,7 +700,9 @@ class TestScaffoldDelivery:
     def test_scaffold_creates_compose(self, tmp_path: Path) -> None:
         from zo.scaffold import scaffold_delivery
 
-        scaffold_delivery(tmp_path / "repo", "test-proj")
+        # Force GPU compose so this test is host-independent. Auto-detect
+        # behavior is covered by tests/unit/test_scaffold.py::TestPlatformAwareCompose.
+        scaffold_delivery(tmp_path / "repo", "test-proj", gpu_enabled=True)
 
         compose = (tmp_path / "repo" / "docker" / "docker-compose.yml").read_text()
         assert "capabilities: [gpu]" in compose
