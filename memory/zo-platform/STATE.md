@@ -8,7 +8,7 @@ status: complete
 
 ## Current Position
 
-ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 + website v2 (session-021) + brand polish (session-022). Session-022 fixes four post-launch issues spotted in real use: (1) `website/public/favicon.svg` was still the old orbital mark — replaced with the new simplified C in single coral so it reads on both light and dark browser tabs; (2) hero image was visually undersized at desktop — flipped `.hero-inner` columns from `1.1fr 1fr` (copy-weighted) to `1fr 1.15fr` (image-weighted), only affects >900px viewports so mobile stacking unchanged; (3) section 02 idea-diagram side labels (`decompose / verify / ship`) were positioned at the level of source/destination boxes instead of the action gaps between them — moved each into the gap so they label the transition (DECOMPOSE between plan.md→chips, VERIFY between chips→oracle, SHIP between oracle→trained-model); (4) oracle box `must · should · could` text (147px wide) overflowed its 120-wide rect by 14px on each side — widened to 170 (still centered at x=240 via translate 155), 11px symmetric padding. Also fixed 2px arrow misalignment for `analysis` and `package` chips. **README banner regenerated (v6 final) and consolidated into `design/banner/`** — new sub-dir holds master `readme-banner.svg` (typography + mark + frame overlay) + final composites at 1280×640 + 2560×1280 retina + source `workshop.png` photo + `render.mjs` Canvas-sandbox compositing script + a README explaining the asset structure and edit workflow. Old top-level `design/readme-banner.{svg,png}` removed. Root README image path updated `design/readme-banner.png` → `design/banner/readme-banner.png`. Session-021 still ships the full visual identity refresh: new palette (canvas `#12110F`, paper `#F4EFE6`, coral `#D87A57`, dusk + moss for status), new typography (Geist sans + Cormorant Garamond italic + JetBrains Mono — replacing Share Tech Mono / Rajdhani), new mark (simplified C — circle + diagonal slash + centered coral dot — replacing the orbital). Public website rewritten as Astro 5 static (single `src/pages/index.html` + `public/` assets, mobile-tested) with light/dark theme toggle, persisted in localStorage. Old multi-component Astro site (12 .astro components, 4 JSON data files, 2 scripts) deleted. design/ replaced with new brand-system.html (dark + light) + logos.html + font-pairings.html + shared styles.css + logos.js. README banner swapped to `design/readme-banner.png`. CLAUDE.md Design System rewritten. Cascade docs updated (frontend-engineer.md, documentation-agent.md). Version bumped 1.0.1 → 1.0.2 across pyproject.toml + __init__.py + cli.py. validate-docs 10/10 (1 pre-existing test-count warning). Cloudflare Pages compatible — same astro.config.mjs, same `npm run build → dist/`.
+ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 + website v2 (session-021) + brand polish (session-022) + platform-aware Docker scaffold (session-023). Session-023 closes the three small open issues from STATE.md's Known Issues list: (1) confirmed the **Plan.md Environment section** was already shipped (session-013) — parser handles it via `_OPTIONAL_SECTION_ALIASES['environment']`, plan template at `cli.py:2856` populates it from `detect_environment()`, round-trip is covered by `tests/unit/test_plan.py:192/219`. The Known Issue entry was stale; removed. (2) Implemented **platform-aware Docker scaffold** — `scaffold.py` previously hardcoded `deploy.resources.reservations.devices: capabilities: [gpu]` in every `docker-compose.yml`, which fails on macOS (Docker Desktop has no GPU passthrough) and is a no-op on Linux without an NVIDIA GPU. New `_COMPOSE_GPU_TEMPLATE` + `_COMPOSE_CPU_TEMPLATE` (CPU variant uses `pytorch:2.4.0-cpu` base image and a header comment explaining when it applies). `scaffold_delivery()` gains `gpu_enabled: bool | None = None` parameter — `None` probes via `detect_environment().gpu_count > 0`, falls back to GPU template on probe failure (safest default for Linux build servers). CLI's `_init_commit_writes` detects host GPU at scaffold time and passes through. Service name kept as `gpu` across both templates so README quickstart is platform-independent. (3) **MNIST Phase 6 packaging** flagged as out-of-scope code work — it requires running ZO end-to-end against the MNIST plan (a Claude session, ~$11 in tokens), not a code change. Deferred for user decision. **Tests:** 6 new `TestPlatformAwareCompose` tests in `tests/unit/test_scaffold.py` covering GPU/CPU explicit modes, auto-detect both ways, detection-failure fallback, and CPU service-name parity. One existing test (`test_cli.py::TestScaffoldDelivery::test_scaffold_creates_compose`) updated to pass `gpu_enabled=True` explicitly so it's host-independent. Test count 669 → 675 (+6). ruff clean on `src/zo/`, validate-docs 10/10 (1 pre-existing test-count warning unrelated). Session-022 still ships brand polish: (1) `website/public/favicon.svg` was still the old orbital mark — replaced with the new simplified C in single coral so it reads on both light and dark browser tabs; (2) hero image was visually undersized at desktop — flipped `.hero-inner` columns from `1.1fr 1fr` (copy-weighted) to `1fr 1.15fr` (image-weighted), only affects >900px viewports so mobile stacking unchanged; (3) section 02 idea-diagram side labels (`decompose / verify / ship`) were positioned at the level of source/destination boxes instead of the action gaps between them — moved each into the gap so they label the transition (DECOMPOSE between plan.md→chips, VERIFY between chips→oracle, SHIP between oracle→trained-model); (4) oracle box `must · should · could` text (147px wide) overflowed its 120-wide rect by 14px on each side — widened to 170 (still centered at x=240 via translate 155), 11px symmetric padding. Also fixed 2px arrow misalignment for `analysis` and `package` chips. **README banner regenerated (v6 final) and consolidated into `design/banner/`** — new sub-dir holds master `readme-banner.svg` (typography + mark + frame overlay) + final composites at 1280×640 + 2560×1280 retina + source `workshop.png` photo + `render.mjs` Canvas-sandbox compositing script + a README explaining the asset structure and edit workflow. Old top-level `design/readme-banner.{svg,png}` removed. Root README image path updated `design/readme-banner.png` → `design/banner/readme-banner.png`. Session-021 still ships the full visual identity refresh: new palette (canvas `#12110F`, paper `#F4EFE6`, coral `#D87A57`, dusk + moss for status), new typography (Geist sans + Cormorant Garamond italic + JetBrains Mono — replacing Share Tech Mono / Rajdhani), new mark (simplified C — circle + diagonal slash + centered coral dot — replacing the orbital). Public website rewritten as Astro 5 static (single `src/pages/index.html` + `public/` assets, mobile-tested) with light/dark theme toggle, persisted in localStorage. Old multi-component Astro site (12 .astro components, 4 JSON data files, 2 scripts) deleted. design/ replaced with new brand-system.html (dark + light) + logos.html + font-pairings.html + shared styles.css + logos.js. README banner swapped to `design/readme-banner.png`. CLAUDE.md Design System rewritten. Cascade docs updated (frontend-engineer.md, documentation-agent.md). Version bumped 1.0.1 → 1.0.2 across pyproject.toml + __init__.py + cli.py. validate-docs 10/10 (1 pre-existing test-count warning). Cloudflare Pages compatible — same astro.config.mjs, same `npm run build → dist/`.
 
 ## Completed
 
@@ -106,10 +106,10 @@ ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 +
 
 1. ~~Phase state not persisted between zo build calls~~ (RESOLVED: session-010)
 2. ~~Blocking gates cause repeated sessions in auto mode~~ (RESOLVED: session-010)
-3. MNIST Phase 6 (packaging: model card, validation report) not completed
+3. ~~MNIST Phase 6 (packaging: model card, validation report) not completed~~ (RESOLVED: session-023, full MNIST demo re-run in `mnist-digit-classifier-delivery/` with all 6 phases of deliverables — 99.66% test accuracy, 16/16 tests pass)
 4. ~~Agent permissions need broader .claude/settings.json allow patterns~~ (resolved)
-5. Device detection (Linux vs Mac) not yet implemented — affects Docker GPU passthrough
-6. Plan.md missing Environment section for base_image, CUDA version, paths
+5. ~~Device detection (Linux vs Mac) not yet implemented — affects Docker GPU passthrough~~ (RESOLVED: session-023, platform-aware scaffold)
+6. ~~Plan.md missing Environment section for base_image, CUDA version, paths~~ (RESOLVED: session-013, verified in session-023)
 
 ## What's Next
 
@@ -135,10 +135,30 @@ ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 +
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-26T13:00:00Z
-last_session: session-022 (wrapped — PR #53 merged, branch deleted)
-branch: main
-test_count: 669 passed, 7 skipped (ZO, verified on no-tmux host); 297 passed (prod-001)
+last_checkpoint: 2026-04-26T17:00:00Z
+last_session: session-023 (wrapped — v1 complete: platform-aware scaffold + MNIST 99.66% + CIFAR-10 91.62% + 14 CLI commands verified)
+branch: claude/focused-hugle-44c2f3
+v1_status: COMPLETE — all 8 PRD §9 acceptance criteria met, all Known Issues closed
+test_count: 675 passed, 7 skipped (ZO platform); 16 passed (mnist demo); 19 passed (cifar10 demo); 297 passed (prod-001)
+demo_results:
+  mnist-digit-classifier: 99.66% test accuracy (Tier 3 could_pass), 64s on MPS, 8 epochs, 468K params
+  cifar10-classifier: 91.62% test accuracy (Tier 3 could_pass), 427s on MPS, 25 epochs, 2.2M params
+cli_smoke_tested:
+  - "zo --version (1.0.2)"
+  - "zo --help (branded ZoGroup banner)"
+  - "zo init --no-tmux (headless scaffold, .zo/ memory init)"
+  - "zo init --no-tmux --dry-run (preview)"
+  - "zo init --reset --yes (cleanup)"
+  - "zo preflight (6/7 PASS on both plans, only nvidia-smi WARN)"
+  - "zo status -p PROJECT --repo PATH (renders status table)"
+  - "zo experiments list -p PROJECT --repo PATH (empty registry handled)"
+  - "zo experiments / show / diff (subcommand group resolves)"
+  - "zo gates set auto/supervised -p PROJECT --repo PATH"
+  - "zo migrate --help"
+  - "zo watch-training -p PROJECT --repo PATH (Rich Live dashboard renders)"
+  - "zo build --help (banner + usage)"
+  - "zo continue --help"
+  - "zo draft --help"
 lint: ruff clean (src/zo/)
 validation: scripts/validate-docs.sh 10/10 passed, 1 warning (stale test-count badge — pre-existing)
 prs: #22-#25 (UX), #26 (training dashboard + test reports), #27 (draft scout team), #28 (dynamic agents), #29-#33 (init-architect, branded help, website), #34 (tmux timing fix), #39 (preflight integration tests), #41 (notebook directory structure), #44-47 (portable .zo/ memory + --repo flags + confidentiality check + poll-based TUI readiness), #48 (phase snapshots + denylist-first + generic domain-evaluator), #49 (experiment capture layer), #50 (autonomous experiment loop), #51 (brand redesign v2 + website v2 + v1.0.2), #52 (troubleshooting docs), #53 (brand polish + banner consolidation)
