@@ -909,6 +909,62 @@ gracefully with logged error + prompt file path for manual recovery.
 
 ---
 
+## PR-034: PyTorch MPS Tensor.tolist() Returns Garbage Under Pytest (Use bincount or CPU Eval)
+**Source:** Session 023 (2026-04-26), CIFAR-10 oracle test failures
+**Root cause category:** novel_case
+**Failure:** CIFAR-10's `evaluate()` function builds a 10×10 confusion matrix by iterating `zip(y.tolist(), preds.tolist())`. The same code ran cleanly during training (called 25× across epochs, produced a valid confusion matrix saved to `summary.json`) and in a standalone diagnostic script. Under pytest, the test fixture re-runs `evaluate(model_on_mps, test_loader, device=mps)` and `preds.tolist()` returns garbage values like `13806002416` and `5572452850874712064` (memory addresses, not class indices in `[0, 9]`). Adding `.cpu()` before `.tolist()` did not help. Switching to `torch.bincount((y * 10 + preds).cpu(), minlength=100)` ALSO failed — the cpu-side tensor still had garbage values, suggesting the MPS→CPU copy itself was returning stale memory.
+
+### Rules
+
+1. **MPS tensor → CPU value extraction in pytest's process model is unreliable in PyTorch 2.x.**
+   The same `evaluate()` works correctly when called from a normal Python script, from inside the training loop, and via `python3 -c "..."` one-liners. Pytest's fixture/teardown context appears to leave MPS sync state in a way that subsequent `.cpu()` calls can return uninitialised memory. Reproducible across `.tolist()`, `.numpy()`, and `torch.bincount` paths.
+   - *Failure ref:* CIFAR-10 oracle tests on macOS / PyTorch 2.11 / Python 3.12.
+
+2. **Pin test-time evaluation to `torch.device("cpu")` even when training used MPS/CUDA.**
+   The 10K-sample CIFAR-10 / MNIST test set evaluates on CPU in seconds — the speed gain from MPS at test time is not worth the bug surface. Training stays on MPS via `select_device("auto")`; only the test fixture forces CPU. This is also good practice for cross-platform reproducibility (CI/Linux/different macOS hardware all behave the same way).
+   - *Pattern:* `device = torch.device("cpu")` inside oracle test bodies, not `select_device("auto")`.
+
+3. **Do not assume MPS-CPU bug fixes from PyTorch issue trackers apply to your version.**
+   Various MPS sync bugs were reported and fixed across PyTorch 1.13 → 2.11. New regressions appear; old fixes get reverted. When you hit MPS weirdness, the fastest path is "don't use MPS for this code path" rather than chasing the upstream fix.
+
+4. **Training-time evaluation can hide bugs that test-time evaluation surfaces.**
+   The training loop has dozens of synchronizing operations (`.item()`, optimizer step, scheduler step, gradient calls) that incidentally force MPS sync. A test fixture that calls `evaluate()` once on a fresh model load doesn't have those sync points. Tests for evaluation paths should be allowed to differ from training in subtle ways like device choice.
+
+### Verified Solution
+
+`tests/ml/test_oracle.py::test_must_pass_threshold` and `::test_per_class_floor` set `device = torch.device("cpu")` explicitly, then call `model.to(device)` before `evaluate()`. Tests pass deterministically. Training path (`src/engineering/trainer.py`) still uses `select_device("auto")` and gets MPS speedup. The trainer's `evaluate()` retains the `bincount` form as a future-proof improvement (vectorised, faster, sidesteps per-element transfers when the bug is eventually fixed).
+
+---
+
+## PR-033: Templated Files With Platform-Specific Behavior Must Branch at Scaffold Time, Not Runtime
+**Source:** Session 023 (2026-04-26), Docker GPU passthrough on Mac
+**Root cause category:** missing_rule
+**Failure:** `src/zo/scaffold.py` previously hardcoded a single `_COMPOSE_TEMPLATE` containing `deploy.resources.reservations.devices: capabilities: [gpu]`. On Mac (Docker Desktop has no GPU passthrough — Apple Silicon MPS lives outside Docker's Linux VM, Intel iGPUs aren't exposed), `docker compose up` either fails with "could not select device driver" or silently runs CPU-only with cryptic warnings, depending on Compose version. ZO had `detect_environment()` returning correct platform/GPU/CUDA info AND used it to populate the plan's `## Environment` section — but the same data wasn't consulted when writing the docker-compose template. Two consumers, one probe, only one wired up.
+
+### Rules
+
+1. **When env detection is wired into one consumer (plan template), wire it into all consumers (Docker scaffold, lockfile generation, test config, etc).**
+   The same `EnvironmentInfo` struct already drives `_render_plan_template`. Adding a second consumer (`_resolve_compose_template`) is mechanical. The mistake is treating env detection as "just for the plan" when it's really "the truth about this host that any artifact-emitter might need".
+   - *Failure ref:* GPU compose on Mac produced unrunnable Docker setup despite `detect_environment()` correctly reporting `gpu_count=0`.
+
+2. **Default behavior on detection failure should match the most-common production environment, not the most-developer-friendly one.**
+   `_resolve_compose_template(None)` falls back to the GPU template on detection error. Reasoning: ZO's production target is Linux GPU servers; emitting the CPU template on a probe failure (where the server actually has a GPU) would silently drop training to CPU — invisible regression. Better to emit GPU compose; if the host is actually Mac, the user gets an explicit `docker compose up` error that surfaces the misconfiguration.
+   - *Pattern:* When defaults must be picked under uncertainty, optimise for "noisy failure" over "silent regression".
+
+3. **Tests for default behavior must be host-independent.**
+   `test_cli.py::test_scaffold_creates_compose` was hardcoded to assert `capabilities: [gpu]` in the emitted compose, with no parameterisation. It passed on Linux/CI (where `detect_environment()` returns no GPU, falling back to GPU template via the safety rule above) but failed on a Mac dev box (where detection succeeds and correctly picks CPU). The fix: pass `gpu_enabled=True` explicitly. Tests for the default/auto-detect path are separate and mock `detect_environment` deterministically.
+   - *Failure ref:* Existing test broke on Mac immediately after the platform-aware change. Caught by the very pytest run that introduced the change — but only because the dev box happened to be Mac. On a Linux CI, the test would have continued passing while masking the new behavior.
+   - *Cross-ref:* PR-032 (mock upstream env guardrails when not the test subject). Same family — the test's subject is "the GPU compose has the deploy block", not "the auto-detect picks GPU on this host". The host detection is an upstream guardrail to be mocked or bypassed.
+
+4. **Service names in scaffolded files are stable contracts; rename only with downstream cascade.**
+   The existing template named the compose service `gpu`. The CPU variant could legitimately rename it to `runtime` (more accurate), but that would force README updates, agent contract updates, prod-001 scaffold migration, and break user muscle memory. Kept `gpu` across both templates — slight misnomer on Mac, acceptable cost for cross-platform README parity.
+
+### Verified Solution
+
+`scaffold.py`: `_COMPOSE_GPU_TEMPLATE` (existing content) + `_COMPOSE_CPU_TEMPLATE` (no deploy block, CPU base image, header comment) + `_resolve_compose_template(gpu_enabled)` helper + `gpu_enabled: bool | None = None` parameter on `scaffold_delivery`. `cli.py`: `_init_commit_writes` probes once via `detect_environment().gpu_count > 0` and passes through to all three `_scaffold(...)` call sites. 6 new `TestPlatformAwareCompose` tests in `test_scaffold.py` covering both modes explicit, both auto-detect outcomes, detection-failure fallback, CPU service-name parity. Test count 669 → 675 (+6).
+
+---
+
 ## PR-032: Tests Targeting Downstream Logic Must Mock Upstream Environment Guardrails
 **Source:** Session 021 (2026-04-25), full pytest run on a no-tmux host
 **Root cause category:** missing_rule
