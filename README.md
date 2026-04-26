@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="design/readme-banner.png" alt="Zero Operators — You write the plan. We ship the model." width="1000"/>
+<img src="design/banner/readme-banner.png" alt="Zero Operators — You write the plan. We ship the model." width="1000"/>
 
 <br/>
 <br/>
