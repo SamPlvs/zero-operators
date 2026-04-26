@@ -20,6 +20,7 @@ website/.astro/
 plans/*
 !plans/zero-operators-build.md
 !plans/mnist-digit-classifier.md
+!plans/cifar10-classifier.md
 targets/*
 !targets/.gitkeep
 logs/

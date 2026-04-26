@@ -10,9 +10,9 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-669_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-675_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
-[![E2E](https://img.shields.io/badge/MNIST-99%25_accuracy-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
+[![Demos](https://img.shields.io/badge/MNIST_99.66%25_/_CIFAR10_91.62%25-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
 
 ---
 
@@ -470,8 +470,10 @@ mnist-delivery/          ← delivery repo (clean)
 | 5 | E2E validation (MNIST: 99% accuracy) | Done |
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | 1.0.2 | Phase snapshots, experiment capture + autonomous loop, brand v2, website v2 | Done |
+| 1.0.2 | Platform-aware Docker scaffold + MNIST 99.66% / CIFAR-10 91.62% v1 demos | Done |
 
-669 platform tests. ruff clean. 20 agents. 24 slash commands.
+675 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands.
+v1 demos in [`mnist-digit-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) and [`cifar10-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) (separate repos) — 16 + 19 delivery-side tests passing.
 
 ---
 

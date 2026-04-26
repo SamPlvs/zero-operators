@@ -1377,17 +1377,28 @@ def _init_commit_writes(
     from zo.project_config import ProjectConfig, save_project_config
     from zo.scaffold import scaffold_delivery as _scaffold
 
+    # Probe host GPU availability so the scaffolded docker-compose.yml
+    # gets the right deploy block. None on detection failure → scaffold
+    # falls back to the GPU template (safest default on a Linux server).
+    try:
+        from zo.environment import detect_environment
+        _detected_gpu = detect_environment().gpu_count > 0
+    except Exception:  # noqa: BLE001
+        _detected_gpu = None
+
     # Delivery repo scaffold (fresh) or overlay (existing) — do this
     # first so .zo/ directories exist before we write into them.
     if overlay:
         _scaffold(
             delivery_path, project_name,
             overlay=True, layout_mode=layout_mode,
+            gpu_enabled=_detected_gpu,
         )
     elif not delivery_path.exists():
         _scaffold(
             delivery_path, project_name,
             overlay=False, layout_mode=layout_mode,
+            gpu_enabled=_detected_gpu,
         )
         console.print(f"[green]Delivery repo scaffolded:[/] {delivery_path}")
     else:
@@ -1396,6 +1407,7 @@ def _init_commit_writes(
         _scaffold(
             delivery_path, project_name,
             overlay=True, layout_mode=layout_mode,
+            gpu_enabled=_detected_gpu,
         )
 
     # -- .zo/ layout (new, portable) --

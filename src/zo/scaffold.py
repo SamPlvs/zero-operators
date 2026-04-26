@@ -268,7 +268,10 @@ WORKDIR /project
 CMD ["/bin/bash"]
 """
 
-_COMPOSE_TEMPLATE = """\
+# GPU-enabled compose — emitted on Linux hosts with a CUDA-capable
+# NVIDIA GPU. The ``deploy.resources.reservations.devices`` block
+# requires the NVIDIA Container Toolkit on the host.
+_COMPOSE_GPU_TEMPLATE = """\
 services:
   gpu:
     build:
@@ -293,6 +296,39 @@ services:
     tty: true
 """
 
+# CPU-only compose — emitted when no NVIDIA GPU is detected, or on
+# macOS where Docker Desktop cannot pass through Apple Silicon (MPS)
+# or Intel iGPUs. For native hardware acceleration on Mac, run
+# training outside Docker (``uv run python -m src.engineering.trainer``).
+# The service is still named ``gpu`` to keep the README quickstart
+# identical across platforms; only the deploy block differs.
+_COMPOSE_CPU_TEMPLATE = """\
+# CPU-only compose. Docker Desktop on macOS does not expose GPUs;
+# on Linux without an NVIDIA GPU the deploy block would be a no-op.
+# For GPU acceleration on Mac, run natively (uv run python -m ...).
+services:
+  gpu:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        BASE_IMAGE: pytorch/pytorch:2.4.0-cpu
+        USER_NAME: ${USER:-zo}
+        USER_ID: ${UID:-1000}
+    volumes:
+      - ../data:/project/data
+      - ../models:/project/models
+      - ../reports:/project/reports
+      - ../notebooks:/project/notebooks
+    ipc: host
+    stdin_open: true
+    tty: true
+"""
+
+# Backwards-compatible alias — older callers / tests reference
+# ``_COMPOSE_TEMPLATE``. Always points at the GPU variant.
+_COMPOSE_TEMPLATE = _COMPOSE_GPU_TEMPLATE
+
 _ZO_GITIGNORE_TEMPLATE = """\
 # Machine-specific config (paths, GPU info, gate mode)
 local.yaml
@@ -302,6 +338,7 @@ memory/index.db
 memory/draft_index.db
 """
 
+# Files that are platform-independent (always written verbatim).
 _FILE_TEMPLATES: list[tuple[str, str]] = [
     (".zo/.gitignore", _ZO_GITIGNORE_TEMPLATE),
     ("README.md", _README_TEMPLATE),
@@ -311,9 +348,27 @@ _FILE_TEMPLATES: list[tuple[str, str]] = [
     ("experiments/README.md", _EXPERIMENTS_README),
     ("configs/experiment/base.yaml", _BASE_CONFIG_TEMPLATE),
     ("docker/Dockerfile", _DOCKERFILE_TEMPLATE),
-    ("docker/docker-compose.yml", _COMPOSE_TEMPLATE),
     ("docker/.dockerignore", _DOCKERIGNORE_TEMPLATE),
 ]
+
+
+def _resolve_compose_template(gpu_enabled: bool | None) -> str:
+    """Pick the docker-compose template appropriate for the host.
+
+    When ``gpu_enabled`` is ``None`` we probe the runtime environment
+    (``zo.environment.detect_environment``). Detection failure falls
+    back to the GPU template — that's the safer default on a Linux
+    build server where omitting the deploy block would silently leave
+    the model on CPU.
+    """
+    if gpu_enabled is None:
+        try:
+            from zo.environment import detect_environment
+            env = detect_environment()
+            gpu_enabled = env.gpu_count > 0
+        except Exception:  # noqa: BLE001
+            gpu_enabled = True
+    return _COMPOSE_GPU_TEMPLATE if gpu_enabled else _COMPOSE_CPU_TEMPLATE
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +382,7 @@ def scaffold_delivery(
     *,
     overlay: bool = False,
     layout_mode: str = "standard",
+    gpu_enabled: bool | None = None,
 ) -> None:
     """Create the ZO project layout at *path*.
 
@@ -356,6 +412,13 @@ def scaffold_delivery(
               is then responsible for writing a project-specific
               ``STRUCTURE.md`` and updating ``agent_working_dirs`` in
               the target file to point at the actual code paths.
+        gpu_enabled: Selects the docker-compose variant. ``True`` emits
+            the GPU template (``deploy.resources`` block + CUDA base
+            image); ``False`` emits the CPU template (no deploy block,
+            CPU base image) — appropriate for macOS hosts and Linux
+            without a CUDA GPU. ``None`` (default) probes the host via
+            ``zo.environment.detect_environment`` and picks based on
+            ``gpu_count > 0``.
     """
     if layout_mode not in {"standard", "adaptive"}:
         raise ValueError(
@@ -375,7 +438,8 @@ def scaffold_delivery(
         root, dirs, overlay=overlay,
     )
     files_created, files_preserved = _create_template_files(
-        root, project_name, overlay=overlay, layout_mode=layout_mode,
+        root, project_name, overlay=overlay,
+        layout_mode=layout_mode, gpu_enabled=gpu_enabled,
     )
 
     if overlay:
@@ -433,6 +497,7 @@ def _create_template_files(
     *,
     overlay: bool = False,
     layout_mode: str = "standard",
+    gpu_enabled: bool | None = None,
 ) -> tuple[int, int]:
     """Write template files into *root*, skipping existing ones.
 
@@ -443,15 +508,22 @@ def _create_template_files(
     Architect customises it afterwards), Docker files, and the base
     experiment config.
 
+    The ``docker/docker-compose.yml`` template is platform-aware: when
+    ``gpu_enabled`` is False (or detected as such) we emit a CPU-only
+    compose without the ``deploy.resources.reservations.devices`` block,
+    which would otherwise fail on macOS and no-op on Linux without a GPU.
+
     Returns ``(created, preserved)`` counts.
     """
+    compose_template = _resolve_compose_template(gpu_enabled)
+    base_templates: list[tuple[str, str]] = list(_FILE_TEMPLATES) + [
+        ("docker/docker-compose.yml", compose_template),
+    ]
     if layout_mode == "adaptive":
         skip = {"README.md", "pyproject.toml", ".gitignore"}
-        templates = [
-            (p, t) for (p, t) in _FILE_TEMPLATES if p not in skip
-        ]
+        templates = [(p, t) for (p, t) in base_templates if p not in skip]
     else:
-        templates = _FILE_TEMPLATES
+        templates = base_templates
 
     created = 0
     preserved = 0
