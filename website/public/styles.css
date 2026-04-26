@@ -1615,6 +1615,7 @@ em, .it {
   /* Nav: hide desktop links, show burger */
   .nav-link { display: none; }
   .nav-github { display: none; }
+  .nav-docs { display: none; }
   .nav-burger { display: inline-flex; }
   .nav-right { gap: 10px; }
 
