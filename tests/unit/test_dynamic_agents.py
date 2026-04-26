@@ -106,6 +106,41 @@ class TestAgentsForPhaseCustom:
         assert "calibration-expert" in result
 
 
+class TestAgentsForPhaseLowToken:
+    """Low-token mode drops research-scout from cross-cutting."""
+
+    def test_low_token_drops_research_scout(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "code-reviewer", "research-scout"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        assert "data-engineer" in result
+        assert "code-reviewer" in result  # kept — quality drift catcher
+        assert "research-scout" not in result  # dropped in low-token
+
+    def test_low_token_off_keeps_research_scout(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "code-reviewer", "research-scout"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=False,
+        )
+        assert "research-scout" in result
+
+    def test_low_token_preserves_non_research_scouts(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        # Custom agent named like a scout but not THE research-scout — kept.
+        active = ["data-engineer", "data-scout"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        assert "data-engineer" in result
+        assert "data-scout" in result
+
+
 # ------------------------------------------------------------------ #
 # Agent rendering
 # ------------------------------------------------------------------ #

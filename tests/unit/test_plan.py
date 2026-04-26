@@ -144,6 +144,57 @@ class TestFrontmatter:
         with pytest.raises(ValueError, match="missing required keys"):
             parse_frontmatter(p.read_text())
 
+    def test_low_token_default_false(self, real_plan_path: Path) -> None:
+        """Plans without low_token field default to False (back-compat)."""
+        fm = parse_frontmatter(real_plan_path.read_text())
+        assert fm.low_token is False
+        assert fm.lead_model is None
+
+    def test_low_token_true_parsed(self, tmp_path: Path) -> None:
+        """A frontmatter line `low_token: true` parses as True."""
+        content = """\
+---
+project_name: "demo"
+version: "1.0"
+created: "2026-04-26"
+last_modified: "2026-04-26"
+status: active
+owner: "Sam"
+low_token: true
+lead_model: sonnet
+---
+
+## Objective
+
+Demo.
+"""
+        p = _write_plan(tmp_path, content)
+        fm = parse_frontmatter(p.read_text())
+        assert fm.low_token is True
+        assert fm.lead_model == "sonnet"
+
+    def test_low_token_false_parsed(self, tmp_path: Path) -> None:
+        """A frontmatter line `low_token: false` parses as False."""
+        content = """\
+---
+project_name: "demo"
+version: "1.0"
+created: "2026-04-26"
+last_modified: "2026-04-26"
+status: active
+owner: "Sam"
+low_token: false
+---
+
+## Objective
+
+Demo.
+"""
+        p = _write_plan(tmp_path, content)
+        fm = parse_frontmatter(p.read_text())
+        assert fm.low_token is False
+        assert fm.lead_model is None
+
 
 # ---------------------------------------------------------------------------
 # Full plan parsing (real fixture)

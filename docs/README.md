@@ -31,14 +31,18 @@ docs/
 │   ├── overview.mdx
 │   ├── the-plan.mdx
 │   ├── the-oracle.mdx
-│   ├── agents.mdx
+│   ├── the-team.mdx
 │   ├── phases-and-gates.mdx
-│   └── memory-and-continuity.mdx
-└── cli/
-    ├── overview.mdx
-    ├── init.mdx
-    ├── draft.mdx
-    └── build.mdx
+│   ├── memory-and-continuity.mdx
+│   └── low-token-mode.mdx       # the cost-saving preset
+├── cli/
+│   ├── overview.mdx
+│   ├── init.mdx
+│   ├── draft.mdx
+│   └── build.mdx
+└── reference/
+    ├── low-token-preset.mdx     # one-page low-token preset card
+    └── cost-benchmark.mdx       # MNIST cost comparison methodology + results
 ```
 
 Pages not referenced in `mint.json`'s `navigation` won't appear on the site.

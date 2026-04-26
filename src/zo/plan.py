@@ -32,7 +32,14 @@ class WorkflowMode(StrEnum):
 
 
 class PlanFrontmatter(BaseModel):
-    """YAML frontmatter at the top of a plan file."""
+    """YAML frontmatter at the top of a plan file.
+
+    The optional ``low_token`` and ``lead_model`` fields configure the
+    cost-saving preset (see ``zo.cli._LOW_TOKEN_PRESET``). ``low_token``
+    activates the preset; ``lead_model`` overrides the lead orchestrator
+    model. Both can also be supplied via CLI flags, which take
+    precedence (CLI > plan field > preset default > base default).
+    """
 
     project_name: str
     version: str
@@ -40,6 +47,8 @@ class PlanFrontmatter(BaseModel):
     last_modified: str
     status: PlanStatus
     owner: str
+    low_token: bool = False
+    lead_model: str | None = None
 
 
 class OracleDefinition(BaseModel):
