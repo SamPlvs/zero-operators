@@ -141,13 +141,13 @@ ZO **v1.0.2** + **`--low-token` mode** (session-024) — cost-saving preset for 
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-26T21:00:00Z
-last_session: session-024 (in-progress — `--low-token` mode + docs expansion + benchmark harness on `claude/lucid-herschel-fece72`)
-branch: claude/lucid-herschel-fece72
+last_checkpoint: 2026-04-26T22:00:00Z
+last_session: session-024 (in-progress — PR #57 merged; doc-fix follow-up: redirect rule for legacy /concepts/agents slug, escaped MDX prose dollar signs, partial bench attempt)
+branch: main (post PR #57 merge)
 v1_status: COMPLETE — all 8 PRD §9 acceptance criteria met, all Known Issues closed
-docs_site: scaffolded under docs/ with Mintlify (mint.json + 16 pages: 3 get-started + 7 concepts + 4 cli + 2 reference); awaiting connection at docs.zero-operators.dev
+docs_site: scaffolded under docs/ with Mintlify (mint.json + 16 pages: 3 get-started + 7 concepts + 4 cli + 2 reference; redirect rule /concepts/agents → /concepts/the-team for stale-cache hardening); awaiting connection at docs.zero-operators.dev
 test_count: 704 passed, 7 skipped (ZO platform); 16 passed (mnist demo); 19 passed (cifar10 demo); 297 passed (prod-001)
-benchmark: scripts/benchmark_low_token.sh harness in place; first measured run pending (tracked in docs/reference/cost-benchmark.mdx)
+benchmark: scripts/benchmark_low_token.sh harness in place; first measured attempt 2026-04-26 aborted at ~17min/$13.59 — lead idle on sub-agent permission gate; surfaced architectural finding that Claude Code 2.1.92 spawns TeamCreate sub-agents on `claude-opus-4-6` regardless of agent .md frontmatter `model:` field (so low-token's lead-model swap saves on lead-side spend only; sub-agents stay on Opus). Revised savings estimate downward 70-80% → 50-65%. Details in docs/reference/cost-benchmark.mdx "Findings from the partial run".
 demo_results:
   mnist-digit-classifier: 99.66% test accuracy (Tier 3 could_pass), 64s on MPS, 8 epochs, 468K params
   cifar10-classifier: 91.62% test accuracy (Tier 3 could_pass), 427s on MPS, 25 epochs, 2.2M params

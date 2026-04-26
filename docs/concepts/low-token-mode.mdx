@@ -46,7 +46,7 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 
 ## Estimated savings
 
-The MNIST end-to-end demo cost ~$11 on default settings. With `--low-token` the same run lands at **~$2-3** — a **5-8× reduction**. Most of the saving comes from the lead model swap and the iteration cap; the rest is incremental.
+The MNIST end-to-end demo cost **~\$11** on default settings. With `--low-token` the same run lands at **~\$2-3** — a **5-8× reduction**. Most of the saving comes from the lead model swap and the iteration cap; the rest is incremental.
 
 The numbers depend heavily on plan complexity. A plan with no Phase-4 experiments will see a smaller relative saving (closer to 2-3×, driven entirely by the lead model swap). A plan that hits the iteration cap will see the largest saving.
 
@@ -124,7 +124,7 @@ What changes, end-to-end, between a default run and a low-token run on the same 
 
 ## Worked example: MNIST
 
-The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~$11**, dominated by the Lead Orchestrator on Opus through ten Phase-4 iterations.
+The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~\$11**, dominated by the Lead Orchestrator on Opus through ten Phase-4 iterations.
 
 Low-token expectations:
 
