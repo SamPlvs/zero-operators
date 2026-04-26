@@ -1,0 +1,125 @@
+---
+title: "Cost benchmark"
+description: "Methodology and measured results for ZO's --low-token cost-saving preset, benchmarked against the MNIST end-to-end reference run."
+---
+
+This page documents the methodology and results for the `--low-token` cost benchmark — a controlled comparison between default and low-token modes on ZO's canonical MNIST end-to-end reference run.
+
+<Note>
+  **Status:** the benchmark harness is in place ([`scripts/benchmark_low_token.sh`](https://github.com/SamPlvs/zero-operators/blob/main/scripts/benchmark_low_token.sh)). Final measured numbers will land in this page once the benchmark has been executed end-to-end. The estimates below are derived from the session-005 MNIST run cost (~$11) and the architectural analysis of where tokens flow.
+</Note>
+
+## Why benchmark MNIST
+
+MNIST is ZO's canonical reference because:
+
+- **Stable oracle** — the must-pass tier (95% test accuracy) is well within the architecture's capability
+- **Six full phases** — exercises Phase 1 (data) through Phase 6 (packaging), the full lifecycle
+- **Phase-4 iterations matter** — non-trivially, the autonomous loop matters for cost
+- **Reproducible** — the plan, data, and oracle don't drift between runs
+- **Documented baseline** — session-005 gave us a precise cost ($11) and wall-time (~50min) anchor point
+
+## Methodology
+
+The benchmark runs `zo build` against the MNIST plan **twice** in identical environments:
+
+1. **Default run** — `zo build plans/mnist-digit-classifier.md` — Opus lead, max-iterations 10, supervised gates auto-PROCEED-ed via `--gate-mode full-auto`
+2. **Low-token run** — `zo build plans/mnist-digit-classifier.md --low-token` — Sonnet lead, 2 iterations, full-auto gates, no headlines
+
+For fair comparison, **both runs use `--gate-mode full-auto`** so the only differences are the low-token knobs themselves. Results are logged to `~/.claude/projects/*.jsonl`; per-session totals are extracted via `npx ccusage --json` (one of ZO's [planned optional integrations](/concepts/low-token-mode#whats-not-in-this-mode-yet)).
+
+### Measured dimensions
+
+| Metric | How |
+|---|---|
+| Input tokens (lead) | Sum across all turns of the lead orchestrator |
+| Output tokens (lead) | Same |
+| Input/output tokens (sub-agents) | Sum across all spawned agents |
+| Headline tokens | Sum of Haiku ticker calls |
+| Wall time | From `zo build` start to session end |
+| Oracle tier reached | `must_pass`, `should_pass`, or `could_pass` — ensures quality didn't regress unacceptably |
+| Phase 4 iterations completed | Diagnostic — how often does each mode hit its iteration cap |
+| Total cost (USD) | Computed from token totals × Anthropic published rates at benchmark time |
+
+### Controlled variables
+
+- Same machine (Mac M-series, 32GB RAM)
+- Same Claude Code version
+- Same MNIST plan, unmodified between runs
+- Same delivery scaffold (fresh `zo init`)
+- Both runs `--gate-mode full-auto` (default would have been `supervised` for the default-mode run; we override to keep gate behaviour identical)
+
+### Run frequency
+
+The benchmark is single-shot per release. Re-running on every PR would cost ~$13 each cycle and provide minimal signal — variance is dominated by stochastic agent decisions, not measurement noise.
+
+## Estimated results (pre-measurement)
+
+Based on the session-005 MNIST cost (~$11) and the architectural analysis of token flows:
+
+| Metric | Default | Low-token | Reduction |
+|---|---|---|---|
+| Lead input tokens | ~50K-100K (Opus) | ~50K-100K (Sonnet) | (raw count similar; rate is ~5× cheaper) |
+| Lead output tokens | ~30K-50K (Opus) | ~30K-50K (Sonnet) | (raw count similar; rate is ~5× cheaper) |
+| Phase-4 iterations | 1-3 (MNIST converges fast) | 1 | Marginal — MNIST is too easy to hit the iteration cap |
+| Headline tokens | ~30 calls × ~1.5 KB | 0 | ~$0.01 saved |
+| **Total cost** | ~$11 | ~$2-3 | **~70-80% reduction** |
+| Wall time | ~50 min | ~20-25 min | ~50% faster (mostly from skipped human-loop overhead, not from token savings) |
+| Oracle tier reached | `could_pass` (99.66%) | `could_pass` (≥99% expected) | Same — MNIST too easy to differentiate quality at the lead step |
+
+## Caveats and known limitations
+
+1. **MNIST is an easy benchmark.** The convergence-iteration cap (10 → 2) doesn't bite on MNIST because the model converges in iteration 1. On a harder problem, the iteration cap matters more — and `--low-token` may fail to converge where default would have succeeded. Re-run without `--low-token` if `zo status` shows `BUDGET_EXHAUSTED`.
+
+2. **Lead model swap doesn't show MNIST quality regression.** MNIST is well within Sonnet's capability for plan decomposition. On novel research-grade plans, Opus may catch nuances Sonnet misses.
+
+3. **Wall-time savings are not all from tokens.** ~30% of the wall-time saving comes from skipped human-loop overhead (`--gate-mode full-auto` default in low-token), not from compute savings. If you keep `--gate-mode supervised`, wall time savings shrink even though token savings remain.
+
+4. **Cost depends on the Anthropic rate card at benchmark time.** Pricing changes ripple through the total. The methodology measures *token counts* primarily; cost in USD is derived.
+
+5. **Pro-plan caps measure messages, not tokens.** Anthropic Pro subscribers hit a daily message cap, not a token cap. Low-token mode reduces *both* per-message tokens AND total messages (no Haiku ticker, no end-of-session summary). The cap savings are roughly proportional but not identical to token savings.
+
+## Reproducing the benchmark
+
+The harness lives at [`scripts/benchmark_low_token.sh`](https://github.com/SamPlvs/zero-operators/blob/main/scripts/benchmark_low_token.sh). Usage:
+
+```bash
+# From the ZO repo root, with ccusage installed (`npm install -g ccusage`):
+./scripts/benchmark_low_token.sh
+
+# Or specify a delivery prefix:
+./scripts/benchmark_low_token.sh --delivery-prefix /tmp/zo-bench
+```
+
+The script:
+
+1. Runs `zo init mnist-bench-default --no-tmux ...` to scaffold a fresh delivery repo
+2. Captures pre-build ccusage snapshot
+3. Runs `zo build` in default mode + waits for completion
+4. Captures post-build ccusage snapshot — diff = default-mode tokens
+5. Runs `zo init mnist-bench-low --no-tmux ...` for the low-token delivery
+6. Pre-build ccusage snapshot
+7. Runs `zo build --low-token` + waits
+8. Post-build ccusage snapshot — diff = low-token tokens
+9. Writes `benchmark-results-{timestamp}.json` with the comparison
+10. Prints a summary table
+
+Total wall time: ~75 minutes (default ~50 + low-token ~25). Total cost: ~$13-14 (~$11 + ~$2-3).
+
+<Warning>
+  **The benchmark spends real tokens.** Don't run it on a free tier. The methodology assumes API access (or a Max plan with comfortable headroom).
+</Warning>
+
+## Updates
+
+This page is updated when a new ZO version changes anything that materially affects the cost profile (preset values, agent roster, prompt structure). The history of measurements over time gives a longitudinal view of how cost-per-build evolves with the platform.
+
+| ZO version | Date | Default cost | Low-token cost | Reduction | Source |
+|---|---|---|---|---|---|
+| 1.0.2 + low-token | (pending) | (pending) | (pending) | (pending) | First measured benchmark |
+
+## See also
+
+- [Low-token mode concept](/concepts/low-token-mode)
+- [Low-token preset reference](/reference/low-token-preset)
+- [`scripts/benchmark_low_token.sh`](https://github.com/SamPlvs/zero-operators/blob/main/scripts/benchmark_low_token.sh)

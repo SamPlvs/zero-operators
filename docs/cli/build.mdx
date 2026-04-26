@@ -112,9 +112,13 @@ While `zo build` is running, you have several windows into what the team is doin
 
 | Option | Default | Purpose |
 |--------|---------|---------|
-| `--gate-mode` | `supervised` | `supervised` / `auto` / `full-auto` |
+| `--gate-mode` | `supervised` (or `full-auto` if `--low-token`) | `supervised` / `auto` / `full-auto` |
 | `--no-tmux` | (off) | Disable interactive tmux flow. Headless mode for one-shot agents. **Note:** multi-phase orchestration requires the interactive session; `--no-tmux` is for `init` and `draft`, not full builds. |
 | `--repo PATH` | (auto) | Path to delivery repo with `.zo/`. Auto-inferred when the plan path is inside `.zo/plans/`. |
+| `--low-token` | (off) | Activate the cost-saving preset. See [low-token mode](/concepts/low-token-mode). |
+| `--lead-model` | `opus` (or `sonnet` if `--low-token`) | Override the lead orchestrator model: `opus` / `sonnet` / `haiku`. |
+| `--max-iterations N` | `10` (or `2` if `--low-token`) | Hard cap on Phase-4 experiment iterations. Wins over plan and preset. |
+| `--no-headlines` | (off) | Disable the Haiku headline ticker (saves ~60 small calls/hour). |
 
 ## Examples
 
@@ -143,6 +147,18 @@ While `zo build` is running, you have several windows into what the team is doin
     zo build plans/replay.md --gate-mode full-auto
     ```
     Use only for plans that have run successfully before — full-auto skips all human review.
+  </Accordion>
+  <Accordion title="Pro plan / student account — minimise token spend">
+    ```bash
+    zo build plans/my-project.md --low-token
+    ```
+    Sonnet lead, 2 max iterations, no headlines, full-auto gates, earlier auto-compaction. ~70-80% token reduction. See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
+  </Accordion>
+  <Accordion title="Low-token mode with override">
+    ```bash
+    zo build plans/my-project.md --low-token --lead-model opus
+    ```
+    Most savings preserved, but lead stays on Opus for higher-quality plan decomposition.
   </Accordion>
 </AccordionGroup>
 

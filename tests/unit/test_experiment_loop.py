@@ -394,6 +394,51 @@ class TestResolvePolicy:
         assert policy.dead_end_threshold == 0.8
 
 
+class TestResolvePolicyLowToken:
+    """Low-token preset clamps and override precedence."""
+
+    def test_low_token_clamps_when_no_spec(self) -> None:
+        """low_token=True clamps max_iterations and stop_on_tier."""
+        policy = resolve_policy(None, low_token=True)
+        assert policy.max_iterations == 2
+        assert policy.stop_on_tier == "could_pass"
+        assert policy.low_token is True
+
+    def test_low_token_off_keeps_defaults(self) -> None:
+        """low_token=False (default) leaves DEFAULT_POLICY untouched."""
+        policy = resolve_policy(None, low_token=False)
+        assert policy is DEFAULT_POLICY
+        assert policy.max_iterations == 10
+        assert policy.stop_on_tier == "must_pass"
+
+    def test_plan_spec_wins_over_low_token_clamp(self) -> None:
+        """When low_token is on AND plan sets max_iterations,
+        the plan value wins (low_token is a defaults layer, not a ceiling)."""
+        spec = ExperimentLoopSpec(max_iterations=8)
+        policy = resolve_policy(spec, low_token=True)
+        # Plan said 8 — that wins over low_token's clamp of 2.
+        assert policy.max_iterations == 8
+        # stop_on_tier wasn't in plan — clamp still applies.
+        assert policy.stop_on_tier == "could_pass"
+        assert policy.low_token is True
+
+    def test_cli_override_wins_over_plan_and_clamp(self) -> None:
+        """CLI --max-iterations override beats plan and low_token clamp."""
+        spec = ExperimentLoopSpec(max_iterations=8)
+        policy = resolve_policy(
+            spec, low_token=True, max_iterations_override=3,
+        )
+        assert policy.max_iterations == 3
+        assert policy.stop_on_tier == "could_pass"
+
+    def test_cli_override_alone_no_low_token(self) -> None:
+        """--max-iterations works without --low-token."""
+        policy = resolve_policy(None, max_iterations_override=4)
+        assert policy.max_iterations == 4
+        assert policy.stop_on_tier == "must_pass"
+        assert policy.low_token is False
+
+
 class TestParseExperimentLoopFromPlan:
     def test_parses_full_block(self) -> None:
         from zo.plan import _parse_experiment_loop

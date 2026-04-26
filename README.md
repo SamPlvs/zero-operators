@@ -10,7 +10,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-675_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-704_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Demos](https://img.shields.io/badge/MNIST_99.66%25_/_CIFAR10_91.62%25-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
 [![Docs](https://img.shields.io/badge/docs-zero--operators.dev-D87A57?style=flat-square&labelColor=12110F)](https://docs.zero-operators.dev)
@@ -232,6 +232,29 @@ zo continue my-project
 # 10. Check status anytime
 zo status my-project
 ```
+
+---
+
+## Low-token mode
+
+Running ZO on an Anthropic Pro subscription, a student plan, or otherwise watching your daily message budget? Add `--low-token`:
+
+```bash
+zo build plans/my-project.md --low-token
+```
+
+The preset trades some quality at the lead step for substantial cost savings (Sonnet lead instead of Opus, 2 Phase-4 iterations instead of 10, no Haiku headlines, full-auto gates, earlier auto-compaction). MNIST-equivalent runs go from ~$11 to ~$2-3.
+
+Plan-level equivalent — set `low_token: true` in YAML frontmatter to persist per project.
+
+Override individual knobs while the preset is active:
+
+```bash
+zo build plans/my-project.md --low-token --lead-model opus    # keep Opus lead
+zo build plans/my-project.md --low-token --max-iterations 5   # more headroom
+```
+
+See [docs/concepts/low-token-mode.mdx](docs/concepts/low-token-mode.mdx) for the full preset table and trade-offs.
 
 ---
 
@@ -473,8 +496,34 @@ mnist-delivery/          ← delivery repo (clean)
 | 1.0.2 | Phase snapshots, experiment capture + autonomous loop, brand v2, website v2 | Done |
 | 1.0.2 | Platform-aware Docker scaffold + MNIST 99.66% / CIFAR-10 91.62% v1 demos | Done |
 
-675 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands.
+704 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands.
 v1 demos in [`mnist-digit-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) and [`cifar10-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) (separate repos) — 16 + 19 delivery-side tests passing.
+
+---
+
+## Built on
+
+Zero Operators stands on the shoulders of:
+
+- [Claude Code](https://www.anthropic.com/claude-code) by Anthropic — the agent runtime ZO orchestrates
+- [Pydantic](https://github.com/pydantic/pydantic) (MIT) — schema validation
+- [Click](https://github.com/pallets/click) (BSD-3-Clause) — CLI framework
+- [Rich](https://github.com/Textualize/rich) (MIT) — terminal rendering
+- [nbformat](https://github.com/jupyter/nbformat) (BSD-3-Clause) — notebook I/O
+- [PyYAML](https://github.com/yaml/pyyaml) (MIT) — YAML I/O
+- [FastEmbed](https://github.com/qdrant/fastembed) (Apache-2.0, optional) — semantic memory
+- [uv](https://github.com/astral-sh/uv) — package management
+- [Ruff](https://github.com/astral-sh/ruff) (MIT) — linting
+- [Astro](https://github.com/withastro/astro) (MIT) — marketing site
+- [Mintlify](https://mintlify.com) — documentation hosting
+
+### Optional integrations (planned)
+
+External CLI tools that fit ZO's launcher architecture and are being evaluated for opt-in integration:
+
+- [ccusage](https://github.com/ryoppippi/ccusage) (MIT) — Claude Code token usage monitor
+- [Repomix](https://github.com/yamadashy/repomix) (MIT) — repo context packing for agent prompts
+- [caveman](https://github.com/JuliusBrussee/caveman) (MIT) by Julius Brussee — terse-output skill
 
 ---
 

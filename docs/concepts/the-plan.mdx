@@ -18,6 +18,26 @@ ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous 
 <Steps>
   <Step title="Frontmatter">
     YAML metadata: project name, version, owner, status. Used for routing and registry.
+
+    Two **optional** frontmatter fields control the cost-saving preset:
+
+    - `low_token: true` — activates [low-token mode](/concepts/low-token-mode) for this project (Sonnet lead, 2 max iterations, no headlines, full-auto gates, earlier auto-compaction). Equivalent to passing `--low-token` on every `zo build` for this plan.
+    - `lead_model: sonnet` — overrides the lead orchestrator model. Accepts `opus`, `sonnet`, or `haiku`. Composes with `low_token: true` (lead model wins).
+
+    Example:
+
+    ```yaml
+    ---
+    project_name: "my-project"
+    version: "1.0"
+    created: "2026-04-26"
+    last_modified: "2026-04-26"
+    status: active
+    owner: "Sam"
+    low_token: true        # optional, default false
+    lead_model: sonnet     # optional, default unset (uses preset / opus)
+    ---
+    ```
   </Step>
   <Step title="Objective">
     What you're building, in business or research terms. Two paragraphs maximum. **No technical solution language** — that comes later.

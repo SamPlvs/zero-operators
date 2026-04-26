@@ -115,6 +115,7 @@ class LoopPolicy(BaseModel):
     plateau_runs: int = 3
     stop_on_tier: Literal["must_pass", "should_pass", "could_pass"] = "must_pass"
     dead_end_threshold: float = 0.9
+    low_token: bool = False
 
     model_config = {"use_enum_values": True}
 
@@ -123,7 +124,21 @@ DEFAULT_POLICY = LoopPolicy()
 """The out-of-box policy used when plan.md does not override."""
 
 
-def resolve_policy(spec: object | None) -> LoopPolicy:
+# Low-token preset: clamps applied when ``low_token=True`` and the plan
+# does not explicitly override the field. Plan overrides win — this is
+# a "sensible defaults" layer, not a hard ceiling.
+_LOW_TOKEN_LOOP_CLAMPS: dict[str, object] = {
+    "max_iterations": 2,
+    "stop_on_tier": "could_pass",
+}
+
+
+def resolve_policy(
+    spec: object | None,
+    *,
+    low_token: bool = False,
+    max_iterations_override: int | None = None,
+) -> LoopPolicy:
     """Merge a plan-declared ``ExperimentLoopSpec`` onto ``DEFAULT_POLICY``.
 
     Accepts ``Plan.experiment_loop`` (a sparse ``ExperimentLoopSpec``)
@@ -131,22 +146,38 @@ def resolve_policy(spec: object | None) -> LoopPolicy:
     Kept as ``object`` in the signature to avoid a circular import on
     ``zo.plan`` — the caller passes whatever the plan parsed.
 
+    Precedence (highest first): CLI overrides > plan spec > low_token
+    clamp > base default.
+
+    Args:
+        spec: Plan-level ``ExperimentLoopSpec`` (or None).
+        low_token: When True, applies the low-token clamps
+            (``max_iterations=2``, ``stop_on_tier='could_pass'``)
+            BEFORE the plan overrides — so plan fields still win.
+        max_iterations_override: Hard cap from a CLI flag
+            (``--max-iterations``). Wins over plan spec and clamp.
+
     Example::
 
-        policy = resolve_policy(plan.experiment_loop)
+        policy = resolve_policy(plan.experiment_loop, low_token=True)
         decision = evaluate_loop_state(registry, "phase_4", policy)
     """
-    if spec is None:
-        return DEFAULT_POLICY
+    base = DEFAULT_POLICY.model_dump()
+    if low_token:
+        base.update(_LOW_TOKEN_LOOP_CLAMPS)
+        base["low_token"] = True
 
     overrides: dict[str, object] = {}
-    for field_name in LoopPolicy.model_fields:
-        value = getattr(spec, field_name, None)
-        if value is not None:
-            overrides[field_name] = value
-    if not overrides:
+    if spec is not None:
+        for field_name in LoopPolicy.model_fields:
+            value = getattr(spec, field_name, None)
+            if value is not None:
+                overrides[field_name] = value
+    if max_iterations_override is not None:
+        overrides["max_iterations"] = max_iterations_override
+    if not overrides and not low_token:
         return DEFAULT_POLICY
-    return LoopPolicy(**{**DEFAULT_POLICY.model_dump(), **overrides})
+    return LoopPolicy(**{**base, **overrides})
 
 
 class LoopDecision(BaseModel):

@@ -165,6 +165,8 @@ class Orchestrator:
         *,
         gate_mode: GateMode = GateMode.SUPERVISED,
         plan_path: Path | None = None,
+        low_token: bool = False,
+        max_iterations_override: int | None = None,
     ) -> None:
         self._plan = plan
         self._target = target
@@ -174,6 +176,8 @@ class Orchestrator:
         self._zo_root = Path(zo_root)
         self._gate_mode = gate_mode
         self._plan_path = plan_path
+        self._low_token = low_token
+        self._max_iterations_override = max_iterations_override
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
         self._plan_hash: str = self._compute_plan_hash()
@@ -192,6 +196,11 @@ class Orchestrator:
     def gate_mode(self, value: GateMode) -> None:
         """Change gate mode at runtime."""
         self._gate_mode = value
+
+    @property
+    def low_token(self) -> bool:
+        """Whether the low-token preset is active for this orchestrator."""
+        return self._low_token
 
     @property
     def session_state(self) -> SessionState:
@@ -269,7 +278,9 @@ class Orchestrator:
                 if spec.name not in active:
                     active.append(spec.name)
         for phase in phases:
-            phase.assigned_agents = self._agents_for_phase(phase.phase_id, active)
+            phase.assigned_agents = self._agents_for_phase(
+                phase.phase_id, active, low_token=self._low_token,
+            )
 
         contracts: list[AgentContract] = []
         for phase in phases:
@@ -331,16 +342,27 @@ class Orchestrator:
     # -- Build lead prompt ----------------------------------------------------
 
     def build_lead_prompt(self, phase: PhaseDefinition) -> str:
-        """Build the full prompt for the Claude Code lead session."""
+        """Build the full prompt for the Claude Code lead session.
+
+        In ``low_token`` mode, drops the dedicated adaptations section
+        (still inline in ``_prompt_contracts`` for spawned agents) and
+        the descriptive blurb in the roster section. Saves ~2-5 KB on
+        a typical lead prompt without losing per-agent adaptation
+        instructions for the agents actually running in this phase.
+        """
         sections = [
             self._prompt_role(), self._prompt_plan_context(),
             self._prompt_autonomy(),
             self._prompt_phase(phase), self._prompt_contracts(phase),
-            self._prompt_adaptations(), self._prompt_roster(),
+        ]
+        if not self._low_token:
+            sections.append(self._prompt_adaptations())
+        sections.extend([
+            self._prompt_roster(),
             self._prompt_experiment_context(phase),
             self._prompt_memory(), self._prompt_coordination(),
             self._prompt_gate_criteria(phase), self._prompt_constraints(),
-        ]
+        ])
         return "\n\n---\n\n".join(s for s in sections if s)
 
     def _prompt_autonomy(self) -> str:
@@ -626,9 +648,23 @@ class Orchestrator:
         raise ValueError(f"Phase '{phase_id}' not found. Available: {ids}")
 
     @staticmethod
-    def _agents_for_phase(phase_id: str, active_agents: list[str]) -> list[str]:
+    def _agents_for_phase(
+        phase_id: str,
+        active_agents: list[str],
+        *,
+        low_token: bool = False,
+    ) -> list[str]:
+        """Filter the plan's active agents to those running in this phase.
+
+        When ``low_token`` is True, drops cross-cutting agents whose
+        contribution is "nice to have" (currently ``research-scout``)
+        to save spawn-cost. ``code-reviewer`` is kept because silent
+        quality drift is a worse trade than the saved tokens.
+        """
         result: list[str] = []
         for a in active_agents:
+            if low_token and a == "research-scout":
+                continue
             phases = AGENT_PHASE_MAP.get(a)
             # Custom agents (not in map) are available for all phases —
             # the lead orchestrator decides when to actually spawn them.
@@ -863,6 +899,8 @@ class Orchestrator:
         registry = load_registry(exp_dir)
         policy = resolve_policy(
             self._plan.experiment_loop if self._plan else None,
+            low_token=self._low_token,
+            max_iterations_override=self._max_iterations_override,
         )
         decision = evaluate_loop_state(registry, phase.phase_id, policy)
 
@@ -937,6 +975,8 @@ class Orchestrator:
 
         policy = resolve_policy(
             self._plan.experiment_loop if self._plan else None,
+            low_token=self._low_token,
+            max_iterations_override=self._max_iterations_override,
         )
         autonomous = self._gate_mode != GateMode.SUPERVISED
 
@@ -1280,6 +1320,11 @@ class Orchestrator:
         custom = sorted(custom_dir.glob("*.md")) if custom_dir.is_dir() else []
         # Exclude README from custom agents list
         custom = [f for f in custom if f.stem.lower() != "readme"]
+
+        if self._low_token:
+            # Compact roster: comma-separated names, no descriptive blurb.
+            names = [f.stem for f in core] + [f.stem for f in custom]
+            return "# Agent Roster\n\nAvailable: " + ", ".join(names)
 
         lines = ["# Agent Roster\n", "## Core Agents\n"]
         lines.extend(f"- {f.stem}" for f in core)
