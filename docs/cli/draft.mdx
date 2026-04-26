@@ -1,0 +1,142 @@
+---
+title: "zo draft"
+description: "Launch the Plan Architect + scouts to draft plan.md against the schema. Confirms each section before writing."
+---
+
+`zo draft` is how you go from an empty `plans/<project>.md` skeleton to a fully-populated, schema-valid plan ready for `zo build`.
+
+## Synopsis
+
+```bash
+zo draft -p PROJECT_NAME [OPTIONS]
+```
+
+## What it does
+
+The **Plan Architect** (Opus, lead) coordinates with the **Data Scout** (Sonnet) and **Research Scout** (Sonnet) to populate every section of the plan against [`specs/plan.md`](https://github.com/SamPlvs/zero-operators/blob/main/specs/plan.md):
+
+<Steps>
+  <Step title="Inspect inputs">
+    Reads any source documents you provide (`--docs`), inspects data samples (`--data`), or asks you for a description (`--description`). All optional — the agent can also work conversationally with no inputs.
+  </Step>
+  <Step title="Research">
+    Research Scout surfaces relevant prior art: published benchmarks, baseline ranges, open-source implementations of analogous problems. For domain-specific projects, finds relevant techniques.
+  </Step>
+  <Step title="Data understanding">
+    Data Scout characterises the dataset: schema, class distribution, splits, known issues, scale. For remote data, reads a YAML manifest if provided.
+  </Step>
+  <Step title="Draft">
+    Plan Architect drafts every section: objective, oracle (with must/should/could tiers), workflow mode, data sources, domain priors, agents (with adaptations and custom agents if relevant), constraints, milestones, delivery, environment.
+  </Step>
+  <Step title="Confirm and write">
+    Each section is presented for your approval. Validates against the schema as it generates. The agent runs `--dry-run` first; you see exactly what will land. Then writes to the main repo (not worktrees — see [PR-013](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
+  </Step>
+  <Step title="Wrap-up">
+    Asks "anything else?", then tells you to `/exit` and run `zo build`.
+  </Step>
+</Steps>
+
+## Inputs (all optional)
+
+<Tabs>
+  <Tab title="Documents">
+    ```bash
+    zo draft -p my-project --docs ./scope-doc.pdf --docs ./domain-handbook.md
+    ```
+    Repeatable. Plan Architect indexes documents into a project-scoped semantic index for grounding. Useful for projects with a written scope or domain documentation.
+  </Tab>
+  <Tab title="Data samples">
+    ```bash
+    zo draft -p my-project --data data/raw/sample.csv --data data/raw/manifest.yaml
+    ```
+    Repeatable. Data Scout characterises the data layout. For remote data, point at a YAML manifest describing the dataset structure.
+  </Tab>
+  <Tab title="Description">
+    ```bash
+    zo draft -p my-project -d "Build a fault classifier for rotating-machinery vibration data, target >=80% AUC on a 6-class problem"
+    ```
+    One-line description. The agent expands this into a full plan, asking clarifying questions where needed.
+  </Tab>
+  <Tab title="Conversational (no inputs)">
+    ```bash
+    zo draft -p my-project
+    ```
+    The agent interviews you from scratch. Best when you want guidance through every section.
+  </Tab>
+</Tabs>
+
+## Custom agents and adaptations
+
+Two of the most powerful plan features are populated during draft:
+
+<AccordionGroup>
+  <Accordion title="Custom agents" icon="user-plus">
+    Project-specific specialists not in the standard roster. The Plan Architect proposes them based on Research Scout findings. Example: for vibration-signal analysis, a `signal-analyst: Sonnet — frequency-domain reasoning, BPFO/BPFI fault frequencies, envelope demodulation` block lands in the plan, and the orchestrator auto-creates `.claude/agents/custom/signal-analyst.md` at build start.
+  </Accordion>
+  <Accordion title="Agent adaptations" icon="sliders">
+    Per-project tuning of generic agents. The Plan Architect drafts adaptations for `xai-agent` and `domain-evaluator` (which are generic shells by design — see [PR-020](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)). Adaptations are appended to the spawn prompt at build time; the agent's `.md` file stays unchanged and reusable.
+  </Accordion>
+</AccordionGroup>
+
+## Options
+
+| Option | Purpose |
+|--------|---------|
+| `-p`, `--project` | Project name. Required. |
+| `--docs PATH` | Source document (PDF, MD, TXT). Repeatable. |
+| `--data PATH` | Data file or manifest. Repeatable. |
+| `-d`, `--description` | One-line description of the project. |
+| `--no-tmux` | Disable conversational mode. Headless run with single best-effort draft. |
+
+## Examples
+
+<AccordionGroup>
+  <Accordion title="Conversational, no inputs">
+    ```bash
+    zo draft -p mnist-demo
+    ```
+  </Accordion>
+  <Accordion title="With a scope document">
+    ```bash
+    zo draft -p customer-churn --docs ./scope-2024Q3.pdf
+    ```
+  </Accordion>
+  <Accordion title="With data and description">
+    ```bash
+    zo draft -p sensor-faults \
+      --data ./manifest.yaml \
+      -d "Multi-sensor fault classification across 6 classes, target AUC >= 0.80"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Output
+
+After a successful draft, the plan at `plans/<project>.md` is fully populated and ready for preflight:
+
+```bash
+zo preflight plans/<project>.md
+```
+
+If preflight passes, you're ready for `zo build`.
+
+## Important notes
+
+<Warning>
+  **Drafts always write to the main repo, never worktrees.** ZO uses `git worktree list` to find the main repo. If you ran `zo draft` from a worktree, the plan still lands at `<main-repo>/plans/<project>.md`, and ZO tells you so. See [PR-013](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md).
+</Warning>
+
+<Tip>
+  **The Plan Architect is conversational, not encyclopedic.** It won't research everything in the world for you. Provide grounding via `--docs` for projects with a defined scope, or `-d` for projects you can summarise in one sentence. The richer the input, the sharper the plan.
+</Tip>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="zo preflight" icon="circle-check">
+    Validate the drafted plan before spending compute.
+  </Card>
+  <Card title="zo build" icon="rocket" href="/cli/build">
+    Launch the agent team against the validated plan.
+  </Card>
+</CardGroup>

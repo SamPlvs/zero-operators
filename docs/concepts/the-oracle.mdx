@@ -1,0 +1,118 @@
+---
+title: "The oracle"
+description: "Every project must define a hard, verifiable success metric. Without a measurable criterion, autonomous agents become hallucinating cost centers."
+---
+
+The oracle is **the most important section of any plan.** It's the answer to: *how do we know we're done?*
+
+## Why oracles matter
+
+Autonomous agents without measurable criteria don't stop. They produce more code, more reports, more iterations — none of which are verified. The oracle is the system's source of truth: until the oracle says PASS, no deliverable is complete.
+
+Karpathy's framing: *autonomy scales through rigorous specification, not natural-language ambiguity.* A vague oracle ("model should perform well") gives agents nowhere to anchor. A hard oracle ("test accuracy ≥ 0.95 on a held-out 10K-sample MNIST test set, computed via `correct / total` over a forward pass") gives them a contract.
+
+## Anatomy of an oracle
+
+<Steps>
+  <Step title="Primary metric">
+    A single named scalar. Examples: `test_accuracy`, `mAP@0.5`, `BLEU`, `latency_ms_p95`, `feature_importance_stability`. Picking the right metric is the hardest part of plan-writing.
+  </Step>
+  <Step title="Ground truth source">
+    Where the labels come from, exactly. `torchvision.datasets.MNIST(train=False)`, or `data/labels/holdout_2024Q3.csv`, or `human-annotated by panel of 3 with majority vote`.
+  </Step>
+  <Step title="Evaluation method">
+    The deterministic procedure that produces the metric value. Code-level specificity. *"Forward pass over the full test set, argmax over softmax, compute correct / total."*
+  </Step>
+  <Step title="Target threshold (tiered)">
+    Three tiers — **must_pass** (the floor; below this is failure), **should_pass** (the goal), **could_pass** (the stretch). Each is a number.
+  </Step>
+  <Step title="Evaluation frequency">
+    When does the oracle run? After every training epoch, after each Phase 4 iteration, only at Gate 5, etc.
+  </Step>
+  <Step title="Secondary metrics">
+    Ancillary signals tracked alongside the primary. Per-class accuracy, confusion matrix, latency, memory footprint. These don't gate the project but inform analysis.
+  </Step>
+</Steps>
+
+## Tiered success
+
+ZO uses three tiers because real projects rarely have a single accept/reject line:
+
+```yaml
+oracle:
+  primary_metric: test_accuracy
+  must_pass: 0.95     # Tier 1 — required to ship
+  should_pass: 0.98   # Tier 2 — meets stakeholder expectations
+  could_pass: 0.99    # Tier 3 — research-grade
+```
+
+The autonomous experiment loop uses `stop_on_tier` to decide when to stop iterating. Default is `must_pass` (stop at the floor); set to `could_pass` to keep iterating until you hit research-grade or run out of budget.
+
+## Examples
+
+<Tabs>
+  <Tab title="Image classification (MNIST)">
+    ```yaml
+    Primary metric: Test accuracy on MNIST test set (10,000 images)
+    Ground truth source: MNIST test labels (torchvision)
+    Evaluation method: Forward pass on full test set, accuracy = correct / total
+    Target threshold: 0.95 (must) / 0.98 (should) / 0.99 (could)
+    Evaluation frequency: After every training run
+    Secondary metrics: Per-digit accuracy, confusion matrix, inference latency
+    ```
+    **v1 reference run:** 99.66% — Tier 3 (could_pass).
+  </Tab>
+  <Tab title="Image classification (CIFAR-10)">
+    ```yaml
+    Primary metric: Test accuracy on CIFAR-10 test set (10,000 images)
+    Ground truth source: CIFAR-10 test labels (torchvision)
+    Evaluation method: Forward pass on full test set, accuracy = correct / total
+    Target threshold: 0.70 (must) / 0.80 (should) / 0.85 (could)
+    Evaluation frequency: After every training run
+    Secondary metrics: Per-class accuracy, confusion matrix, inference latency, parameter count
+    ```
+    **v1 reference run:** 91.62% — Tier 3 (could_pass). Note that thresholds are calibrated to *the architecture allowed by the plan's constraints* (≤3 conv blocks, no pretrained models), not to the literature SOTA.
+  </Tab>
+  <Tab title="Time-series forecasting">
+    ```yaml
+    Primary metric: SMAPE on rolling 30-day forecast window
+    Ground truth source: Historical actuals from data/processed/2024-q3.parquet
+    Evaluation method: Predict next 30 days from each Mon@00:00 cutoff, average SMAPE
+    Target threshold: 0.18 (must) / 0.14 (should) / 0.12 (could)
+    Evaluation frequency: Per-fold during cross-validation
+    Secondary metrics: MASE, directional accuracy, peak-load coverage
+    ```
+  </Tab>
+</Tabs>
+
+## What makes a *bad* oracle
+
+<Warning>
+  **Vague:** "Model should perform well." → No threshold to anchor against.
+  **Subjective:** "The model should feel intuitive." → Not measurable by the agent team.
+  **Untestable:** "Production traffic should be smooth." → No ground truth or eval method specified.
+  **Ambiguous source:** "High accuracy on the test set." → *Which* test set? Computed *how*?
+</Warning>
+
+When the oracle is wrong (chosen poorly, or revealed wrong by Phase 4 results), the human updates `plan.md` and agents re-run. The orchestrator detects the diff and re-plans against the new oracle.
+
+## Statistical significance
+
+For models trained on small or noisy data, raw metric values aren't enough — the question is whether observed performance is *reliably better than baseline*. The oracle's statistical-significance section (optional) defines:
+
+- Bootstrap confidence intervals (e.g. 95% Wilson CI on classification accuracy)
+- Paired tests against a baseline model
+- Minimum effect-size thresholds
+
+The Oracle/QA agent runs these tests during Phase 5 and reports back via `result.md`.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Phases & gates" icon="diagram-next" href="/concepts/phases-and-gates">
+    How the oracle is checked against deliverables at each gate.
+  </Card>
+  <Card title="The plan" icon="file-lines" href="/concepts/the-plan">
+    Where the oracle lives and how it composes with other plan sections.
+  </Card>
+</CardGroup>

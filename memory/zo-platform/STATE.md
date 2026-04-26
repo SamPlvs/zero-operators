@@ -135,10 +135,11 @@ ZO **v1.0.2** — autonomous experiment loop (session-020) + brand redesign v2 +
 
 ## Session Metadata
 
-last_checkpoint: 2026-04-26T17:00:00Z
-last_session: session-023 (wrapped — v1 complete: platform-aware scaffold + MNIST 99.66% + CIFAR-10 91.62% + 14 CLI commands verified)
+last_checkpoint: 2026-04-26T18:00:00Z
+last_session: session-023 (wrapped — v1 complete + Mintlify docs scaffold; PR #54 updated)
 branch: claude/focused-hugle-44c2f3
 v1_status: COMPLETE — all 8 PRD §9 acceptance criteria met, all Known Issues closed
+docs_site: scaffolded under docs/ with Mintlify (mint.json + 13 pages); awaiting connection at docs.zero-operators.dev
 test_count: 675 passed, 7 skipped (ZO platform); 16 passed (mnist demo); 19 passed (cifar10 demo); 297 passed (prod-001)
 demo_results:
   mnist-digit-classifier: 99.66% test accuracy (Tier 3 could_pass), 64s on MPS, 8 epochs, 468K params
