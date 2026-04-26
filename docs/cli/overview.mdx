@@ -1,0 +1,108 @@
+---
+title: "CLI overview"
+description: "Every zo command, organised by when you'd reach for it."
+---
+
+ZO ships ten user-facing CLI commands, plus 24 [slash commands](https://github.com/SamPlvs/zero-operators/blob/main/docs/COMMANDS.md) for use inside Claude Code sessions.
+
+## The canonical pipeline
+
+```bash
+zo init <project>           # 1. Scaffold memory, target, plan skeleton
+zo draft -p <project>       # 2. Plan Architect drafts plan.md
+zo preflight <plan.md>      # 3. Validate before spending compute
+zo build <plan.md>          # 4. Launch the agent team
+zo continue <project>       # 5. Resume a paused project
+```
+
+This is the ordering ZO assumes. Each command is designed for a specific point in the project lifecycle.
+
+## Commands
+
+<CardGroup cols={2}>
+  <Card title="zo init" icon="circle-plus" href="/cli/init">
+    Scaffold a new project — memory files, target file, plan skeleton, delivery repo. Conversational by default; `--no-tmux` for headless.
+  </Card>
+  <Card title="zo draft" icon="pen" href="/cli/draft">
+    Launch the Plan Architect + scouts to draft `plan.md` against the schema. Confirms each section before writing.
+  </Card>
+  <Card title="zo preflight" icon="circle-check">
+    Local-only validation before `zo build`: CLI availability, plan validity, agent definitions, memory round-trip, Docker, GPU.
+  </Card>
+  <Card title="zo build" icon="rocket" href="/cli/build">
+    Launch the agent team. Smart mode detection (fresh / continue / re-decompose on plan edit). The flagship command.
+  </Card>
+  <Card title="zo continue" icon="forward">
+    Resume a paused project. Shorthand for `zo build` against the project's known plan. Supports `--repo` for cross-machine.
+  </Card>
+  <Card title="zo status" icon="circle-info">
+    Print the current `STATE.md` for a project. Phase, blockers, next steps, active agents.
+  </Card>
+  <Card title="zo experiments" icon="flask">
+    Inspect the Phase 4 experiment registry. Subcommands: `list`, `show <id>`, `diff <a> <b>`.
+  </Card>
+  <Card title="zo gates" icon="circle-stop">
+    Inspect or toggle gate mode (supervised / auto / full-auto). Per-project.
+  </Card>
+  <Card title="zo migrate" icon="truck">
+    Migrate legacy project state (top-level `memory/{project}/`) into the portable `.zo/` layout in the delivery repo.
+  </Card>
+  <Card title="zo watch-training" icon="chart-line">
+    Live training-metrics dashboard. Rich Live panel with progress bar, metrics table, sparkline. Auto-launched during Phase 4.
+  </Card>
+</CardGroup>
+
+## Global options
+
+Every command accepts these:
+
+| Option | Purpose |
+|--------|---------|
+| `--help` | Branded help with sectioned headers (USAGE, DESCRIPTION, OPTIONS) |
+| `--version` | Print `zo` version |
+
+Most project-aware commands also accept:
+
+| Option | Purpose |
+|--------|---------|
+| `-p`, `--project` | Project name (lookups against `targets/` or `.zo/config.yaml`) |
+| `--repo` | Path to delivery repo containing `.zo/`. Use when running outside the delivery repo's cwd, especially on a new machine. |
+| `--gate-mode` | `supervised` / `auto` / `full-auto`. See [phases & gates](/concepts/phases-and-gates#gate-modes). |
+| `--no-tmux` | Disable interactive tmux flow. Falls through to headless / CI-friendly behaviour where applicable. |
+
+## Modes of operation
+
+<Tabs>
+  <Tab title="Conversational (default)">
+    `init`, `draft`, and `build` launch a tmux pane with a Claude Code session. Useful for the first run of a project — the agents inspect the host, ask clarifying questions, and confirm decisions before writing.
+  </Tab>
+  <Tab title="Headless (--no-tmux)">
+    Skip the conversational layer. Useful for CI, scripts, and reproducible re-runs. `zo init --no-tmux` takes flags for every decision the conversational flow would ask about (`--branch`, `--existing-repo`, `--base-image`, `--gpu-host`, `--data-path`, `--layout-mode`).
+  </Tab>
+</Tabs>
+
+## Discovering details
+
+```bash
+zo --help                # top-level — banner + QUICK START + commands
+zo build --help          # per-command — DESCRIPTION + OPTIONS
+zo experiments --help    # subcommand groups — lists subcommands
+zo experiments list --help
+```
+
+The help system is branded and sectioned (the Mintlify search box at the top of this page works on the same content).
+
+## Slash commands
+
+Inside a running Claude Code session, ZO provides 24 slash commands organised into eight categories: project, memory, gates, observe, document, agents, engineering, utility. See the [full command reference](https://github.com/SamPlvs/zero-operators/blob/main/docs/COMMANDS.md) (will be migrated into Mintlify in a follow-up).
+
+## Where to next
+
+<CardGroup cols={2}>
+  <Card title="zo init" icon="circle-plus" href="/cli/init">
+    The first command you'll run.
+  </Card>
+  <Card title="zo build" icon="rocket" href="/cli/build">
+    The flagship command.
+  </Card>
+</CardGroup>

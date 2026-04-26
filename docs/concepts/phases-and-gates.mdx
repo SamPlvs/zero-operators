@@ -1,0 +1,153 @@
+---
+title: "Phases & gates"
+description: "Six sequential phases of work, separated by gates. Automated gates run validation; blocking gates pause for human approval."
+---
+
+ZO's workflow runs in **six sequential phases** (seven if you count Phase 0 for research projects). Each phase ends with a **gate** that either auto-passes or blocks for human review.
+
+## The six phases
+
+<Steps>
+  <Step title="Phase 1 — Data Review">
+    Audit, hygiene, exclusion filters, alignment, EDA, data versioning, DataLoader implementation with per-modality augmentation. **Outputs:** `reports/data_quality_report.md`, drift baseline, `src/data/`.
+  </Step>
+  <Step title="Phase 2 — Feature Engineering & Selection">
+    Classical ML: derived features (lags, rolling stats, interactions), statistical filtering, VIF pruning, domain validation. Deep Learning: input representation design, transfer learning assessment, augmentation strategy.
+  </Step>
+  <Step title="Phase 3 — Model Design">
+    Architecture selection (with families per data type), loss function design (custom losses, regularisation, auxiliary objectives), training strategy (optimiser, LR schedule, mixed precision, gradient clipping, checkpointing).
+  </Step>
+  <Step title="Phase 4 — Training & Iteration">
+    Baseline training, DL diagnostics (gradient flow, LR finder, activation stats), autonomous iteration loop, cross-validation, ensemble exploration. **The autonomous experiment loop runs here** — Model Builder proposes, Oracle validates, orchestrator decides whether to continue.
+  </Step>
+  <Step title="Phase 5 — Analysis & Validation">
+    Explainability (SHAP, GradCAM, attention viz), domain consistency, error analysis (per-class, failure cases, bias detection), ablation studies, statistical significance, reproducibility verification.
+  </Step>
+  <Step title="Phase 6 — Packaging">
+    Inference pipeline (ONNX/TorchScript export), model card, validation report, drift detection scaffold, test suite, research artifacts. **The final delivery.**
+  </Step>
+</Steps>
+
+Research-mode projects add **Phase 0 — Literature Review** at the front: prior art survey, baseline definition, pretrained model identification.
+
+## The three workflow modes
+
+The orchestrator selects the right mode from the plan's `Workflow configuration` section:
+
+<Tabs>
+  <Tab title="classical_ml">
+    All six phases run with emphasis on feature engineering, statistical selection, and model comparison across algorithm families. Default for tabular data.
+  </Tab>
+  <Tab title="deep_learning">
+    Phase 2 shifts from manual feature selection to input representation design (tokenization, normalisation, embedding strategy). Phase 3 expands with architecture search, training dynamics (LR scheduling, gradient diagnostics, mixed precision), optimisation strategy. Phase 4 adds convergence analysis and ensemble exploration.
+  </Tab>
+  <Tab title="research">
+    Adds Phase 0 (literature review). Phase 5 expands with ablation studies, statistical significance testing, reproducibility verification. Phase 6 adds paper-ready figures and reproducibility bundles.
+  </Tab>
+</Tabs>
+
+## Gates
+
+Between each phase sits a **gate** — an explicit validation checkpoint.
+
+### Gate types
+
+<CardGroup cols={2}>
+  <Card title="Automated gates" icon="robot">
+    Run validation programmatically: artifact presence checks, oracle threshold checks, test suite passes, schema conformance. Auto-PROCEED when all checks pass.
+  </Card>
+  <Card title="Blocking gates" icon="circle-stop">
+    Require explicit human approval. Default at Gate 2 (feature/representation review) and Gate 5 (model + validation report review). The session pauses; the human runs `zo gates` to inspect, then approves or rejects.
+  </Card>
+</CardGroup>
+
+### Gate decisions
+
+When a gate is reached, the orchestrator can take one of three actions:
+
+| Decision | Behavior |
+|----------|----------|
+| **PROCEED** | Move to the next phase. Phase snapshot written to `{memory_root}/snapshots/`. |
+| **ITERATE** | Stay in the current phase. In Phase 4 with the autonomous loop, mints a child experiment and re-runs. |
+| **HUMAN_STOP** | Pause for human input. Used when blocking gates fire or when the experiment loop hits a `DEAD_END` / `BUDGET_EXHAUSTED` verdict. |
+
+### Gate modes
+
+The plan or CLI sets the **gate mode** for the whole run:
+
+<Tabs>
+  <Tab title="supervised (default)">
+    Every gate — automated and blocking — pauses for human review. Maximum oversight. Best for the first run of a new project.
+  </Tab>
+  <Tab title="auto">
+    Automated gates auto-PROCEED when checks pass. Blocking gates still pause for human review. Standard production setting.
+  </Tab>
+  <Tab title="full-auto">
+    All gates auto-PROCEED when checks pass. No human in the loop. For replays of well-validated plans, or unattended overnight runs.
+  </Tab>
+</Tabs>
+
+Toggle mid-session with `zo gates set <mode> -p <project>`.
+
+## The autonomous experiment loop (Phase 4 only)
+
+In `auto` and `full-auto` modes, Phase 4 runs as a **closed loop**:
+
+```
+                     ┌─────────────────┐
+            ┌────────│ hypothesis.md   │ ◀── Model Builder
+            │        └─────────────────┘
+            │                 │
+            │         (training run)
+            │                 │
+            ▼                 ▼
+     ┌──────────┐      ┌─────────────┐
+     │ DEAD_END │      │  result.md  │ ◀── Oracle/QA
+     │ /BUDGET  │      └─────────────┘
+     │ EXHAUST. │             │
+     └──────────┘             ▼
+            ▲          ┌─────────────────┐
+            │          │ evaluate verdict│
+            │          └─────────────────┘
+            │                 │
+            │     CONTINUE / TARGET_HIT / PLATEAU
+            └─────────────────┘
+```
+
+Stop conditions (configurable via plan's `## Experiment Loop` block):
+- **TARGET_HIT** — best metric ≥ `stop_on_tier` threshold
+- **BUDGET_EXHAUSTED** — `max_iterations` reached
+- **PLATEAU** — last `plateau_runs` improvements all within `plateau_epsilon`
+- **DEAD_END** — last N hypotheses are all Jaccard-similar to an earlier experiment (Model Builder stuck rephrasing) — escalates to human
+
+See [PR-005](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) for why the loop heuristics default to conservative values.
+
+## Phase artifact contracts
+
+Each phase has **required artifacts** that the gate checks for. Missing any artifact = automatic gate failure with a clear message about what's missing. Phase 6's full set:
+
+- `reports/data_quality_report.md` (Phase 1)
+- `reports/training_report.md` (Phase 4)
+- `reports/analysis_report.md` (Phase 5)
+- `reports/model_card.md` (Phase 6)
+- `reports/validation_report.md` (Phase 6)
+- `models/<project>_cnn.pt` (PyTorch slim weights)
+- `models/<project>_cnn.onnx` (ONNX export)
+- Tests: oracle threshold + per-class floor + summary tier
+
+## Phase snapshots
+
+At every gate PROCEED — automated or human — the orchestrator writes a `PhaseSnapshot` to `{memory_root}/snapshots/{phase_id}_{ISO-timestamp}.md`. Markdown body + YAML frontmatter (same pattern as `STATE.md`). Captures: phase identity, gate decision, decisions logged during the phase, issues encountered, recent comms events.
+
+Long-running projects accumulate thousands of comms events per phase. The snapshot is a **single scannable file per phase** — for humans, for next-phase agents, for future dashboards.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Memory & continuity" icon="brain" href="/concepts/memory-and-continuity">
+    Where phase snapshots, decisions, and priors live.
+  </Card>
+  <Card title="zo gates" icon="terminal" href="/cli/overview">
+    The CLI for inspecting and toggling gate mode.
+  </Card>
+</CardGroup>

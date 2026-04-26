@@ -1,0 +1,143 @@
+---
+title: "Memory & continuity"
+description: "Every session reads state at entry and writes it at exit. Memory is required infrastructure, not a nice-to-have."
+---
+
+Without persistent memory, agents re-solve problems, forget constraints, and make the same mistakes across sessions. ZO treats memory as **required infrastructure**: every session begins with a read and ends with a write.
+
+## The four memory files
+
+Every project gets a `memory/` directory with four canonical files (or `.zo/memory/` in the portable layout):
+
+<CardGroup cols={2}>
+  <Card title="STATE.md" icon="circle-dot">
+    Current phase, last checkpoint, agent statuses, blockers, next steps. Overwritten each session-end. Atomic-write protected.
+  </Card>
+  <Card title="DECISION_LOG.md" icon="list-check">
+    Append-only audit trail. Every architectural decision, gate passage, scope change. Each entry has a timestamp, type, title, decision, rationale, alternatives considered, outcome.
+  </Card>
+  <Card title="PRIORS.md" icon="lightbulb">
+    Domain knowledge accumulated through running ZO. Each prior references the failure that triggered it. After 23 sessions, ZO has 34 documented priors.
+  </Card>
+  <Card title="sessions/" icon="folder-open">
+    Per-session summary files (`session-NNN-YYYY-MM-DD.md`). Written at session end. Captures what was attempted, what shipped, what's next.
+  </Card>
+</CardGroup>
+
+## Portable memory: `.zo/`
+
+Project memory lives in **the delivery repo**, not the ZO repo. This is by design:
+
+- The ZO repo is **public** (open source). It can't contain client/project state.
+- The delivery repo is **private**, committed to git, already travels between machines.
+- `git pull` on a new machine brings code AND state.
+
+Layout in the delivery repo:
+
+```
+delivery/
+├── .zo/
+│   ├── config.yaml              # portable project config (committed)
+│   ├── local.yaml               # machine-specific (paths, GPU info — gitignored)
+│   ├── memory/
+│   │   ├── STATE.md
+│   │   ├── DECISION_LOG.md
+│   │   ├── PRIORS.md
+│   │   ├── snapshots/           # phase snapshots (every gate PROCEED)
+│   │   └── sessions/
+│   ├── plans/
+│   │   └── <project>.md         # the plan, also lives here
+│   └── experiments/
+│       └── exp-NNN/             # Phase 4 experiment trail
+└── src/, models/, reports/, ...
+```
+
+ZO's own platform memory (`memory/zo-platform/`) is the only memory tracked in the public ZO repo. It captures what ZO learned generically, never project specifics. See [PR-024 / PR-028 / PR-030](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) for the confidentiality enforcement story.
+
+## Cross-machine: `zo continue --repo`
+
+Move a project from a Mac dev box to a Linux GPU server:
+
+```bash
+# On Mac: commit and push
+cd /path/to/delivery
+git add .zo/ && git commit -m "feat: ZO state checkpoint" && git push
+
+# On GPU server: clone and resume
+git clone <delivery-repo>
+cd <delivery>
+zo continue --repo $(pwd)
+```
+
+The CLI auto-detects the `.zo/` layout, loads project context, and resumes from the recorded phase. Machine-specific paths (data location, GPU details) are re-detected via `zo.environment.detect_environment()` and written to `.zo/local.yaml` (gitignored).
+
+## Semantic search
+
+`DECISION_LOG.md` accumulates rapidly — a long-running project might have 200+ decision entries. The semantic index lets agents query in natural language:
+
+```bash
+# Inside a Claude Code session:
+/memory:recall "what did we try last time for feature selection?"
+```
+
+How it works:
+- `src/zo/semantic.py` embeds each `DECISION_LOG` entry (1 vector per entry, summary derived from title + outcome)
+- Queries cosine-match against the summary embedding
+- The full entry is injected into context (not just the summary)
+- Storage: SQLite at `{memory_root}/index.db`
+- Embeddings: `fastembed` (optional dependency; falls back to word-overlap if missing — see [DECISION_LOG entry from session 2](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/DECISION_LOG.md))
+
+This optimises for **context-window density**: 3 highly relevant full decisions beat 10 noisy fragments.
+
+## The session lifecycle
+
+<Steps>
+  <Step title="Session start">
+    Agent reads `STATE.md` (current phase, blockers). Queries semantic index for relevant past decisions. Loads only the spec files needed for the current task.
+  </Step>
+  <Step title="Work">
+    Agents execute. Every architectural decision is appended to `DECISION_LOG.md` immediately (not batched). Comms events log to JSONL.
+  </Step>
+  <Step title="Failure → prior">
+    If anything fails, the post-mortem protocol fires: document the failure, classify root cause (`missing_rule` / `incomplete_rule` / `ignored_rule` / `novel_case` / `regression`), fix the symptom, **update the rule that allowed it**, verify the fix prevents recurrence.
+  </Step>
+  <Step title="Phase completion">
+    At every gate PROCEED, a `PhaseSnapshot` is written to `{memory_root}/snapshots/`. Captures the phase's full context for the next-phase Lead.
+  </Step>
+  <Step title="Session end">
+    Session summary written to `sessions/`. `STATE.md` updated with final phase, last completed subtask, blockers. `DECISION_LOG.md` flushed. Semantic index re-indexes new entries.
+  </Step>
+</Steps>
+
+## Phase-aware context resets
+
+Planning, building, and maintenance are **separate conversation contexts**. When transitioning from planning to building, the orchestrator closes the planning context and opens a fresh building context, loading only:
+
+- `STATE.md` (current state)
+- `DECISION_LOG.md` (recent + semantic-matched older decisions)
+- `PRIORS.md` (relevant priors)
+- The previous phase's snapshot
+
+This prevents accumulation of irrelevant reasoning and keeps token costs predictable.
+
+## Self-evolution in practice
+
+The 34 priors in [`memory/zo-platform/PRIORS.md`](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) are the cumulative output of this protocol. A few examples:
+
+- **PR-001** — `claude --print --dangerously-skip-permissions` exits immediately. Captured after a tmux pane stayed blank during MNIST testing.
+- **PR-005** — Aspirational rules without enforcement are dead letter. Captured after a documentation cascade was repeatedly ignored despite being written in CLAUDE.md.
+- **PR-028** — Project memory belongs in the delivery repo, not the platform repo. Captured after a Mac → GPU server transfer broke `zo status`.
+- **PR-034** — PyTorch MPS tensor extraction returns garbage under pytest. Captured after CIFAR-10 oracle tests failed mysteriously despite the same code working in training.
+
+Each prior was earned by a real failure. The same mistake never happens twice.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="zo continue" icon="forward" href="/cli/overview">
+    Resume a paused project on the same or a different machine.
+  </Card>
+  <Card title="Self-evolution protocol" icon="arrows-rotate" href="https://github.com/SamPlvs/zero-operators/blob/main/specs/evolution.md">
+    The full post-mortem and rule-update protocol.
+  </Card>
+</CardGroup>

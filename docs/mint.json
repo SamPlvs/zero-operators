@@ -1,0 +1,82 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Zero Operators",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "/"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#D87A57",
+    "light": "#EBA68A",
+    "dark": "#C45F3D",
+    "anchors": {
+      "from": "#D87A57",
+      "to": "#A95E42"
+    },
+    "background": {
+      "light": "#F4EFE6",
+      "dark": "#12110F"
+    }
+  },
+  "font": {
+    "headings": {
+      "family": "Geist"
+    },
+    "body": {
+      "family": "Geist"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/SamPlvs/zero-operators"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Quick start",
+    "url": "/quickstart"
+  },
+  "navigation": [
+    {
+      "group": "Get started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "installation"
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "concepts/overview",
+        "concepts/the-plan",
+        "concepts/the-oracle",
+        "concepts/agents",
+        "concepts/phases-and-gates",
+        "concepts/memory-and-continuity"
+      ]
+    },
+    {
+      "group": "CLI reference",
+      "pages": [
+        "cli/overview",
+        "cli/init",
+        "cli/draft",
+        "cli/build"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/SamPlvs/zero-operators"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
+  "search": {
+    "prompt": "Ask the docs anything..."
+  }
+}

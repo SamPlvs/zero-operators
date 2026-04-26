@@ -1,0 +1,86 @@
+---
+title: "Introduction"
+description: "Zero Operators is an autonomous AI research and engineering team. You write a plan; agents build it; the oracle verifies the work."
+---
+
+## What Zero Operators is
+
+Zero Operators (ZO) is **not a coding assistant.** It's a digital research-and-engineering team that happens to express itself in code, mathematical models, reports, and data artifacts.
+
+The human is the research director. The plan is the only communication medium. Agents do the rest.
+
+<CardGroup cols={2}>
+  <Card title="The plan" icon="file-lines" href="/concepts/the-plan">
+    A single Markdown file describes objectives, success metrics, constraints, milestones — the total brief.
+  </Card>
+  <Card title="The oracle" icon="bullseye" href="/concepts/the-oracle">
+    Every project defines a hard, verifiable success metric. No deliverable is complete until the oracle confirms it.
+  </Card>
+  <Card title="The agents" icon="people-group" href="/concepts/agents">
+    A team of 20 specialised agents — orchestrator, data, model, oracle, XAI, and more — coordinates over a contract-first protocol.
+  </Card>
+  <Card title="The memory" icon="brain" href="/concepts/memory-and-continuity">
+    `STATE.md`, `DECISION_LOG.md`, `PRIORS.md`, and a semantic index give every session continuity with the last.
+  </Card>
+</CardGroup>
+
+## How a project flows
+
+<Steps>
+  <Step title="Plan approval">
+    You write (or have an agent draft) a `plan.md`. Review and approve. **30–60 minutes.**
+  </Step>
+  <Step title="Autonomous Phase 1–2">
+    Agents execute data review and feature engineering. **No human involvement.**
+  </Step>
+  <Step title="Gate 2 checkpoint">
+    You review the feature list with a domain expert. **15–30 minutes.**
+  </Step>
+  <Step title="Autonomous Phase 3–4">
+    Agents design, train, and iterate on models autonomously, with the experiment loop deciding when to stop.
+  </Step>
+  <Step title="Gate 4 checkpoint">
+    You review the full analysis package: performance, explainability, ablations, statistical significance. **30–60 minutes.**
+  </Step>
+  <Step title="Delivery">
+    Agents package everything into a clean delivery repo with zero ZO infrastructure leakage.
+  </Step>
+</Steps>
+
+The human is involved at plan approval and two blocking gates. Everything else is autonomous. You can edit `plan.md` at any time to change direction; agents detect the delta and re-plan.
+
+## The thesis
+
+ZO combines four sources that haven't previously been combined:
+
+<AccordionGroup>
+  <Accordion title="Karpathy's hard oracle discipline" icon="bullseye">
+    The plan is the human's sole lever of control. The system enforces *hard oracle discipline*: every claim is verified against a concrete, measurable criterion. Autonomy scales through rigorous specification, not natural-language ambiguity.
+  </Accordion>
+  <Accordion title="Tiered model routing + semantic memory (Ruflo)" icon="layer-group">
+    Three-tier routing assigns Opus, Sonnet, or Haiku based on task complexity. Session hooks maintain agent memory across resumable work. A semantic index over past decisions lets the system learn from its own mistakes.
+  </Accordion>
+  <Accordion title="Contract-first agent teams (coleam00)" icon="file-signature">
+    All interfaces, inputs, outputs, and success criteria are defined *before* agents are spawned. Rich spawn prompts encode domain knowledge, precedent, and constraints. Eliminates mid-execution clarifications.
+  </Accordion>
+  <Accordion title="Claude Code native capabilities" icon="code">
+    Peer-to-peer agent communication via session context. Built-in agent teams. Markdown-based skill and agent definitions. JSONL audit logging.
+  </Accordion>
+</AccordionGroup>
+
+## Where to next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Five minutes from zero to your first ZO run on a real dataset.
+  </Card>
+  <Card title="Core concepts" icon="book" href="/concepts/overview">
+    The plan, the oracle, agents, phases, gates, memory — start here for the mental model.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/overview">
+    Every `zo` command, every flag, examples for each.
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/SamPlvs/zero-operators">
+    Source code, issues, contributing guide.
+  </Card>
+</CardGroup>

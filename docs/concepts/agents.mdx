@@ -1,0 +1,133 @@
+---
+title: "Agents"
+description: "20 specialised AI personas, each with a defined role, tier, and contract. The team coordinates peer-to-peer through Claude Code's native APIs."
+---
+
+ZO ships with **20 agent definitions** in `.claude/agents/`. Each is a Markdown file with YAML frontmatter (name, model tier, role, team) plus a structured prompt body covering ownership, off-limits, contracts, coordination protocol, and a self-validation checklist.
+
+## The two teams
+
+ZO uses two distinct team configurations:
+
+<CardGroup cols={2}>
+  <Card title="Project Delivery Team" icon="users-rays">
+    Executes the projects defined in `plan.md`. **11 launch + phase-in agents** covering data, model, oracle, code review, testing, XAI, domain evaluation, ML engineering, and infrastructure.
+  </Card>
+  <Card title="Platform Build Team" icon="hammer">
+    Used to build and maintain ZO itself. **6 specialised agents** including software architect, backend engineer, frontend engineer, platform code reviewer, platform test engineer, and documentation agent.
+  </Card>
+</CardGroup>
+
+## Tiered model routing
+
+Each agent declares a model tier in its frontmatter, balancing capability against cost:
+
+| Tier | Model | When |
+|------|-------|------|
+| **Critical reasoning** | `claude-opus-4-7` | Lead Orchestrator, Software Architect, Plan Architect, Init Architect — decisions where one wrong call cascades |
+| **Standard execution** | `claude-sonnet-4-6` | Data Engineer, Model Builder, Oracle/QA, Code Reviewer, Test Engineer — the workhorses |
+| **Routine tasks** | `claude-haiku-4-5` | Documentation Agent, Infra Engineer, headline summaries — bounded scope, format-following work |
+
+Plan-level overrides are supported: if a project needs Opus for the Model Builder (say, a novel architecture problem), the plan's `**Agent overrides:**` block bumps the tier for that run.
+
+## Project Delivery Team — launch agents
+
+Active by default on every project:
+
+<AccordionGroup>
+  <Accordion title="Lead Orchestrator (Opus)" icon="sitemap">
+    Reads the plan, decomposes phases, generates contracts for each agent, gates work between phases, detects plan edits and re-plans. Owns all orchestration entries in `DECISION_LOG.md`. Routes model tiers based on task complexity. **The single agent that holds the whole project in context.**
+  </Accordion>
+  <Accordion title="Data Engineer (Sonnet)" icon="database">
+    Phase 1: data audit, schema validation, exclusion filters, train/val/test splits, drift baselines. Phase 2 support: feature engineering, input representation. Pipeline principles default to **denylist-first** for DL projects (PR-026) — exclude leakage, include all signals, defer feature selection to the model layer.
+  </Accordion>
+  <Accordion title="Model Builder (Opus)" icon="microchip">
+    Architecture design, loss function design, hyperparameter search, training orchestration, evaluation. In Phase 4 with the autonomous loop, also acts as the auto-proposer: drafts the next `hypothesis.md` from the parent experiment's shortfalls without prompting the human.
+  </Accordion>
+  <Accordion title="Oracle / QA (Sonnet)" icon="bullseye">
+    Executes oracle criteria against deliverables. Reports pass/fail with evidence. Runs tiered evaluation, statistical significance tests, per-class breakdown, error analysis. Writes `result.md` after each Phase 4 iteration so the orchestrator can compute `delta_vs_parent`.
+  </Accordion>
+  <Accordion title="Code Reviewer (Sonnet)" icon="code-pull-request">
+    Reviews all code produced by other agents. Enforces conventions (PEP8, type hints, Google-style docstrings, files <500 lines, functions <50 lines). Catches hardcoded paths, security issues, missing docstrings. Cross-cutting — runs after **any** agent produces code.
+  </Accordion>
+  <Accordion title="Test Engineer (Sonnet)" icon="vial">
+    Writes and runs tests for code artifacts. Unit, integration, regression, edge cases. Distinct from Oracle/QA: Oracle validates *model performance*; Test Engineer validates *code correctness*.
+  </Accordion>
+  <Accordion title="Research Scout (Sonnet)" icon="magnifying-glass">
+    Cross-cutting agent activated on every phase. Surfaces relevant prior art, baselines, open-source implementations. Customer projects rarely have published benchmarks — Research Scout finds analogous problems, typical performance ranges, working implementations.
+  </Accordion>
+</AccordionGroup>
+
+## Project Delivery Team — phase-in agents
+
+Activated for specific phases or by plan opt-in:
+
+<AccordionGroup>
+  <Accordion title="XAI Agent (Sonnet)" icon="eye">
+    Phase 5 explainability — feature importance, SHAP, GradCAM, attention visualisation. Generic by default; per-project domain context lands via the plan's `**Agent adaptations:**` block.
+  </Accordion>
+  <Accordion title="Domain Evaluator (Opus)" icon="graduation-cap">
+    Reviews model outputs for business/domain coherence. Flags edge cases, distributional shift, real-world applicability. Owns domain-specific PRIORS updates. Generic shell — domain identity injected at build time via plan adaptations (PR-020).
+  </Accordion>
+  <Accordion title="ML Engineer (Sonnet)" icon="server">
+    Productionisation, containerisation, inference optimisation, serving setup. Phase 6 packaging.
+  </Accordion>
+  <Accordion title="Infra Engineer (Haiku)" icon="hard-drive">
+    Compute resource allocation, experiment tracking setup, artifact storage, logging. Format-following work — appropriate for the smaller model.
+  </Accordion>
+</AccordionGroup>
+
+## Platform Build Team
+
+Used to build ZO itself — invoked once during initial development and during major platform upgrades. **You don't interact with these unless you're modifying ZO's source.**
+
+| Agent | Tier | Role |
+|-------|------|------|
+| Software Architect | Opus | Reads ZO specs, decomposes the platform, defines inter-module contracts |
+| Backend Engineer | Sonnet/Opus | Builds core ZO infrastructure (memory, orchestration, comms, parsers) |
+| Frontend Engineer | Sonnet | Builds the v2 command dashboard (deferred per PRD) |
+| Platform Code Reviewer | Sonnet | Enforces ZO's own coding conventions on platform code |
+| Platform Test Engineer | Sonnet | Tests ZO modules — unit, integration, end-to-end |
+| Documentation Agent | Haiku | Maintains docstrings, README, API docs, keeps docs in sync with code |
+
+## Per-project agent customisation
+
+Beyond the built-in roster, plans support three levers:
+
+<Steps>
+  <Step title="Active / phase-in / inactive lists">
+    `**Active agents:**` runs every phase. `**Phase-in agents:**` activated for specific phases. `**Inactive agents:**` explicitly skipped.
+  </Step>
+  <Step title="Custom agents">
+    `**Custom agents:**` declares project-specific specialists (e.g. `signal-analyst: Sonnet` for vibration-signal analysis). The orchestrator auto-creates `.claude/agents/custom/{name}.md` from the plan declaration at build start.
+  </Step>
+  <Step title="Agent adaptations">
+    `**Agent adaptations:**` tunes generic agents per project. The Plan Architect drafts these during `zo draft` based on Research Scout + Data Scout findings. At build time, the Lead Orchestrator appends the adaptation to the agent's spawn prompt — the agent's `.md` file is unchanged, so it stays reusable.
+  </Step>
+</Steps>
+
+## Peer-to-peer communication
+
+Agents don't shout into a void. They communicate through **Claude Code's native team APIs**: `TeamCreate`, `Agent(team_name=...)`, `SendMessage`. The Lead Orchestrator creates the team inside its session; teammates send messages directly to each other.
+
+The Python `LifecycleWrapper` observes the team via `~/.claude/tasks/` and tmux pane output, captures lifecycle events, and pipes them to the JSONL comms log. **Wrapper observes; agents communicate.**
+
+## Validating the agent roster
+
+```bash
+zo preflight plans/your-project.md
+# PASS  Agents: All N agent definitions found
+```
+
+Mismatches between the plan's agent list and `.claude/agents/` are caught at preflight, before any compute is spent.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Phases & gates" icon="diagram-next" href="/concepts/phases-and-gates">
+    When each agent runs and what gates their output.
+  </Card>
+  <Card title="Memory & continuity" icon="brain" href="/concepts/memory-and-continuity">
+    How agents share context across sessions.
+  </Card>
+</CardGroup>
