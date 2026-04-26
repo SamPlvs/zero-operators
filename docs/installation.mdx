@@ -1,0 +1,152 @@
+---
+title: "Installation"
+description: "Install Zero Operators and its prerequisites on macOS or Linux."
+---
+
+ZO has three required dependencies: **Claude Code CLI**, **Python 3.11+ with uv**, and **tmux**. The bundled `setup.sh` installs them interactively if missing.
+
+## Quick install (recommended)
+
+```bash
+git clone https://github.com/SamPlvs/zero-operators.git
+cd zero-operators
+./setup.sh
+```
+
+`setup.sh` runs **eleven validation checks** and offers to fix each failure interactively:
+
+<Steps>
+  <Step title="OS detection">
+    Confirms macOS or Linux. Other platforms are unsupported in v1.
+  </Step>
+  <Step title="Bash version">
+    macOS ships bash 3.2; ZO scripts are 3.2-compatible (see [PR-010](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) for why).
+  </Step>
+  <Step title="Python 3.11+">
+    Required for type-hint syntax used throughout `src/zo/`.
+  </Step>
+  <Step title="uv">
+    Astral's package manager. Installed via `curl -LsSf https://astral.sh/uv/install.sh | sh` if missing.
+  </Step>
+  <Step title="Claude CLI">
+    Installed via `curl -fsSL claude.ai/install.sh | bash` if missing. The CLI handles auth on first launch.
+  </Step>
+  <Step title="tmux">
+    Required for the conversational `init`/`draft`/`build` flow. Optional if you only use `--no-tmux` headless mode.
+  </Step>
+  <Step title="Git state">
+    Confirms you're inside a git repo (ZO uses git for worktree detection and commit conventions).
+  </Step>
+  <Step title="Project deps via uv sync">
+    Resolves and installs `pyproject.toml` dependencies — pydantic, fastembed, click, rich, pyyaml.
+  </Step>
+  <Step title="Agent definitions">
+    Confirms 20 agent `.md` files in `.claude/agents/`.
+  </Step>
+  <Step title="Slash commands">
+    Confirms 24 commands in `.claude/commands/`.
+  </Step>
+  <Step title="zo on PATH">
+    Symlinks `.venv/bin/zo` into `~/.local/bin/zo` so the CLI is callable from any shell (handles conda/pyenv/system-Python users — see [PR-012](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
+  </Step>
+</Steps>
+
+After it succeeds:
+
+```bash
+zo --version
+# cli, version 1.0.2
+```
+
+## Manual install
+
+If you prefer to install dependencies yourself:
+
+<Tabs>
+  <Tab title="macOS (Homebrew)">
+    ```bash
+    # Python 3.11+ — comes with macOS 14+ or via brew
+    brew install python@3.11
+
+    # uv — fast Python package manager
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # tmux
+    brew install tmux
+
+    # Claude CLI
+    curl -fsSL claude.ai/install.sh | bash
+
+    # Clone and install ZO
+    git clone https://github.com/SamPlvs/zero-operators.git
+    cd zero-operators
+    uv sync
+    ln -sf "$(pwd)/.venv/bin/zo" ~/.local/bin/zo
+
+    zo --version
+    ```
+  </Tab>
+  <Tab title="Linux (apt)">
+    ```bash
+    # Python 3.11+
+    sudo apt update && sudo apt install -y python3.11 python3.11-venv
+
+    # uv
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # tmux
+    sudo apt install -y tmux
+
+    # Claude CLI
+    curl -fsSL claude.ai/install.sh | bash
+
+    # Clone and install ZO
+    git clone https://github.com/SamPlvs/zero-operators.git
+    cd zero-operators
+    uv sync
+    ln -sf "$(pwd)/.venv/bin/zo" ~/.local/bin/zo
+
+    zo --version
+    ```
+  </Tab>
+</Tabs>
+
+## Optional: GPU support
+
+ZO's Docker scaffold is **platform-aware**:
+
+- **Linux + NVIDIA GPU + NVIDIA Container Toolkit** → emits a GPU compose template with `deploy.resources.reservations.devices: capabilities: [gpu]`.
+- **macOS** → emits a CPU compose template (Docker Desktop on Mac has no GPU passthrough; for hardware acceleration, run training natively with `uv run python -m src.engineering.trainer` to use Apple Silicon MPS).
+- **Linux without GPU** → CPU compose.
+
+Detection runs at `zo init` time via `zo.environment.detect_environment()`. Override with `--gpu-host` or `--base-image` if needed.
+
+## Verifying the install
+
+After installation, run the test suite to confirm everything wires up:
+
+```bash
+PYTHONPATH=src pytest tests/ -q
+# 675 passed, 7 skipped in 7s
+```
+
+And run preflight on the bundled MNIST plan:
+
+```bash
+zo preflight plans/mnist-digit-classifier.md
+# 6/7 passed, 1 warnings, 0 failures.
+# Ready for zo build.
+```
+
+If anything fails, check [troubleshooting](https://github.com/SamPlvs/zero-operators/blob/main/docs/TROUBLESHOOTING.md) — most issues are covered by the priors documented there.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Five minutes from zero to a real ML run.
+  </Card>
+  <Card title="Concepts" icon="book" href="/concepts/overview">
+    Mental model: plan, oracle, agents, gates, memory.
+  </Card>
+</CardGroup>

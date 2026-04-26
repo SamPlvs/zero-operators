@@ -1,0 +1,191 @@
+---
+title: "zo init"
+description: "Scaffold a new project: memory files, target file, plan skeleton, delivery repo. Conversational by default."
+---
+
+`zo init <project>` is the first command in the pipeline. It creates everything ZO needs to track a project, plus a delivery repo scaffold.
+
+## Synopsis
+
+```bash
+zo init PROJECT_NAME [OPTIONS]
+```
+
+## What it does
+
+<Steps>
+  <Step title="Detects host environment">
+    Calls `zo.environment.detect_environment()` to capture platform, Python version, GPU/CUDA details, Docker availability. Used to populate the plan's `## Environment` section and pick an appropriate Docker base image.
+  </Step>
+  <Step title="Resolves delivery repo path">
+    Three modes: explicit `--existing-repo PATH` (overlay), explicit `--scaffold-delivery PATH` (new scaffold), or default (`../<project>-delivery`).
+  </Step>
+  <Step title="Writes ZO-side artifacts">
+    `memory/{project}/{STATE,DECISION_LOG,PRIORS}.md`, `targets/{project}.target.md`, `plans/{project}.md`.
+  </Step>
+  <Step title="Writes delivery-side artifacts">
+    `.zo/{config.yaml, memory/, plans/}` (portable project state), full `src/`, `configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `tests/`, `docker/` scaffold.
+  </Step>
+  <Step title="Picks Docker compose template">
+    Platform-aware: GPU template on Linux+CUDA, CPU template on macOS / no-GPU Linux. The `deploy.resources.devices: capabilities: [gpu]` block is omitted on CPU to avoid `docker compose up` failures.
+  </Step>
+</Steps>
+
+## Modes
+
+<Tabs>
+  <Tab title="Conversational (default)">
+    ```bash
+    zo init my-project
+    ```
+    Launches the **Init Architect** in a tmux pane. The agent:
+
+    - Greets you with the brand banner
+    - Asks 5–6 confirming questions (project location, delivery repo, base image, GPU host, data path, layout mode)
+    - Inspects the target repo if it already exists (`Glob`, `Read`, `Bash`)
+    - Runs `zo init ... --no-tmux --dry-run` to preview exactly what will be written
+    - Asks you to approve before committing writes
+    - Routes the actual file writes through `zo init ... --no-tmux ...` so the CLI is the single source of truth
+
+    Use this on first runs of a new project, or when adopting an existing repo where you're not sure what layout mode to pick.
+  </Tab>
+  <Tab title="Headless (--no-tmux)">
+    ```bash
+    zo init my-project --no-tmux \
+      --branch main \
+      --existing-repo /path/to/my-repo \
+      --base-image pytorch/pytorch:2.4.0-cpu \
+      --gpu-host local \
+      --data-path /data/raw \
+      --layout-mode adaptive
+    ```
+    Writes files directly from flags. No interview, no inspection. Use for CI, scripts, and re-runs.
+  </Tab>
+  <Tab title="Dry-run (preview)">
+    ```bash
+    zo init my-project --no-tmux --dry-run
+    ```
+    Prints the exact file tree, target.md content, plan.md Environment section that **would** be written. No filesystem changes. The Init Architect uses this internally before every commit.
+  </Tab>
+  <Tab title="Reset">
+    ```bash
+    zo init my-project --reset --yes
+    ```
+    Deletes `memory/{project}/`, `targets/{project}.target.md`, `plans/{project}.md`. Refuses without `--yes` unless you type the project name as confirmation. **Never touches the delivery repo** — that's user code, not ZO's to delete.
+  </Tab>
+</Tabs>
+
+## Layout modes
+
+`--layout-mode` controls how the scaffold interacts with existing code:
+
+<Tabs>
+  <Tab title="standard (default)">
+    Creates the full ZO layout: `configs/`, `src/{data,model,engineering,inference,utils}/`, `data/{raw,processed}/`, `experiments/`, `reports/`, `notebooks/{,phase}/`, `tests/{unit,ml,fixtures}/`, `docker/`.
+
+    Best for: fresh projects, existing repos with no established code layout.
+  </Tab>
+  <Tab title="adaptive">
+    Creates only ZO meta-directories: `configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`. Skips `src/` and `data/` so an existing repo's own code layout is left alone.
+
+    Best for: existing repos with established conventions (src-layout, django-style, monorepo, notebook-first).
+
+    Requires `--existing-repo`. The Init Architect customises `STRUCTURE.md` and `agent_working_dirs` to point at the actual code paths.
+  </Tab>
+</Tabs>
+
+## Options
+
+| Option | Default | Purpose |
+|--------|---------|---------|
+| `--no-tmux` | (off) | Disable conversational mode. Implies headless flag-driven init. |
+| `--dry-run` | (off) | Preview writes without filesystem changes. Requires `--no-tmux`. |
+| `--reset` | (off) | Delete ZO artifacts for this project. Requires `--yes` or typing the project name. |
+| `--yes`, `-y` | (off) | Skip confirmation prompts. Used with `--reset`. |
+| `--branch` | `main` | Git branch on the delivery repo. |
+| `--existing-repo PATH` | (none) | Apply ZO scaffold as overlay to an existing repo. Requires `.git/`. |
+| `--scaffold-delivery PATH` | (auto) | Create scaffold at this absolute path. Default is `../<project>-delivery`. Mutually exclusive with `--existing-repo`. |
+| `--base-image IMAGE` | (auto) | Docker base image. Auto-detected via `suggest_base_image(env)`. |
+| `--gpu-host HOST` | (auto) | GPU host. `local` if running on the GPU machine, `user@host:/path` for remote. |
+| `--data-path PATH` | (auto) | Path to data. Use `host:/abs/path` for remote-data flows. |
+| `--no-detect` | (off) | Skip host environment auto-detection. Leaves the plan's `## Environment` as TODO. |
+| `--layout-mode MODE` | `standard` | `standard` or `adaptive`. Adaptive requires `--existing-repo`. |
+
+## Examples
+
+<AccordionGroup>
+  <Accordion title="Fresh project, conversational">
+    ```bash
+    zo init mnist-demo
+    ```
+    Launches the Init Architect. Default delivery repo at `../mnist-demo-delivery`.
+  </Accordion>
+  <Accordion title="Adopt an existing repo, adaptive layout">
+    ```bash
+    zo init my-project --existing-repo ~/code/my-project --layout-mode adaptive
+    ```
+    Adds only ZO meta-dirs. Init Architect customises STRUCTURE.md to your existing `src/` layout.
+  </Accordion>
+  <Accordion title="Headless for CI">
+    ```bash
+    zo init my-project --no-tmux \
+      --branch feature/ml-pipeline \
+      --base-image pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime \
+      --gpu-host local \
+      --data-path /mnt/data
+    ```
+  </Accordion>
+  <Accordion title="Preview before committing">
+    ```bash
+    zo init my-project --no-tmux --dry-run
+    ```
+    Prints the file tree, target.md, plan.md Environment block. Re-run without `--dry-run` to commit.
+  </Accordion>
+  <Accordion title="Start over">
+    ```bash
+    zo init my-project --reset --yes
+    ```
+    Wipes ZO artifacts. Delivery repo is preserved.
+  </Accordion>
+</AccordionGroup>
+
+## What gets written
+
+After a successful `zo init my-project`:
+
+```
+zero-operators/                                 # ZO repo
+├── memory/my-project/
+│   ├── STATE.md
+│   ├── DECISION_LOG.md
+│   ├── PRIORS.md
+│   └── sessions/
+├── targets/my-project.target.md
+└── plans/my-project.md                         # with ## Environment populated
+
+../my-project-delivery/                         # delivery repo (or --existing-repo)
+├── .zo/
+│   ├── config.yaml
+│   ├── memory/                                 # mirror of ZO-side memory
+│   └── plans/my-project.md                     # mirror of ZO-side plan
+├── configs/{data,model,training,experiment}/
+├── src/{data,model,engineering,inference,utils}/    # standard mode only
+├── data/{raw,processed}/                       # standard mode only
+├── experiments/
+├── notebooks/{,phase}/
+├── reports/{,figures}/
+├── tests/{unit,ml,fixtures}/
+├── docker/{Dockerfile,docker-compose.yml,.dockerignore}
+├── README.md, STRUCTURE.md, pyproject.toml, .gitignore
+```
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="zo draft" icon="pen" href="/cli/draft">
+    Now that the skeleton exists, draft the plan.
+  </Card>
+  <Card title="The plan" icon="file-lines" href="/concepts/the-plan">
+    What goes into `plans/<project>.md`.
+  </Card>
+</CardGroup>
