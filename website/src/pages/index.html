@@ -156,10 +156,11 @@
 
         <div class="idea-diagram reveal" aria-hidden="true">
           <svg viewBox="-40 0 560 440" class="flow" id="flow-svg" preserveAspectRatio="xMidYMid meet">
-            <!-- side labels (in left gutter, fully clear of chips) -->
-            <text x="-32" y="56" class="flow-sub flow-it">decompose</text>
-            <text x="-32" y="194" class="flow-sub flow-it">verify</text>
-            <text x="-32" y="388" class="flow-sub flow-it">ship</text>
+            <!-- side labels (in left gutter, positioned at the gap between boxes
+                 so each labels the ACTION — fanout, fan-in, delivery) -->
+            <text x="-32" y="148" class="flow-sub flow-it">decompose</text>
+            <text x="-32" y="243" class="flow-sub flow-it">verify</text>
+            <text x="-32" y="341" class="flow-sub flow-it">ship</text>
 
             <!-- TOP: plan.md document -->
             <g class="flow-node" data-step="1" transform="translate(176, 16)">
@@ -177,8 +178,8 @@
             <path class="flow-arrow flow-fan" d="M 240 108 L 144 180" />
             <path class="flow-arrow flow-fan" d="M 240 108 L 208 180" />
             <path class="flow-arrow flow-fan" d="M 240 108 L 272 180" />
-            <path class="flow-arrow flow-fan" d="M 240 108 L 336 180" />
-            <path class="flow-arrow flow-fan" d="M 240 108 L 402 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 338 180" />
+            <path class="flow-arrow flow-fan" d="M 240 108 L 404 180" />
 
             <!-- MIDDLE: 6 phase chips (with 2px gaps, centered on x=240) -->
             <g class="flow-node" data-step="2">
@@ -213,14 +214,14 @@
             <path class="flow-arrow" d="M 144 208 L 240 270" />
             <path class="flow-arrow" d="M 208 208 L 240 270" />
             <path class="flow-arrow" d="M 272 208 L 240 270" />
-            <path class="flow-arrow" d="M 336 208 L 240 270" />
-            <path class="flow-arrow" d="M 402 208 L 240 270" />
+            <path class="flow-arrow" d="M 338 208 L 240 270" />
+            <path class="flow-arrow" d="M 404 208 L 240 270" />
 
-            <!-- Oracle box -->
-            <g class="flow-node" data-step="3" transform="translate(180, 270)">
-              <rect width="120" height="44" rx="3" fill="var(--canvas)" stroke="var(--coral)" stroke-width="1.4"/>
-              <text x="60" y="20" text-anchor="middle" class="flow-label">oracle</text>
-              <text x="60" y="34" text-anchor="middle" class="flow-sub">must · should · could</text>
+            <!-- Oracle box (170 wide, centered at x=240 → translate 155) -->
+            <g class="flow-node" data-step="3" transform="translate(155, 270)">
+              <rect width="170" height="44" rx="3" fill="var(--canvas)" stroke="var(--coral)" stroke-width="1.4"/>
+              <text x="85" y="20" text-anchor="middle" class="flow-label">oracle</text>
+              <text x="85" y="34" text-anchor="middle" class="flow-sub">must · should · could</text>
             </g>
 
             <!-- Oracle → delivery -->
