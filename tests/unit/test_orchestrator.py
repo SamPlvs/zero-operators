@@ -1257,3 +1257,50 @@ class TestLowTokenOrchestrator:
         decomp = orch.decompose_plan()
         prompt = orch.build_lead_prompt(decomp.phases[0])
         assert "Low-Token Sub-Agent Model Override" not in prompt
+
+    def test_low_token_two_tier_routing_haiku_for_pattern_agents(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Lead prompt instructs two-tier routing: Haiku for code-reviewer,
+        test-engineer, oracle-qa (pattern-matching); Sonnet for everyone
+        else (reasoning). Pushes savings ceiling from ~30% to ~50-60%.
+        """
+        target = _make_target()
+        memory = MemoryManager(
+            project_dir=tmp_path, project_name="test-project",
+        )
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-project", session_id="test-session-001",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch_low = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, low_token=True,
+        )
+        decomp_low = orch_low.decompose_plan()
+        prompt_low = orch_low.build_lead_prompt(decomp_low.phases[0])
+
+        # Haiku tier section + model id present
+        assert "Tier 1 — Haiku" in prompt_low
+        assert "claude-haiku-4-5" in prompt_low
+        # Each Haiku-eligible agent named explicitly so the lead knows
+        # which sub-agents map to which tier.
+        assert "code-reviewer" in prompt_low
+        assert "test-engineer" in prompt_low
+        assert "oracle-qa" in prompt_low
+        # Sonnet tier still present for reasoning agents
+        assert "Tier 2 — Sonnet" in prompt_low
+        assert "claude-sonnet-4-6" in prompt_low
+
+    def test_low_token_off_omits_haiku_routing(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Default-mode prompt has no Haiku tier — only the standard agent
+        roster, no per-agent model assignments."""
+        orch = _make_orchestrator(plan, tmp_path)  # low_token=False default
+        decomp = orch.decompose_plan()
+        prompt = orch.build_lead_prompt(decomp.phases[0])
+        assert "Tier 1 — Haiku" not in prompt
+        assert "claude-haiku-4-5" not in prompt
