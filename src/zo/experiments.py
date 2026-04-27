@@ -77,6 +77,7 @@ __all__ = [
     "parse_next_md",
     "render_hypothesis_md",
     "next_exp_id",
+    "resolve_active_experiment_dir",
     "REGISTRY_FILENAME",
     "EXPERIMENTS_DIR_NAME",
 ]
@@ -289,6 +290,49 @@ def next_exp_id(registry: ExperimentRegistry) -> str:
     if not numbers:
         return f"exp-{len(registry.experiments) + 1:03d}"
     return f"exp-{max(numbers) + 1:03d}"
+
+
+def resolve_active_experiment_dir(delivery_repo: Path) -> Path | None:
+    """Return the artifacts dir for the active or most recent experiment.
+
+    Used by ``zo watch-training`` and the wrapper's auto-split-pane to
+    locate where ``ZOTrainingCallback`` writes ``metrics.jsonl`` and
+    ``training_status.json`` for the live Phase 4 run.
+
+    Resolution order:
+
+    1. Most recent ``RUNNING`` experiment (live training in progress).
+    2. Most recent ``COMPLETE`` experiment (post-mortem inspection).
+    3. ``None`` when no registry exists or registry is empty.
+
+    Args:
+        delivery_repo: Delivery repo root. Function looks for
+            ``{delivery_repo}/.zo/experiments/registry.json``.
+
+    Returns:
+        Absolute path to the experiment artifacts dir, or ``None``.
+    """
+    registry_dir = delivery_repo / ".zo" / EXPERIMENTS_DIR_NAME
+    if not registry_dir.is_dir():
+        return None
+    registry = load_registry(registry_dir)
+    if not registry.experiments:
+        return None
+    running = [
+        e for e in registry.experiments
+        if e.status == ExperimentStatus.RUNNING
+    ]
+    if running:
+        latest = max(running, key=lambda e: e.created)
+        return Path(latest.artifacts_dir)
+    complete = [
+        e for e in registry.experiments
+        if e.status == ExperimentStatus.COMPLETE
+    ]
+    if complete:
+        latest = max(complete, key=lambda e: e.created)
+        return Path(latest.artifacts_dir)
+    return None
 
 
 def mint_experiment(

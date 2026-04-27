@@ -1361,3 +1361,95 @@ class TestGatesSetCommand:
     ) -> None:
         result = runner.invoke(cli, ["gates", "set", "auto"])
         assert result.exit_code != 0
+
+
+class TestWatchTrainingPathResolution:
+    """`zo watch-training` must point at the active experiment's dir.
+
+    Regression: prior to this fix, the command hardcoded
+    ``<delivery>/logs/training/`` which never matched what
+    ``ZOTrainingCallback.for_experiment()`` actually writes (under
+    ``.zo/experiments/<exp_id>/``). The dashboard rendered "Waiting…"
+    forever even mid-training.
+    """
+
+    def _make_delivery_with_zo_dir(
+        self, tmp_path: Path, project: str = "demo",
+    ) -> Path:
+        """Create a minimal delivery repo with .zo/config.yaml."""
+        from zo.project_config import ProjectConfig, save_project_config
+
+        delivery = tmp_path / "delivery"
+        delivery.mkdir()
+        save_project_config(delivery, ProjectConfig(project_name=project))
+        # Plan placeholder so the parse_plan branch in watch_training
+        # doesn't error (it's wrapped in try/except, but still).
+        (delivery / ".zo" / "plans").mkdir(parents=True, exist_ok=True)
+        return delivery
+
+    def test_resolves_running_experiment_dir(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """A running experiment's artifacts_dir is passed to run_live_display."""
+        from zo.experiments import mint_experiment
+
+        delivery = self._make_delivery_with_zo_dir(tmp_path)
+        reg_dir = delivery / ".zo" / "experiments"
+        reg_dir.mkdir(parents=True)
+        exp = mint_experiment(reg_dir, project="demo", phase="phase_4")
+
+        # Stub run_live_display so the test doesn't hang on the live loop.
+        with patch("zo.training_display.run_live_display") as mock_live:
+            result = runner.invoke(
+                cli,
+                ["watch-training", "-p", "demo", "--repo", str(delivery)],
+            )
+        assert result.exit_code == 0, result.output
+        mock_live.assert_called_once()
+        log_dir = mock_live.call_args[0][0]
+        assert Path(log_dir) == Path(exp.artifacts_dir)
+
+    def test_falls_back_to_experiments_root_when_empty(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Without a registry, the dashboard renders "Waiting…" instead of
+        crashing. The CLI passes the experiments root so the live display
+        has somewhere to poll.
+        """
+        delivery = self._make_delivery_with_zo_dir(tmp_path)
+
+        with patch("zo.training_display.run_live_display") as mock_live:
+            result = runner.invoke(
+                cli,
+                ["watch-training", "-p", "demo", "--repo", str(delivery)],
+            )
+        assert result.exit_code == 0, result.output
+        mock_live.assert_called_once()
+        log_dir = mock_live.call_args[0][0]
+        # Falls back to .zo/experiments/ root (no active experiment yet)
+        assert Path(log_dir) == delivery / ".zo" / "experiments"
+
+    def test_does_not_use_legacy_logs_training_path(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Regression guard: the legacy ``logs/training/`` path must not
+        be passed to ``run_live_display`` — that was the bug.
+        """
+        from zo.experiments import mint_experiment
+
+        delivery = self._make_delivery_with_zo_dir(tmp_path)
+        reg_dir = delivery / ".zo" / "experiments"
+        reg_dir.mkdir(parents=True)
+        mint_experiment(reg_dir, project="demo", phase="phase_4")
+        # Create the legacy dir to make the regression sharper — even if
+        # it exists, the resolver must prefer the experiment dir.
+        (delivery / "logs" / "training").mkdir(parents=True)
+
+        with patch("zo.training_display.run_live_display") as mock_live:
+            runner.invoke(
+                cli,
+                ["watch-training", "-p", "demo", "--repo", str(delivery)],
+            )
+        log_dir = mock_live.call_args[0][0]
+        assert "logs/training" not in str(log_dir)
+        assert ".zo/experiments" in str(log_dir).replace("\\", "/")
