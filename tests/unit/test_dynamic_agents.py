@@ -107,18 +107,19 @@ class TestAgentsForPhaseCustom:
 
 
 class TestAgentsForPhaseLowToken:
-    """Low-token mode drops research-scout from cross-cutting."""
+    """Low-token mode applies two structural trims: cross-cutting drops
+    (research-scout) + per-phase drops (LOW_TOKEN_PHASE_DROPS)."""
 
-    def test_low_token_drops_research_scout(self) -> None:
+    def test_low_token_drops_research_scout_cross_cutting(self) -> None:
+        """Research-scout is dropped from every phase in low-token mode."""
         from zo.orchestrator import Orchestrator
 
-        active = ["data-engineer", "code-reviewer", "research-scout"]
+        active = ["data-engineer", "research-scout"]
         result = Orchestrator._agents_for_phase(
-            "phase_1", active, low_token=True,
+            "phase_3", active, low_token=True,
         )
-        assert "data-engineer" in result
-        assert "code-reviewer" in result  # kept — quality drift catcher
-        assert "research-scout" not in result  # dropped in low-token
+        assert "data-engineer" not in result  # data-engineer not in phase_3
+        assert "research-scout" not in result
 
     def test_low_token_off_keeps_research_scout(self) -> None:
         from zo.orchestrator import Orchestrator
@@ -139,6 +140,103 @@ class TestAgentsForPhaseLowToken:
         )
         assert "data-engineer" in result
         assert "data-scout" in result
+
+    # -- Phase 1 trim (drop reviewers/test/domain-eval; keep data-engineer) ----
+
+    def test_low_token_phase_1_drops_code_reviewer(self) -> None:
+        """code-reviewer is dropped from Phase 1 in low-token mode —
+        deferred to Gate 5 final pass."""
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "code-reviewer"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        assert "data-engineer" in result
+        assert "code-reviewer" not in result
+
+    def test_low_token_phase_1_drops_test_engineer(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "test-engineer"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        assert "data-engineer" in result
+        assert "test-engineer" not in result
+
+    def test_low_token_phase_1_drops_domain_evaluator(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "domain-evaluator"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        assert "data-engineer" in result
+        assert "domain-evaluator" not in result
+
+    def test_default_mode_phase_1_keeps_all(self) -> None:
+        """Without low_token, Phase 1 keeps the full reviewer set."""
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "code-reviewer", "test-engineer", "domain-evaluator"]
+        result = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=False,
+        )
+        assert set(result) == set(active)
+
+    # -- Phase 5 trim (drop xai + domain-eval; keep model-builder + oracle-qa) -
+
+    def test_low_token_phase_5_drops_xai_agent(self) -> None:
+        """xai-agent is dropped from Phase 5 in low-token mode — the lead
+        writes a single-shot summary in place of dedicated explainability."""
+        from zo.orchestrator import Orchestrator
+
+        active = ["model-builder", "oracle-qa", "xai-agent"]
+        result = Orchestrator._agents_for_phase(
+            "phase_5", active, low_token=True,
+        )
+        assert "model-builder" in result
+        assert "oracle-qa" in result
+        assert "xai-agent" not in result
+
+    def test_low_token_phase_5_drops_domain_evaluator(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["model-builder", "oracle-qa", "domain-evaluator"]
+        result = Orchestrator._agents_for_phase(
+            "phase_5", active, low_token=True,
+        )
+        assert "model-builder" in result
+        assert "domain-evaluator" not in result
+
+    def test_default_mode_phase_5_keeps_all(self) -> None:
+        from zo.orchestrator import Orchestrator
+
+        active = ["model-builder", "oracle-qa", "xai-agent", "domain-evaluator"]
+        result = Orchestrator._agents_for_phase(
+            "phase_5", active, low_token=False,
+        )
+        assert set(result) == set(active)
+
+    # -- Custom agents are NOT affected by phase drops ------------------------
+
+    def test_low_token_phase_drops_dont_apply_to_custom_agents(self) -> None:
+        """A custom agent (not in AGENT_PHASE_MAP) named the same as a
+        dropped agent would be filtered, but typical custom agents have
+        distinct names. Verify a custom agent passes through every phase."""
+        from zo.orchestrator import Orchestrator
+
+        active = ["data-engineer", "signal-analyst"]
+        result_p1 = Orchestrator._agents_for_phase(
+            "phase_1", active, low_token=True,
+        )
+        result_p5 = Orchestrator._agents_for_phase(
+            "phase_5", active, low_token=True,
+        )
+        # Custom agent (not in AGENT_PHASE_MAP) is available in every phase.
+        assert "signal-analyst" in result_p1
+        assert "signal-analyst" in result_p5
 
 
 # ------------------------------------------------------------------ #

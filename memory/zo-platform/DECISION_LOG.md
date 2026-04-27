@@ -900,3 +900,24 @@ Cascade scope:
 
 **Outcome:** PR B (this session) cascades the honesty pass across 5 surfaces. New PRIOR-worthy generalisation captured: published savings claims must be backed by a measured run before shipping. The unbacked 70-80% claim has been live for ~2 weeks (since v1.0.2 announcement); fix lands in PR B as a same-session correction now that real measurement is available. validate-docs 10/10 expected.
 
+---
+
+## Decision: 2026-04-27T17:00:00Z
+**Type:** FEATURE
+**Title:** Low-token quick wins — Haiku for review/test/oracle agents + Phase 1 / Phase 5 agent trims (target ~50-60% from ~30%)
+**Decision:** Two structural levers added to the low-token preset to push the savings ceiling from ~30% (lead-swap-only) toward ~50-60% without requiring an SDK refactor:
+
+1. **`LOW_TOKEN_HAIKU_AGENTS`** in `src/zo/_orchestrator_phases.py` — frozenset of agent names routed to Haiku 4.5 in low-token mode: `code-reviewer`, `test-engineer`, `oracle-qa`. Pattern-matching tasks (convention checks, pytest scaffolding, eval-script execution + result extraction) where Haiku is SWE-bench-competitive (73.3%) and ~3× cheaper than Sonnet. Lead is instructed via the updated `_prompt_low_token_overrides()` to spawn these three with `model="claude-haiku-4-5"` and all other sub-agents (data-engineer, model-builder, xai-agent, domain-evaluator, ml-engineer, custom agents) with `model="claude-sonnet-4-6"`. Two-tier routing replaces the previous single-tier "everyone Sonnet" instruction.
+
+2. **`LOW_TOKEN_PHASE_DROPS`** in `src/zo/_orchestrator_phases.py` — per-phase agent skip dict consumed by `_agents_for_phase`. Phase 1 drops `code-reviewer`, `test-engineer`, `domain-evaluator` (defer reviews/tests to Gate 5 final pass; just data-engineer runs). Phase 5 drops `xai-agent`, `domain-evaluator` (lead writes a single-shot analysis summary instead of dedicated explainability + domain-validation pass). Phase 1 was ~45% of the first bench's cost (\$3.47 of \$7.75) so the Phase-1 trim is the biggest single contributor.
+
+**Rationale:** First low-token MNIST bench measured ~30% reduction (PR B cascade documented this). The structural reason was that sub-agents already run on Sonnet by default — only the lead's ~30-40% cost share is affected by the lead Opus→Sonnet swap. To break that ceiling without a full SDK refactor, the path is (a) right-size pattern-matching agents to Haiku (cheaper-per-token within the constraint that we still use the `claude` CLI), and (b) trim non-essential reviewers in the heaviest phases. Both are documented in PR B's `cost-benchmark.mdx` "What would push savings higher" section under "Shipped post-first-bench (target: ~50-60%)".
+
+**Alternatives considered:**
+- Push ALL sub-agents to Haiku. Rejected — data-engineer, model-builder, xai-agent are reasoning-heavy and benefit from Sonnet's lift. The two-tier split keeps reasoning quality where it matters and saves cost where it doesn't.
+- Modify agent `.md` frontmatter directly. Rejected — would affect default mode too. The model override is per-spawn via `Agent()` parameter, scoped to low-token only.
+- Keep code-reviewer in Phase 1 ("quality safety net"). Rejected — Phase 1's review can happen at Gate 5 final pass; deferring saves ~10-15% with minimal quality risk for the kind of project low-token mode targets (replays, demos, ablations, Pro-plan budgets).
+- Drop oracle-qa from Phase 5 too. Rejected — oracle-qa is essential (it writes `result.md`, the gate requirement). It moves to Haiku via `LOW_TOKEN_HAIKU_AGENTS` instead.
+
+**Outcome:** Two new constants in `_orchestrator_phases.py` (~25 lines including comments). `_agents_for_phase` updated to consume `LOW_TOKEN_PHASE_DROPS` (~5 lines). `_prompt_low_token_overrides` rewritten with two-tier routing instructions (~30 lines, replacing previous ~25-line single-tier section). Tests: existing `TestAgentsForPhaseLowToken` updated (research-scout test moved to Phase 3 since code-reviewer is now dropped from Phase 1); +6 new tests covering Phase-1 drops (3) + Phase-5 drops (2) + custom-agent passthrough (1). +2 tests for two-tier prompt routing (`TestLowTokenOrchestrator::test_low_token_two_tier_routing_haiku_for_pattern_agents` + `test_low_token_off_omits_haiku_routing`). Cascade docs: `cost-benchmark.mdx` "What would push savings higher" section restructured into "Shipped post-first-bench" + "Architectural — not yet shipped" (the SDK refactor levers); `low-token-mode.mdx` "What the preset flips" table extended with three new rows; `low-token-preset.mdx` knob reference + preset code block updated; README `--low-token` paragraph updated. Test count 725 → 735 (+10 net, including the 2 new prompt tests + 8 net new agents-for-phase tests after refactor). ruff `src/zo/` clean. validate-docs expected 10/10. **Second bench needed to confirm 50-60% target.** Lands in PR C.
+
