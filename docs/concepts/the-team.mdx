@@ -48,7 +48,7 @@ Active by default on every project:
     Executes oracle criteria against deliverables. Reports pass/fail with evidence. Runs tiered evaluation, statistical significance tests, per-class breakdown, error analysis. Writes `result.md` after each Phase 4 iteration so the orchestrator can compute `delta_vs_parent`.
   </Accordion>
   <Accordion title="Code Reviewer (Sonnet)" icon="code-pull-request">
-    Reviews all code produced by other agents. Enforces conventions (PEP8, type hints, Google-style docstrings, files <500 lines, functions <50 lines). Catches hardcoded paths, security issues, missing docstrings. Cross-cutting — runs after **any** agent produces code.
+    Reviews all code produced by other agents. Enforces conventions (PEP8, type hints, Google-style docstrings, files under 500 lines, functions under 50 lines). Catches hardcoded paths, security issues, missing docstrings. Cross-cutting — runs after **any** agent produces code.
   </Accordion>
   <Accordion title="Test Engineer (Sonnet)" icon="vial">
     Writes and runs tests for code artifacts. Unit, integration, regression, edge cases. Distinct from Oracle/QA: Oracle validates *model performance*; Test Engineer validates *code correctness*.

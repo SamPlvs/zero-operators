@@ -13,7 +13,7 @@
 [![Tests](https://img.shields.io/badge/tests-704_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Demos](https://img.shields.io/badge/MNIST_99.66%25_/_CIFAR10_91.62%25-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
-[![Docs](https://img.shields.io/badge/docs-zero--operators.dev-D87A57?style=flat-square&labelColor=12110F)](https://docs.zero-operators.dev)
+[![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
 ---
 
