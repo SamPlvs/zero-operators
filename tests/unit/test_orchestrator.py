@@ -1212,3 +1212,48 @@ class TestLowTokenOrchestrator:
         prompt = orch.build_lead_prompt(decomp.phases[0])
         # The descriptive blurb is present in default mode.
         assert "Create new specialists" in prompt
+
+    def test_low_token_includes_subagent_model_override(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Lead prompt instructs the orchestrator to pass model='claude-sonnet-4-6'
+        to every Agent() spawn when low_token is on.
+
+        Without this, Claude Code's TeamCreate spawns sub-agents on Opus
+        regardless of the agent's .md frontmatter (verified empirically
+        2026-04-26, Claude Code 2.1.92), so the savings only reach the
+        lead session.
+        """
+        target = _make_target()
+        memory = MemoryManager(
+            project_dir=tmp_path, project_name="test-project",
+        )
+        memory.initialize_project()
+        comms = CommsLogger(
+            log_dir=tmp_path / "logs" / "comms",
+            project="test-project", session_id="test-session-001",
+        )
+        semantic = SemanticIndex(db_path=tmp_path / "index.db")
+        orch_low = Orchestrator(
+            plan=plan, target=target, memory=memory, comms=comms,
+            semantic=semantic, zo_root=REPO_ROOT, low_token=True,
+        )
+        decomp_low = orch_low.decompose_plan()
+        prompt_low = orch_low.build_lead_prompt(decomp_low.phases[0])
+
+        # Section header must be present.
+        assert "Low-Token Sub-Agent Model Override" in prompt_low
+        # Concrete model identifier must be present (not just "Sonnet").
+        assert "claude-sonnet-4-6" in prompt_low
+        # Reference to the empirical finding so future maintainers
+        # know why this section exists.
+        assert "TeamCreate" in prompt_low
+
+    def test_low_token_off_omits_subagent_override(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        """Default-mode prompt does NOT include the override section."""
+        orch = _make_orchestrator(plan, tmp_path)  # low_token=False default
+        decomp = orch.decompose_plan()
+        prompt = orch.build_lead_prompt(decomp.phases[0])
+        assert "Low-Token Sub-Agent Model Override" not in prompt

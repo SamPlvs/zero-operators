@@ -204,6 +204,12 @@ In each case: run on default settings, validate the result, then switch on `low_
     `zo continue` accepts the same flags as `zo build` and forwards them. `zo draft` does NOT yet support `--low-token` — drafting uses Opus + 100 max-turns by default. Adding low-token support to draft is tracked as a follow-up; the savings are smaller anyway because draft is shorter than build.
   </Accordion>
 
+  <Accordion title="Do sub-agents (data-engineer, model-builder, etc.) also run on Sonnet in low-token mode?">
+    Yes, *via an explicit override*. Claude Code 2.1.x's `TeamCreate` defaults sub-agents to Opus regardless of what their `.md` file declares. To work around this, the lead orchestrator's prompt in low-token mode includes a **Sub-Agent Model Override** section that instructs the lead to pass `model="claude-sonnet-4-6"` to every `Agent()` call. The lead's `.md`-declared model is honoured by the lead session itself; the override propagates to sub-agents.
+
+    **Caveat:** if `Agent()` in your Claude Code version doesn't accept a `model` parameter, the lead falls back gracefully (logs a `DECISION_LOG` entry, sub-agents stay on Opus). Lead-side savings still apply. The bench page tracks whether this override actually fires — see [cost-benchmark](/reference/cost-benchmark) "Findings from the partial run".
+  </Accordion>
+
   <Accordion title="Can I see how much I'm saving in real time?">
     Not yet. ZO doesn't ship a built-in token meter (the `claude` CLI logs tokens to `~/.claude/projects/*.jsonl` but ZO doesn't surface them). The [Optional integrations (planned)](https://github.com/SamPlvs/zero-operators#optional-integrations-planned) section in the README lists [ccusage](https://github.com/ryoppippi/ccusage) — a Claude Code token usage monitor — as a near-term opt-in for `zo usage`. For now: run `npx ccusage --json` after a build to see per-session totals.
   </Accordion>
