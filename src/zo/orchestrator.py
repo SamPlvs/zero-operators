@@ -349,6 +349,13 @@ class Orchestrator:
         the descriptive blurb in the roster section. Saves ~2-5 KB on
         a typical lead prompt without losing per-agent adaptation
         instructions for the agents actually running in this phase.
+
+        Also injects a sub-agent model override section telling the
+        Lead Orchestrator to pass ``model="claude-sonnet-4-6"`` to
+        every ``Agent()`` spawn, since Claude Code's TeamCreate
+        defaults sub-agents to Opus regardless of their ``.md``
+        frontmatter — without this override the savings only apply
+        to the lead's own session.
         """
         sections = [
             self._prompt_role(), self._prompt_plan_context(),
@@ -361,9 +368,63 @@ class Orchestrator:
             self._prompt_roster(),
             self._prompt_experiment_context(phase),
             self._prompt_memory(), self._prompt_coordination(),
+            self._prompt_low_token_overrides(),
             self._prompt_gate_criteria(phase), self._prompt_constraints(),
         ])
         return "\n\n---\n\n".join(s for s in sections if s)
+
+    def _prompt_low_token_overrides(self) -> str:
+        """Sub-agent model override instructions for low-token mode.
+
+        Returns empty string when low-token is off. When on, instructs
+        the Lead Orchestrator to pass an explicit ``model`` parameter
+        to every ``Agent()`` spawn — bypassing Claude Code's default
+        of Opus for TeamCreate-spawned sub-agents.
+
+        Empirical finding (bench 2026-04-26, Claude Code 2.1.92):
+        sub-agents spawn with ``--model claude-opus-4-6`` even when
+        the agent ``.md`` file declares ``model: claude-sonnet-4-6``.
+        Without this override, low-token mode only reduces lead-side
+        spend; the actual workhorses (data-engineer, model-builder,
+        oracle-qa, code-reviewer, test-engineer) stay on Opus.
+        """
+        if not self._low_token:
+            return ""
+        return dedent("""\
+            # Low-Token Sub-Agent Model Override
+
+            **CRITICAL:** Low-token mode is active. The lead session (you)
+            is running on Sonnet, but Claude Code's `TeamCreate` /
+            `Agent()` tools default sub-agents to **Opus** regardless of
+            what their `.md` file declares. To make low-token mode
+            actually save tokens end-to-end, you MUST pass an explicit
+            `model` parameter when spawning sub-agents.
+
+            **Required for every Agent() call:**
+
+                Agent(
+                    name="data-engineer",
+                    team_name="...",
+                    model="claude-sonnet-4-6",   # <-- always include
+                    ...
+                )
+
+            Use `claude-sonnet-4-6` for ALL active agents in this run,
+            regardless of what their `.md` file declares. The agent's
+            instructions, tools, and contract still come from the `.md`
+            file — only the model is overridden.
+
+            **Exception:** if a specific agent absolutely requires Opus
+            for the work (e.g. the user explicitly enabled Opus via
+            `--lead-model opus` AND a per-agent override is needed),
+            you may use `claude-opus-4-6`. Log every such exception to
+            `DECISION_LOG.md` with the reason.
+
+            **Fallback:** if the `Agent()` tool in your runtime version
+            does not accept a `model` parameter, log a `DECISION_LOG`
+            entry noting this and proceed without the override —
+            lead-side savings still apply, but sub-agent savings
+            cannot be achieved without an SDK-level fix.""")
 
     def _prompt_autonomy(self) -> str:
         """Tell the agent how much autonomy it has based on gate mode."""

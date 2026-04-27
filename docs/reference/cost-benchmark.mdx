@@ -84,10 +84,18 @@ The first attempted low-token MNIST bench was aborted at ~17 min wall time after
 
 **Implications for the savings estimate:**
 
-- The original estimate (~70-80% reduction, ~\$11 → ~\$2-3) assumed the lead model swap dominated. With sub-agents staying on Opus, the actual savings on a long Phase-4-heavy run would be smaller — maybe **~30-50% reduction** depending on the lead-vs-sub-agent token split. The lead-side savings (~5× cheaper at Sonnet rates) and the iteration cap (Phase-4 max-iterations 10 → 2) still apply, but they only reach the lead's prompt-building work, not the agents doing the actual training and evaluation.
-- A more representative future estimate, pending a complete bench: **MNIST: ~\$11 → ~\$5-7 (50-65% reduction)**. The original ~70-80% target is achievable only if Claude Code's TeamCreate honours agent `model:` frontmatter — which it currently does not.
+- The original estimate (~70-80% reduction, ~\$11 → ~\$2-3) assumed the lead model swap dominated. With sub-agents staying on Opus, the actual savings on a long Phase-4-heavy run would be smaller — maybe **~30-50% reduction** depending on the lead-vs-sub-agent token split.
 
-These findings will be incorporated into the planned Anthropic SDK refactor scope (the [out-of-scope section](/concepts/low-token-mode#whats-not-in-this-mode-yet) on the concept page) — direct SDK use lets ZO control sub-agent models explicitly, which is a prerequisite for hitting the original savings target.
+**Fix shipped (post-bench):**
+
+The orchestrator's lead prompt now includes a **Low-Token Sub-Agent Model Override** section when `--low-token` is active. It instructs the Lead Orchestrator to pass an explicit `model="claude-sonnet-4-6"` parameter to every `Agent()` call, bypassing Claude Code's Opus default. Behaviour:
+
+- **If Claude Code's `Agent()` accepts a `model` parameter:** sub-agents now spawn on Sonnet ✓ — full ~70-80% savings target achievable on the next bench attempt.
+- **If `Agent()` ignores the parameter:** the Lead is instructed to log a `DECISION_LOG` entry and proceed without override. Lead-side savings still apply; sub-agent savings require an SDK-level fix.
+
+The override section is conditional — present only when `low_token=True`. Implementation: [`src/zo/orchestrator.py`](https://github.com/SamPlvs/zero-operators/blob/main/src/zo/orchestrator.py) `_prompt_low_token_overrides()`. Test coverage: [`tests/unit/test_orchestrator.py`](https://github.com/SamPlvs/zero-operators/blob/main/tests/unit/test_orchestrator.py) `TestLowTokenOrchestrator::test_low_token_includes_subagent_model_override`.
+
+A second bench attempt is needed to confirm whether `Agent()` honours the `model` parameter in Claude Code 2.1.x. Pending that, the planned Anthropic SDK refactor (the [out-of-scope section](/concepts/low-token-mode#faq) on the concept page) remains the safe long-term answer — direct SDK use lets ZO control sub-agent models programmatically without depending on tool-call parameters.
 
 ## Caveats and known limitations
 
