@@ -6,7 +6,7 @@ description: "The compact reference card for what --low-token actually flips, wi
 A one-page reference for the `--low-token` cost-saving preset. For motivation, trade-offs, and FAQ, see the [low-token mode concept page](/concepts/low-token-mode).
 
 <Note>
-**Measured savings:** ~30% on the canonical MNIST end-to-end bench (\$7.75 vs. ~\$11 default, 2026-04-27). Smaller than the 70-80% originally projected — sub-agents already run on Sonnet in default mode, so the swap only affects the lead's ~30-40% cost share. Full breakdown: [Cost benchmark](/reference/cost-benchmark).
+**Measured savings:** ~30% on the first MNIST bench (\$7.75 vs. ~\$11 default, 2026-04-27). The preset since added two structural levers — **Haiku routing for code-reviewer / test-engineer / oracle-qa** and **per-phase agent drops** (Phase 1 and Phase 5) — which target the **~50-60%** ceiling. A second bench post-PR-C is required to confirm the new measured number; this page updates when the next bench lands. Full breakdown: [Cost benchmark](/reference/cost-benchmark).
 </Note>
 
 ## Activation
@@ -30,19 +30,33 @@ _LOW_TOKEN_PRESET = {
     "gate_mode": "full-auto",
     "compact_threshold": "60",
 }
+
+# Plus two routing tables in src/zo/_orchestrator_phases.py:
+
+LOW_TOKEN_HAIKU_AGENTS = frozenset({
+    "code-reviewer", "test-engineer", "oracle-qa",
+})
+
+LOW_TOKEN_PHASE_DROPS = {
+    "phase_1": frozenset({"code-reviewer", "test-engineer", "domain-evaluator"}),
+    "phase_5": frozenset({"xai-agent", "domain-evaluator"}),
+}
 ```
 
-Authoritative location: [`src/zo/cli.py`](https://github.com/SamPlvs/zero-operators/blob/main/src/zo/cli.py) — search for `_LOW_TOKEN_PRESET`.
+Authoritative locations: [`src/zo/cli.py`](https://github.com/SamPlvs/zero-operators/blob/main/src/zo/cli.py) for `_LOW_TOKEN_PRESET`, [`src/zo/_orchestrator_phases.py`](https://github.com/SamPlvs/zero-operators/blob/main/src/zo/_orchestrator_phases.py) for the routing tables.
 
 ## Knob reference
 
 | Knob | Default | Low-token | Where in code |
 |---|---|---|---|
 | Lead model | `opus` | `sonnet` | `_resolve_lead_model` in `cli.py` |
+| **Sub-agent routing** | per `.md` (mostly Sonnet) | **two-tier** (Haiku for review/test/oracle, Sonnet for reasoning) | `_prompt_low_token_overrides` in `orchestrator.py` |
+| **Phase 1 trim** | full reviewer set | data-engineer only (reviewers/tests deferred to Gate 5) | `LOW_TOKEN_PHASE_DROPS["phase_1"]` |
+| **Phase 5 trim** | model-builder + oracle-qa + xai-agent + domain-evaluator | model-builder + oracle-qa only (lead writes single-shot summary) | `LOW_TOKEN_PHASE_DROPS["phase_5"]` |
 | Phase-4 `max_iterations` | `10` | `2` | `_LOW_TOKEN_LOOP_CLAMPS` in `experiment_loop.py` |
 | Phase-4 `stop_on_tier` | `must_pass` | `could_pass` | `_LOW_TOKEN_LOOP_CLAMPS` in `experiment_loop.py` |
 | Cross-cutting `research-scout` | enabled | disabled | `_agents_for_phase` in `orchestrator.py` |
-| Cross-cutting `code-reviewer` | enabled | enabled (kept) | (not filtered — quality safety) |
+| Cross-cutting `code-reviewer` | enabled | dropped from Phase 1; **on Haiku** elsewhere | `LOW_TOKEN_PHASE_DROPS` + `LOW_TOKEN_HAIKU_AGENTS` |
 | Haiku headline ticker | every 60s | disabled | `_maybe_print_headline` in `cli.py` |
 | End-of-session Haiku summary | generated | skipped | `_generate_session_summary` in `cli.py` |
 | Default gate mode | `supervised` | `full-auto` | `_resolve_gate_mode` in `cli.py` |

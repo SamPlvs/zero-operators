@@ -242,7 +242,7 @@ Running ZO on an Anthropic Pro subscription, a student plan, or otherwise watchi
 zo build plans/my-project.md --low-token
 ```
 
-The preset trades some quality at the lead step for cost savings (Sonnet lead instead of Opus, 2 Phase-4 iterations instead of 10, no Haiku headlines, full-auto gates, earlier auto-compaction). Measured on the canonical reference bench (2026-04-27): ~30% reduction ($7.75 vs. ~$11 default). The savings ceiling is structural — sub-agents already run on Sonnet in default mode, so `--low-token` only affects the lead's ~30-40% cost share. See [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx) for the full breakdown and the path to higher savings (Haiku for code-reviewer/test-engineer, Phase-1 trim, prompt caching via SDK refactor).
+The preset trades some quality at the lead step for cost savings (Sonnet lead instead of Opus, **Haiku for code-reviewer / test-engineer / oracle-qa**, 2 Phase-4 iterations instead of 10, **trimmed Phase 1 to data-engineer only and Phase 5 to model-builder + oracle-qa only**, no Haiku headlines, full-auto gates, earlier auto-compaction). First measured on the MNIST bench (2026-04-27): ~30% reduction ($7.75 vs. ~$11 default) with the lead-only swap. New targets after the Haiku routing + per-phase agent trims: ~50-60% (a second bench post-update is needed to confirm). See [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx) for the full breakdown and the path to ~70-80% via SDK refactor (prompt caching + Batch API + Files API).
 
 Plan-level equivalent — set `low_token: true` in YAML frontmatter to persist per project.
 

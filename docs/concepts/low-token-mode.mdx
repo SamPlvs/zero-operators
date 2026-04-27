@@ -37,9 +37,12 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 | Knob | Default | Low-token | Why |
 |---|---|---|---|
 | Lead model | `opus` | `sonnet` | ~5× cheaper input/output. Biggest single line item. |
+| Sub-agent routing | per `.md` (mostly Sonnet) | **two-tier**: Haiku for `code-reviewer` / `test-engineer` / `oracle-qa`; Sonnet for reasoning (data-engineer, model-builder, xai, domain-eval, ml-engineer, customs) | Pattern-matching tasks don't need Sonnet's lift. Haiku is ~3× cheaper and SWE-bench-competitive on code. |
+| Phase 1 agents | full reviewer set | **data-engineer only** | Reviews + tests deferred to Gate 5 final pass. Phase 1 was ~45% of the first bench's cost. |
+| Phase 5 agents | model-builder + oracle-qa + xai-agent + domain-evaluator | **model-builder + oracle-qa only** | Lead writes single-shot analysis summary instead of dedicated explainability/domain pass. |
 | Phase-4 `max_iterations` | `10` | `2` | Phase 4 is the dominant cost; iteration count is the multiplier. |
 | Phase-4 `stop_on_tier` | `must_pass` | `could_pass` | Stops at the weakest acceptable oracle tier instead of pushing for the strongest. |
-| Cross-cutting `research-scout` | on every phase | dropped | Saves ~6 spawns and their contracts. `code-reviewer` is kept — silent quality drift is worse than the saved tokens. |
+| Cross-cutting `research-scout` | on every phase | dropped | Saves ~6 spawns and their contracts. |
 | Haiku headline ticker | every 60s | disabled | ~60 small calls/hour. Small individually, cumulative across long runs. |
 | Default gate mode | `supervised` | `full-auto` | No human-loop overhead. You can still pass `--gate-mode supervised` to override. |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | unset (Claude Code default ~83%) | `60` | Auto-compacts conversation context earlier, prevents performance degradation near the window limit. |
@@ -48,11 +51,13 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 
 First measured bench (MNIST, 2026-04-27) landed at **\$7.75** vs. the historical default-mode reference of **~\$11** — a **~30% reduction**.
 
-That's smaller than the 70-80% projected before measurement. The honest reason: in default mode, sub-agents are *already* on Sonnet via their `.md` frontmatter. Only the Lead Orchestrator is Opus. So `--low-token` only affects the lead's ~30-40% cost share. At ~5× cheaper per token, that's a ceiling of ~25-30% on the total — exactly what we measured.
+That bench used the lead-only swap. The preset has since added two structural levers — **Haiku routing for review/test/oracle agents** and **per-phase agent trims** (Phase 1 + Phase 5) — that target a **~50-60% ceiling**. A second bench post-update is needed to confirm the new measured number.
 
-**For a path past 30%**, see [Cost benchmark → What would push savings higher](/reference/cost-benchmark#what-would-push-savings-higher) — Haiku for code-reviewer/test-engineer, Phase-1 trim, prompt caching via SDK refactor.
+The honest reason the original 70-80% projection was off: in default mode, sub-agents are *already* on Sonnet via their `.md` frontmatter. Only the Lead Orchestrator is Opus. So a lead-only swap only affects the lead's ~30-40% cost share. At ~5× cheaper per token, that's a ceiling of ~25-30% on the total — exactly what the first bench measured. The path past that ceiling is right-sizing pattern-matching agents (Haiku) and trimming non-essential reviewers per phase, both of which the preset now does.
 
-The 30% headline depends on plan shape. Plans that hit the iteration cap on default mode (harder problems, multiple Phase 4 retries) see more — `max_iterations` 10 → 2 starts to bite. Plans with no Phase 4 (data-only, feature-engineering-only) see less — only the lead-model swap and headline disable matter (~15-20%).
+**For a path past 50-60%**, see [Cost benchmark → What would push savings higher](/reference/cost-benchmark#what-would-push-savings-higher) — prompt caching via SDK refactor, Batch API for parallel evaluation, Files API for repeated context.
+
+The 30% (or post-update 50-60%) headline depends on plan shape. Plans that hit the iteration cap on default mode (harder problems, multiple Phase 4 retries) see more — `max_iterations` 10 → 2 starts to bite. Plans with no Phase 4 (data-only, feature-engineering-only) see less — only the lead-model swap and headline disable matter (~15-20%).
 
 ## Override individual knobs
 

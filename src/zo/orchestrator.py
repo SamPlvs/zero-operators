@@ -34,7 +34,12 @@ from zo._orchestrator_models import (
     PhaseStatus,
     WorkflowDecomposition,
 )
-from zo._orchestrator_phases import AGENT_PHASE_MAP, MODE_PHASE_FACTORY
+from zo._orchestrator_phases import (
+    AGENT_PHASE_MAP,
+    LOW_TOKEN_HAIKU_AGENTS,
+    LOW_TOKEN_PHASE_DROPS,
+    MODE_PHASE_FACTORY,
+)
 from zo.plan import Plan, WorkflowMode
 
 if TYPE_CHECKING:
@@ -381,16 +386,26 @@ class Orchestrator:
         to every ``Agent()`` spawn — bypassing Claude Code's default
         of Opus for TeamCreate-spawned sub-agents.
 
-        Empirical finding (bench 2026-04-26, Claude Code 2.1.92):
-        sub-agents spawn with ``--model claude-opus-4-6`` even when
-        the agent ``.md`` file declares ``model: claude-sonnet-4-6``.
-        Without this override, low-token mode only reduces lead-side
-        spend; the actual workhorses (data-engineer, model-builder,
-        oracle-qa, code-reviewer, test-engineer) stay on Opus.
+        Two-tier routing:
+
+        - ``LOW_TOKEN_HAIKU_AGENTS`` (currently code-reviewer,
+          test-engineer, oracle-qa) → ``claude-haiku-4-5``. Pattern-
+          matching and mechanical work; Haiku is ~3× cheaper than
+          Sonnet and SWE-bench-competitive for code work.
+        - All other active sub-agents → ``claude-sonnet-4-6``. Reasoning
+          work (data-engineer, model-builder, xai-agent, etc.) where
+          Sonnet's lift over Haiku materially affects quality.
+
+        Without this two-tier routing the savings ceiling is ~30%
+        (lead-swap-only); with it, the ceiling moves to ~50-60% per
+        ``docs/reference/cost-benchmark.mdx``.
         """
         if not self._low_token:
             return ""
-        return dedent("""\
+        haiku_list = ", ".join(
+            f"`{name}`" for name in sorted(LOW_TOKEN_HAIKU_AGENTS)
+        )
+        return dedent(f"""\
             # Low-Token Sub-Agent Model Override
 
             **CRITICAL:** Low-token mode is active. The lead session (you)
@@ -400,19 +415,34 @@ class Orchestrator:
             actually save tokens end-to-end, you MUST pass an explicit
             `model` parameter when spawning sub-agents.
 
-            **Required for every Agent() call:**
+            **Two-tier routing:**
+
+            **Tier 1 — Haiku** ({haiku_list}):
+            pattern-matching and mechanical work. Use `claude-haiku-4-5`.
+
+                Agent(
+                    name="code-reviewer",
+                    team_name="...",
+                    model="claude-haiku-4-5",   # <-- Haiku for review/test/oracle
+                    ...
+                )
+
+            **Tier 2 — Sonnet** (all other active sub-agents —
+            data-engineer, model-builder, xai-agent, domain-evaluator,
+            ml-engineer, custom agents, etc.):
+            reasoning work. Use `claude-sonnet-4-6`.
 
                 Agent(
                     name="data-engineer",
                     team_name="...",
-                    model="claude-sonnet-4-6",   # <-- always include
+                    model="claude-sonnet-4-6",   # <-- Sonnet for reasoning
                     ...
                 )
 
-            Use `claude-sonnet-4-6` for ALL active agents in this run,
-            regardless of what their `.md` file declares. The agent's
-            instructions, tools, and contract still come from the `.md`
-            file — only the model is overridden.
+            The agent's instructions, tools, and contract still come from
+            the `.md` file — only the model is overridden per call. The
+            two-tier routing pushes savings from ~30% (lead-only) toward
+            ~50-60% (lead + reviewer/test/oracle right-sized to Haiku).
 
             **Exception:** if a specific agent absolutely requires Opus
             for the work (e.g. the user explicitly enabled Opus via
@@ -717,14 +747,28 @@ class Orchestrator:
     ) -> list[str]:
         """Filter the plan's active agents to those running in this phase.
 
-        When ``low_token`` is True, drops cross-cutting agents whose
-        contribution is "nice to have" (currently ``research-scout``)
-        to save spawn-cost. ``code-reviewer`` is kept because silent
-        quality drift is a worse trade than the saved tokens.
+        When ``low_token`` is True, applies two structural trims documented
+        in ``docs/reference/cost-benchmark.mdx`` "What would push savings
+        higher" — together they push the savings ceiling from ~30% (lead
+        swap only) to ~50-60% (lead swap + agent right-sizing + phase
+        trims):
+
+        - ``research-scout`` is dropped from every phase (cross-cutting).
+        - Per-phase drops in ``LOW_TOKEN_PHASE_DROPS`` skip "nice to
+          have" reviewers in the heaviest phases. Phase 1 drops to
+          just data-engineer; Phase 5 drops xai + domain-evaluator
+          (the lead writes a single-shot summary instead).
+
+        Custom agents (not in ``AGENT_PHASE_MAP``) are not affected by
+        the drops — they're always available for all phases and the
+        lead orchestrator decides when to spawn them.
         """
+        phase_drops = LOW_TOKEN_PHASE_DROPS.get(phase_id, frozenset())
         result: list[str] = []
         for a in active_agents:
             if low_token and a == "research-scout":
+                continue
+            if low_token and a in phase_drops:
                 continue
             phases = AGENT_PHASE_MAP.get(a)
             # Custom agents (not in map) are available for all phases —
