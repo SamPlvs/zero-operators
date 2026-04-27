@@ -114,7 +114,20 @@ def _write_result_md(
     metric_value: float = 0.4,
     metric_name: str = "mae",
 ) -> None:
+    """Write the three artifacts the Phase 4 gate now requires.
+
+    - ``metrics.jsonl`` + ``training_status.json``: ZOTrainingCallback
+      output (gate fails without these — see PR for `zo watch-training`
+      contract enforcement).
+    - ``result.md``: Oracle's verdict.
+    """
     exp_dir.mkdir(parents=True, exist_ok=True)
+    (exp_dir / "metrics.jsonl").write_text(
+        '{"event": "epoch_end", "epoch": 1}\n', encoding="utf-8",
+    )
+    (exp_dir / "training_status.json").write_text(
+        '{"is_training": false, "epoch": 1}\n', encoding="utf-8",
+    )
     (exp_dir / "result.md").write_text(
         f"""---
 exp_id: {exp_dir.name}

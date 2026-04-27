@@ -135,6 +135,27 @@ primary_metric:
     )
 
 
+def _write_training_artifacts(exp_dir: Path) -> None:
+    """Write the ZOTrainingCallback artifacts the new gate requires.
+
+    Most Phase-4 gate-pass tests need these alongside ``result.md``.
+    Stub content is enough — the gate only checks existence.
+    """
+    exp_dir.mkdir(parents=True, exist_ok=True)
+    (exp_dir / "metrics.jsonl").write_text(
+        '{"event": "epoch_end", "epoch": 1}\n', encoding="utf-8",
+    )
+    (exp_dir / "training_status.json").write_text(
+        '{"is_training": false, "epoch": 1}\n', encoding="utf-8",
+    )
+
+
+def _complete_phase4_artifacts(exp_dir: Path, **result_kwargs) -> None:
+    """Write all three artifacts the Phase 4 gate now requires."""
+    _write_training_artifacts(exp_dir)
+    _write_result_md(exp_dir, **result_kwargs)
+
+
 class TestPhase4MintsExperimentOnPrompt:
     def test_lead_prompt_mints_experiment(self, tmp_path: Path) -> None:
         orch, delivery_repo = _build_orch(tmp_path)
@@ -201,9 +222,9 @@ class TestPhase4GateBlocksOnMissingResult:
         orch.build_lead_prompt(phase)
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
-        # Write result.md with must_pass tier so the loop stops.
+        # All three artifacts: metrics.jsonl + training_status.json + result.md
         exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
-        _write_result_md(exp_dir, oracle_tier="must_pass")
+        _complete_phase4_artifacts(exp_dir, oracle_tier="must_pass")
 
         ev = orch.advance_phase(phase.phase_id)
         assert ev.decision == GateDecision.PROCEED
@@ -239,7 +260,9 @@ class TestPhase4GateBlocksOnMissingResult:
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
         exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
-        _write_result_md(exp_dir, metric_name="mae", metric_value=0.42)
+        _complete_phase4_artifacts(
+            exp_dir, metric_name="mae", metric_value=0.42,
+        )
 
         orch.advance_phase(phase.phase_id)
         reg = load_registry(delivery_repo / ".zo" / "experiments")
@@ -294,7 +317,7 @@ class TestPhase4IterateMintsChild:
         orch.build_lead_prompt(phase)
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
-        _write_result_md(
+        _complete_phase4_artifacts(
             delivery_repo / ".zo" / "experiments" / "exp-001",
             metric_name="mae", metric_value=0.5,
         )
@@ -307,7 +330,7 @@ class TestPhase4IterateMintsChild:
 
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
-        _write_result_md(
+        _complete_phase4_artifacts(
             delivery_repo / ".zo" / "experiments" / "exp-002",
             metric_name="mae", metric_value=0.3,
         )
@@ -344,7 +367,7 @@ class TestPromptContent:
         _make_phase_artifacts(delivery_repo, phase)
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
-        _write_result_md(
+        _complete_phase4_artifacts(
             delivery_repo / ".zo" / "experiments" / "exp-001",
         )
         orch.advance_phase(phase.phase_id)
@@ -353,3 +376,92 @@ class TestPromptContent:
         phase.completed_subtasks.clear()
         prompt_child = orch.build_lead_prompt(phase)
         assert "Parent: `exp-001`" in prompt_child
+
+
+class TestPhase4GateRequiresTrainingArtifacts:
+    """The Phase-4 gate fails when ZOTrainingCallback wasn't used.
+
+    Without ``metrics.jsonl`` and ``training_status.json`` in the
+    experiment dir, ``zo watch-training`` is blank and the autonomous
+    loop has nothing to evaluate. The gate must catch this contract
+    violation, not silently pass.
+    """
+
+    def test_missing_metrics_jsonl_blocks_gate(
+        self, tmp_path: Path,
+    ) -> None:
+        orch, delivery_repo = _build_orch(tmp_path, gate_mode=GateMode.FULL_AUTO)
+        phase = _phase_4(orch)
+        _make_phase_artifacts(delivery_repo, phase)
+        orch.build_lead_prompt(phase)
+        for st in phase.subtasks:
+            orch.mark_subtask_complete(phase.phase_id, st)
+        # Write training_status.json + result.md but skip metrics.jsonl.
+        exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
+        (exp_dir / "training_status.json").write_text(
+            '{"is_training": false}\n', encoding="utf-8",
+        )
+        _write_result_md(exp_dir, oracle_tier="must_pass")
+
+        ev = orch.advance_phase(phase.phase_id)
+        assert ev.decision == GateDecision.ITERATE
+        assert "metrics.jsonl" in ev.rationale
+        assert "ZOTrainingCallback not used" in ev.rationale
+        assert phase.status != PhaseStatus.COMPLETED
+
+    def test_missing_training_status_blocks_gate(
+        self, tmp_path: Path,
+    ) -> None:
+        orch, delivery_repo = _build_orch(tmp_path, gate_mode=GateMode.FULL_AUTO)
+        phase = _phase_4(orch)
+        _make_phase_artifacts(delivery_repo, phase)
+        orch.build_lead_prompt(phase)
+        for st in phase.subtasks:
+            orch.mark_subtask_complete(phase.phase_id, st)
+        # Write metrics.jsonl + result.md but skip training_status.json.
+        exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
+        (exp_dir / "metrics.jsonl").write_text(
+            '{"event": "epoch_end"}\n', encoding="utf-8",
+        )
+        _write_result_md(exp_dir, oracle_tier="must_pass")
+
+        ev = orch.advance_phase(phase.phase_id)
+        assert ev.decision == GateDecision.ITERATE
+        assert "training_status.json" in ev.rationale
+        assert phase.status != PhaseStatus.COMPLETED
+
+    def test_all_three_artifacts_present_passes_gate(
+        self, tmp_path: Path,
+    ) -> None:
+        """Sanity: with all three required artifacts, the gate proceeds."""
+        orch, delivery_repo = _build_orch(tmp_path, gate_mode=GateMode.FULL_AUTO)
+        phase = _phase_4(orch)
+        _make_phase_artifacts(delivery_repo, phase)
+        orch.build_lead_prompt(phase)
+        for st in phase.subtasks:
+            orch.mark_subtask_complete(phase.phase_id, st)
+        exp_dir = delivery_repo / ".zo" / "experiments" / "exp-001"
+        _complete_phase4_artifacts(exp_dir, oracle_tier="must_pass")
+
+        ev = orch.advance_phase(phase.phase_id)
+        assert ev.decision == GateDecision.PROCEED
+
+    def test_rationale_lists_all_missing_artifacts(
+        self, tmp_path: Path,
+    ) -> None:
+        """When result.md AND metrics.jsonl are both missing, both
+        appear in the rationale so the model-builder knows what to do.
+        """
+        orch, delivery_repo = _build_orch(tmp_path, gate_mode=GateMode.FULL_AUTO)
+        phase = _phase_4(orch)
+        _make_phase_artifacts(delivery_repo, phase)
+        orch.build_lead_prompt(phase)
+        for st in phase.subtasks:
+            orch.mark_subtask_complete(phase.phase_id, st)
+        # Write nothing in the experiment dir.
+
+        ev = orch.advance_phase(phase.phase_id)
+        assert ev.decision == GateDecision.ITERATE
+        assert "metrics.jsonl" in ev.rationale
+        assert "training_status.json" in ev.rationale
+        assert "result.md" in ev.rationale

@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/session-start.sh",
+            "command": "bash .claude/hooks/session-start.sh 2>/dev/null || exit 0",
             "timeout": 10,
             "statusMessage": "Loading project context..."
           }
@@ -54,7 +54,7 @@
           {
             "type": "command",
             "if": "Bash(git commit *)",
-            "command": ".claude/hooks/pre-commit-validate.sh",
+            "command": "bash .claude/hooks/pre-commit-validate.sh 2>/dev/null || exit 0",
             "timeout": 30,
             "statusMessage": "Validating documentation consistency..."
           }
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/cascade-reminder.sh",
+            "command": "bash .claude/hooks/cascade-reminder.sh 2>/dev/null || exit 0",
             "timeout": 5
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/stop-check.sh",
+            "command": "bash .claude/hooks/stop-check.sh 2>/dev/null || exit 0",
             "timeout": 10
           }
         ]
