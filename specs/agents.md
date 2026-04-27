@@ -116,12 +116,15 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 - Data quality assessment (Data Engineer's responsibility)
 - Infrastructure setup and scheduling (Infra Engineer's responsibility, phase 2)
 
-**Key outputs**:
-- Trained model checkpoint with metadata (architecture, training date, hyperparams)
-- Experiment tracking log with per-iteration metrics
-- Regime segmentation definitions (if multi-regime model)
+**Key outputs** (all per-experiment files live in `.zo/experiments/<exp_id>/`):
+- `hypothesis.md`, `config.yaml`, `next.md` — agent-authored markdown
+- `metrics.jsonl` + `training_status.json` — emitted by `ZOTrainingCallback.for_experiment()`
+- Trained model checkpoint at `models/checkpoints/<name>_v<N>/checkpoint.pt` with metadata (architecture, date, hyperparams, data split hash, final metrics)
 - Inference script with latency benchmarks
-- Iteration report with failure modes and next-step hypotheses
+
+**Training metrics protocol (hard gate)**:
+- Every training script **must** call `ZOTrainingCallback.for_experiment(registry_dir=".zo/experiments", experiment_id=<exp_id>)`. The orchestrator's Phase 4 gate fails when `metrics.jsonl` and `training_status.json` are missing from the active experiment dir.
+- Do not write parallel logs to `logs/training/`, `experiments/results/`, or other ad-hoc paths — only `.zo/experiments/<exp_id>/` is read by `zo watch-training`, `zo experiments`, and the autonomous loop.
 
 **Communication rules**:
 - Consumes data from Data Engineer (DataLoader + validation set)
@@ -132,10 +135,11 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 **Validation checklist**:
 - Model trains without NaN loss
+- `metrics.jsonl` + `training_status.json` exist in `.zo/experiments/<exp_id>/` (callback was actually used)
+- `hypothesis.md`, `config.yaml`, and post-result `next.md` written to the same dir
 - Inference latency meets domain requirements (or documented)
-- Every training run is logged with full hyperparams
 - Checkpoint includes training date, data split hash, and final metrics
-- Failure cases documented (what the model struggles with)
+- Failure cases documented in Oracle's `result.md` (the orchestrator parses this)
 
 ---
 

@@ -2613,6 +2613,7 @@ def watch_training(project: str, interval: float, repo: str | None) -> None:
 
         zo watch-training --project my-project --repo ~/my-delivery
     """
+    from zo.experiments import resolve_active_experiment_dir
     from zo.plan import parse_plan
     from zo.training_display import run_live_display
 
@@ -2635,7 +2636,12 @@ def watch_training(project: str, interval: float, repo: str | None) -> None:
         except Exception:
             pass
 
-    log_dir = delivery_repo / "logs" / "training"
+    # Resolve the active Phase 4 experiment dir; fall back to legacy
+    # logs/training when no experiment exists yet (lets the dashboard
+    # render its "Waiting…" panel instead of erroring).
+    log_dir = resolve_active_experiment_dir(delivery_repo)
+    if log_dir is None:
+        log_dir = delivery_repo / ".zo" / "experiments"
     _show_banner(project=project, mode="watch-training")
 
     run_live_display(

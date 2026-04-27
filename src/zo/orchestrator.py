@@ -907,7 +907,24 @@ class Orchestrator:
             ]
         missing: list[str] = []
         for exp in running:
-            result_path = Path(exp.artifacts_dir) / "result.md"
+            artifacts = Path(exp.artifacts_dir)
+            # Require ZOTrainingCallback output. Without it,
+            # zo watch-training, the autonomous loop, and Phase 4
+            # notebooks all break — the agent silently bypassed the
+            # capture layer with a vanilla training loop.
+            metrics_path = artifacts / "metrics.jsonl"
+            status_path = artifacts / "training_status.json"
+            if not metrics_path.exists():
+                missing.append(
+                    f".zo/experiments/{exp.id}/metrics.jsonl "
+                    "(ZOTrainingCallback not used)",
+                )
+            if not status_path.exists():
+                missing.append(
+                    f".zo/experiments/{exp.id}/training_status.json "
+                    "(ZOTrainingCallback not used)",
+                )
+            result_path = artifacts / "result.md"
             if not result_path.exists():
                 missing.append(f".zo/experiments/{exp.id}/result.md")
                 continue
