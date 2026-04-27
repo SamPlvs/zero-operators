@@ -44,11 +44,15 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 | Default gate mode | `supervised` | `full-auto` | No human-loop overhead. You can still pass `--gate-mode supervised` to override. |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | unset (Claude Code default ~83%) | `60` | Auto-compacts conversation context earlier, prevents performance degradation near the window limit. |
 
-## Estimated savings
+## Measured savings
 
-The MNIST end-to-end demo cost **~\$11** on default settings. With `--low-token` the same run lands at **~\$2-3** — a **5-8× reduction**. Most of the saving comes from the lead model swap and the iteration cap; the rest is incremental.
+First measured bench (MNIST, 2026-04-27) landed at **\$7.75** vs. the historical default-mode reference of **~\$11** — a **~30% reduction**.
 
-The numbers depend heavily on plan complexity. A plan with no Phase-4 experiments will see a smaller relative saving (closer to 2-3×, driven entirely by the lead model swap). A plan that hits the iteration cap will see the largest saving.
+That's smaller than the 70-80% projected before measurement. The honest reason: in default mode, sub-agents are *already* on Sonnet via their `.md` frontmatter. Only the Lead Orchestrator is Opus. So `--low-token` only affects the lead's ~30-40% cost share. At ~5× cheaper per token, that's a ceiling of ~25-30% on the total — exactly what we measured.
+
+**For a path past 30%**, see [Cost benchmark → What would push savings higher](/reference/cost-benchmark#what-would-push-savings-higher) — Haiku for code-reviewer/test-engineer, Phase-1 trim, prompt caching via SDK refactor.
+
+The 30% headline depends on plan shape. Plans that hit the iteration cap on default mode (harder problems, multiple Phase 4 retries) see more — `max_iterations` 10 → 2 starts to bite. Plans with no Phase 4 (data-only, feature-engineering-only) see less — only the lead-model swap and headline disable matter (~15-20%).
 
 ## Override individual knobs
 
@@ -124,33 +128,34 @@ What changes, end-to-end, between a default run and a low-token run on the same 
 
 ## Worked example: MNIST
 
-The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~\$11**, dominated by the Lead Orchestrator on Opus through ten Phase-4 iterations.
-
-Low-token expectations:
+The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~\$11**, dominated by the Lead Orchestrator on Opus.
 
 ```bash
-# Default run
+# Default run (historical reference)
 zo build plans/mnist-digit-classifier.md
 # Lead: Opus
-# Phase-4 iterations: up to 10
+# Phase-4 iterations: up to 10 (MNIST converges in 1)
 # Headlines: ~60 per hour
-# Estimated cost: ~$11
-# Estimated wall time: ~50 min
+# Cost: ~$11
+# Wall time: ~50 min
 
-# Low-token run
+# Low-token run (measured 2026-04-27)
 zo build plans/mnist-digit-classifier.md --low-token
-# Lead: Sonnet (~5x cheaper)
-# Phase-4 iterations: capped at 2 (the demo hits target on iteration 1)
+# Lead: Sonnet 4.6 (~5x cheaper per token)
+# Sub-agents: Sonnet 4.6 (already, no change)
+# Phase-4 iterations: capped at 2 (demo hits target on iteration 1, cap doesn't bite)
 # Headlines: disabled
-# Estimated cost: ~$2-3
-# Estimated wall time: ~25 min
+# Cost: $7.75 (~30% reduction)
+# Wall time: ~75 min (one stuck-gate cycle in this run)
 ```
 
-The empirical numbers from a controlled benchmark are tracked in [reference/cost-benchmark](/reference/cost-benchmark) once the comparison run completes.
+**Cost breakdown of the measured run:** Lead orchestrator \$4.48 + sub-agents \$3.27 = \$7.75 total (captured via `npx ccusage --instances`). Phase 1 alone was \$3.47, the largest single phase — Phase 4 only ran one iteration.
+
+Full bench writeup with the why-30%-not-70% breakdown: [reference/cost-benchmark](/reference/cost-benchmark).
 
 ## Worked example: tiny plan with no Phase 4
 
-If your plan finishes inside Phase 3 (data-only or feature-engineering-only project), the iteration-cap savings disappear — only the lead-model swap and headline disable matter. Expected reduction: **~2-3×** instead of 5-8×. Still useful, just smaller in absolute terms.
+If your plan finishes inside Phase 3 (data-only or feature-engineering-only project), the iteration-cap savings disappear and only the lead-model swap and headline disable matter. Expected reduction: **~15-20%** vs. the ~30% for a full lifecycle plan.
 
 ## When to use low-token mode
 
@@ -205,9 +210,9 @@ In each case: run on default settings, validate the result, then switch on `low_
   </Accordion>
 
   <Accordion title="Do sub-agents (data-engineer, model-builder, etc.) also run on Sonnet in low-token mode?">
-    Yes, *via an explicit override*. Claude Code 2.1.x's `TeamCreate` defaults sub-agents to Opus regardless of what their `.md` file declares. To work around this, the lead orchestrator's prompt in low-token mode includes a **Sub-Agent Model Override** section that instructs the lead to pass `model="claude-sonnet-4-6"` to every `Agent()` call. The lead's `.md`-declared model is honoured by the lead session itself; the override propagates to sub-agents.
+    Yes — sub-agents are on Sonnet 4.6 in **both** default mode and low-token mode. Default mode never had sub-agents on Opus; their `.md` frontmatter declares `model: claude-sonnet-4-6`. So switching to `--low-token` doesn't change the sub-agent cost rate. This is also the reason the savings ceiling is ~30% rather than the 70-80% an "everyone-was-Opus" projection would imply.
 
-    **Caveat:** if `Agent()` in your Claude Code version doesn't accept a `model` parameter, the lead falls back gracefully (logs a `DECISION_LOG` entry, sub-agents stay on Opus). Lead-side savings still apply. The bench page tracks whether this override actually fires — see [cost-benchmark](/reference/cost-benchmark) "Findings from the partial run".
+    The lead orchestrator's prompt in low-token mode does include a **Sub-Agent Model Override** section that explicitly passes `model="claude-sonnet-4-6"` to every `Agent()` call as a defence-in-depth measure (in case some future Claude Code version changes the default). Verified working end-to-end on Claude Code 2.1.107: `ps aux` during the measured bench showed all four processes (lead + 3 sub-agents) on `claude-sonnet-4-6`.
   </Accordion>
 
   <Accordion title="Can I see how much I'm saving in real time?">

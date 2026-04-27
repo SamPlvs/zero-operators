@@ -5,6 +5,10 @@ description: "The compact reference card for what --low-token actually flips, wi
 
 A one-page reference for the `--low-token` cost-saving preset. For motivation, trade-offs, and FAQ, see the [low-token mode concept page](/concepts/low-token-mode).
 
+<Note>
+**Measured savings:** ~30% on the canonical MNIST end-to-end bench (\$7.75 vs. ~\$11 default, 2026-04-27). Smaller than the 70-80% originally projected — sub-agents already run on Sonnet in default mode, so the swap only affects the lead's ~30-40% cost share. Full breakdown: [Cost benchmark](/reference/cost-benchmark).
+</Note>
+
 ## Activation
 
 | Method | Where | Persistence |
