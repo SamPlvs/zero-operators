@@ -46,7 +46,7 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 
 ## Estimated savings
 
-The MNIST end-to-end demo cost ~$11 on default settings. With `--low-token` the same run lands at **~$2-3** — a **5-8× reduction**. Most of the saving comes from the lead model swap and the iteration cap; the rest is incremental.
+The MNIST end-to-end demo cost **~\$11** on default settings. With `--low-token` the same run lands at **~\$2-3** — a **5-8× reduction**. Most of the saving comes from the lead model swap and the iteration cap; the rest is incremental.
 
 The numbers depend heavily on plan complexity. A plan with no Phase-4 experiments will see a smaller relative saving (closer to 2-3×, driven entirely by the lead model swap). A plan that hits the iteration cap will see the largest saving.
 
@@ -124,7 +124,7 @@ What changes, end-to-end, between a default run and a low-token run on the same 
 
 ## Worked example: MNIST
 
-The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~$11**, dominated by the Lead Orchestrator on Opus through ten Phase-4 iterations.
+The MNIST end-to-end demo (Phase 1 → 6, oracle threshold 95% must_pass / 99% could_pass) is the canonical reference run. Default-mode cost was **~\$11**, dominated by the Lead Orchestrator on Opus through ten Phase-4 iterations.
 
 Low-token expectations:
 
@@ -202,6 +202,12 @@ In each case: run on default settings, validate the result, then switch on `low_
 
   <Accordion title="Does this work with `zo continue` and `zo draft`?">
     `zo continue` accepts the same flags as `zo build` and forwards them. `zo draft` does NOT yet support `--low-token` — drafting uses Opus + 100 max-turns by default. Adding low-token support to draft is tracked as a follow-up; the savings are smaller anyway because draft is shorter than build.
+  </Accordion>
+
+  <Accordion title="Do sub-agents (data-engineer, model-builder, etc.) also run on Sonnet in low-token mode?">
+    Yes, *via an explicit override*. Claude Code 2.1.x's `TeamCreate` defaults sub-agents to Opus regardless of what their `.md` file declares. To work around this, the lead orchestrator's prompt in low-token mode includes a **Sub-Agent Model Override** section that instructs the lead to pass `model="claude-sonnet-4-6"` to every `Agent()` call. The lead's `.md`-declared model is honoured by the lead session itself; the override propagates to sub-agents.
+
+    **Caveat:** if `Agent()` in your Claude Code version doesn't accept a `model` parameter, the lead falls back gracefully (logs a `DECISION_LOG` entry, sub-agents stay on Opus). Lead-side savings still apply. The bench page tracks whether this override actually fires — see [cost-benchmark](/reference/cost-benchmark) "Findings from the partial run".
   </Accordion>
 
   <Accordion title="Can I see how much I'm saving in real time?">

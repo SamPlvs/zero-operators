@@ -86,5 +86,12 @@
   },
   "search": {
     "prompt": "Ask the docs anything..."
-  }
+  },
+  "redirects": [
+    {
+      "source": "/concepts/agents",
+      "destination": "/concepts/the-team",
+      "permanent": true
+    }
+  ]
 }
