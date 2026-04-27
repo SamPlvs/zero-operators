@@ -106,17 +106,29 @@ For plans that hit the iteration cap on default mode (harder problems), the iter
 
 ## What would push savings higher
 
-To break past the ~30% ceiling without losing quality, the path forward is architectural — moving ZO from `claude` CLI subprocess to direct Anthropic SDK so ZO can control caching, batching, and file uploads programmatically:
+The first bench measured ~30% with the lead-only swap. **Two additional levers shipped post-bench** target a ~50-60% ceiling without an SDK refactor; three further architectural levers target ~70-80%.
+
+### Shipped post-first-bench (target: ~50-60%)
+
+| Lever | Mechanism | Estimated additional savings | Status |
+|---|---|---|---|
+| **Sub-agent model right-sizing** | Two-tier routing: `code-reviewer`, `test-engineer`, `oracle-qa` → Haiku 4.5 (pattern-matching tasks); reasoning agents stay on Sonnet. Lead instructed via `_prompt_low_token_overrides()` | **~10-15%** (Haiku is ~3× cheaper than Sonnet) | **Shipped** — `LOW_TOKEN_HAIKU_AGENTS` in `src/zo/_orchestrator_phases.py` |
+| **Phase-1 trim** | Phase 1 was ~45% of first bench cost (\$3.47 of \$7.75). Drop `code-reviewer`, `test-engineer`, `domain-evaluator` from Phase 1 in low-token mode; defer to Gate 5 final pass. Just data-engineer runs | **~10-15%** | **Shipped** — `LOW_TOKEN_PHASE_DROPS["phase_1"]` |
+| **Phase-5 trim** | Drop `xai-agent` and `domain-evaluator` from Phase 5; lead writes single-shot analysis summary instead of dedicated explainability + domain-validation pass | **~3-5%** | **Shipped** — `LOW_TOKEN_PHASE_DROPS["phase_5"]` |
+
+A second bench post-PR-C is required to confirm whether the 50-60% target is hit. The headline number on this page updates when that bench lands.
+
+### Architectural — not yet shipped (target: ~70-80%)
+
+To break past the ~50-60% ceiling, the path forward requires moving ZO from `claude` CLI subprocess to direct Anthropic SDK so ZO can control caching, batching, and file uploads programmatically:
 
 | Lever | Mechanism | Potential additional savings | Library / API |
 |---|---|---|---|
 | **Prompt caching** | `cache_control` markers on plan/specs/agent roster (5-min TTL). About half the bench's tokens were cache reads at ~\$0.30/M; explicit cache_control should bring that to ~\$0.30 of every \$3 of input | **~50-60% on the cache-read portion** (~half of total) | Anthropic Python SDK direct |
 | **Batch API** | 50% discount for async jobs. Suitable for the Haiku ticker, end-of-session summary, and any non-time-critical evaluation rounds | 50% off batched calls | Anthropic Batch API |
 | **Files API** | Upload plan + specs once, reference by ID. Eliminates repeated upload of the same large context blocks | ~10-15% on input tokens for large plans | Anthropic Files API |
-| **Sub-agent model right-sizing** | Already done for Sonnet sub-agents. Could push code-reviewer / test-engineer / oracle-qa down to Haiku 4.5 for pattern-matching work | **~10-15%** (Haiku is ~3× cheaper than Sonnet) | Update agent `.md` frontmatter |
-| **Phase-1 trim in low-token mode** | Phase 1 was ~45% of bench cost (\$3.47 of \$7.75). Run with data-engineer only; defer review/tests to Gate 5 | **~10-15%** | Orchestrator `_agents_for_phase` change |
 
-Combined with the existing 30% headline, these levers would realistically land low-token at **50-60%** without an SDK refactor (the last two rows alone add ~20-30 pp), and **70-80%** with the SDK refactor (the first three rows). The 70-80% figure was always achievable — just not via the v1 preset alone.
+The 70-80% figure was always achievable — just not via the v1 preset alone. The SDK refactor is multi-week and lands in v1.1.
 
 ## Findings from the first measured run (2026-04-27)
 
