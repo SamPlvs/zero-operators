@@ -10,9 +10,8 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-704_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-735_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
-[![Demos](https://img.shields.io/badge/MNIST_99.66%25_/_CIFAR10_91.62%25-D87A57?style=flat-square&labelColor=12110F)](#e2e-validation)
 [![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
 ---
@@ -109,7 +108,7 @@ Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don
 
 ```bash
 zo draft -p my-project --docs ~/docs/ --data ~/data/    # docs + data inspection
-zo draft -p cifar10 -d "CIFAR-10 CNN, PyTorch, 90%+"    # from description
+zo draft -p churn-forecast -d "Tabular churn model, gradient boosting, 0.85 AUC target"
 zo draft -p my-project                                    # fully conversational
 ```
 
@@ -451,30 +450,31 @@ zero-operators/
 
 ## E2E Validation
 
-ZO has been validated end-to-end with an MNIST digit classification project.
+ZO has been validated end-to-end on full ML-lifecycle reference projects. The agent team autonomously:
 
-**The agent team autonomously:**
-- Built a data pipeline with DataLoaders and 32 data tests
-- Designed a CNN (2 conv + BN + 2 FC layers)
-- Trained to **99.00% test accuracy** (oracle threshold: 95%)
-- Produced GradCAM visualizations, ablation study, significance testing
-- Delivered 98 passing tests in the clean delivery repo
-- Zero ZO artifacts leaked — 4 clean git commits
+- Built data pipelines with DataLoaders and unit-tested data quality contracts
+- Designed model architectures grounded in the plan's oracle thresholds
+- Trained against per-experiment metric capture (`metrics.jsonl`, `training_status.json`) with hard gate enforcement on artifact contracts
+- Produced explainability artifacts (saliency / GradCAM / attention), ablation studies, statistical-significance testing, reproducibility verification
+- Delivered clean repos with comprehensive test suites (data, ML, integration tiers)
+- Zero ZO artifacts leaked — every delivery repo passes the isolation enforcer
 
-**Total cost:** ~$11 across all sessions.
+Measured cost, accuracy, and wall-time figures for the canonical reference run are tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx) and refreshed on every release.
+
+Representative delivery-repo structure (every project produces this shape; details vary by domain):
 
 ```
-mnist-delivery/          ← delivery repo (clean)
+delivery-repo/
 ├── src/
-│   ├── model.py         ← CNN architecture
-│   ├── train.py         ← training loop
-│   ├── inference.py     ← prediction pipeline
-│   └── data_loader.py   ← MNIST DataLoader
-├── models/best_model.pt ← trained checkpoint (99% accuracy)
-├── oracle/eval.py       ← oracle evaluation script
-├── xai/gradcam.py       ← GradCAM visualizations
-├── experiments/         ← ablation, significance, reproducibility
-├── tests/               ← 98 tests passing
+│   ├── data/            ← DataLoader, transforms, EDA
+│   ├── model/           ← architecture
+│   └── engineering/     ← train.py, evaluate.py
+├── models/checkpoints/  ← trained checkpoints + metadata
+├── .zo/experiments/     ← per-iteration hypothesis, config, metrics, result, next
+├── reports/             ← Phase 1 data-quality + Phase 5 analysis reports
+├── notebooks/phase/     ← auto-generated phase-by-phase notebooks
+├── docker/              ← Dockerfile + compose (GPU/CPU auto-detected)
+├── tests/{unit,ml,integration}/
 └── pyproject.toml
 ```
 
@@ -491,13 +491,13 @@ mnist-delivery/          ← delivery repo (clean)
 | 2 | Memory layer, semantic index | Done |
 | 3 | Orchestration engine + lifecycle wrapper | Done |
 | 4 | Evolution engine, CLI, integration tests | Done |
-| 5 | E2E validation (MNIST: 99% accuracy) | Done |
+| 5 | E2E validation on full ML-lifecycle reference projects | Done |
 | 1.0.1 | Interactive tmux, brand panel, smart build, Research Scout, self-evolution | Done |
 | 1.0.2 | Phase snapshots, experiment capture + autonomous loop, brand v2, website v2 | Done |
-| 1.0.2 | Platform-aware Docker scaffold + MNIST 99.66% / CIFAR-10 91.62% v1 demos | Done |
+| 1.0.2 | Platform-aware Docker scaffold + reference-project end-to-end demos | Done |
+| 1.0.2-post | `--low-token` cost-saving preset (two-tier model routing, per-phase trims) + `ZOTrainingCallback` hard gate enforcement | Done |
 
-704 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands.
-v1 demos in [`mnist-digit-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) and [`cifar10-classifier-delivery/`](https://github.com/SamPlvs/zero-operators#) (separate repos) — 16 + 19 delivery-side tests passing.
+735 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
 
 ---
 
@@ -535,7 +535,7 @@ External CLI tools that fit ZO's launcher architecture and are being evaluated f
 <br/>
 <br/>
 
-`ZERO OPERATORS` · `v1.0.2` · `validated` · `99% MNIST accuracy`
+`ZERO OPERATORS` · `v1.0.2` · `validated` · `oracle-driven`
 
 <br/>
 </div>
