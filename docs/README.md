@@ -1,6 +1,6 @@
 # Zero Operators Documentation
 
-This directory contains the source for [docs.zero-operators.dev](https://docs.zero-operators.dev) — the public Zero Operators documentation site, built with [Mintlify](https://mintlify.com/).
+This directory contains the source for [docs.zerooperators.com](https://docs.zerooperators.com) — the public Zero Operators documentation site, built with [Mintlify](https://mintlify.com/).
 
 ## Local development
 
@@ -77,7 +77,7 @@ The site auto-deploys on push to `main` once a Mintlify project is connected to 
 1. Sign up at [mintlify.com](https://mintlify.com/) (free for OSS).
 2. Connect the `SamPlvs/zero-operators` GitHub repo.
 3. Point the project at the `docs/` directory (Mintlify reads `mint.json` from there).
-4. Add the `docs.zero-operators.dev` custom domain in the Mintlify dashboard.
+4. Add the `docs.zerooperators.com` custom domain in the Mintlify dashboard.
 5. Update DNS — point a CNAME to Mintlify per their dashboard instructions.
 
 After setup, every push to `main` that touches `docs/` re-deploys the site.
