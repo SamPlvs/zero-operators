@@ -992,3 +992,47 @@ with patch("zo.cli._zo_root", return_value=tmp_path), \
     result = runner.invoke(cli, ["init", "foo", "--dry-run"])
 ```
 669 tests now pass on a no-tmux host. The fix would have caught the original failure: with the patch, the test reaches the `--dry-run` rejection regardless of whether tmux is on PATH.
+
+---
+
+## PR-035: Aspirational Agent Contracts Get Ignored — Hard Gate Enforcement is Mandatory
+**Source:** Session 025 (2026-04-27), first `--low-token` MNIST bench
+**Root cause category:** incomplete_rule
+
+**Failure:** Bench completed with 98.83% test accuracy, but `zo watch-training` showed "Waiting for training to start..." for the entire run. The Model Builder (Sonnet, low-token mode) wrote vanilla PyTorch with a manual `history` list dumped to `experiments/exp-001/results.json` instead of using `ZOTrainingCallback.for_experiment()` to write `metrics.jsonl` + `training_status.json` into `.zo/experiments/exp-001/`. The Phase 4 gate STILL passed because it only checked for `result.md` existence. STATE.md also stayed at `phase_2` despite execution reaching Phase 4 — separate persistence bug, but the same family.
+
+Triple-layered contract violation:
+- **`model-builder.md`** had two contradictory instructions: Phase 4 section said `for_experiment()` → `.zo/experiments/<exp_id>/`; "Training Metrics Protocol REQUIRED" section said `log_dir="logs/training"`. Sonnet ignored both and picked the most natural pattern (vanilla PyTorch + JSON dump).
+- **`wrapper.py:530`** and **`cli.py:2638`** (watch-training) both hardcoded `<delivery>/logs/training/` — even if the agent had followed the Phase 4 instructions, the dashboard would still have been blank because it was looking at the wrong path.
+- **`orchestrator._finalize_experiments`** only checked `result.md`. No enforcement of the actual metrics-callback artifacts.
+
+### Rules
+
+1. **Aspirational documentation isn't enforcement.** Two contradictory instructions in an agent's contract → agent ignores both. Smaller models (Sonnet vs Opus) take the path of least resistance more aggressively. The fix is making the contract impossible to bypass, not just removing the contradiction.
+   - **Why:** Same lesson as PR-005 ("enforcement > aspiration"), now applied to agent training contracts. PR-005 was about doc-cascade rules; this generalises to any contract that previously relied on agent compliance.
+   - **How to apply:** When adding a new artifact requirement to any agent contract, also add a gate check in the orchestrator that fails the phase if the artifact is missing. The check goes in the same PR as the contract update, never as a follow-up.
+
+2. **Single source of truth for any path agents write to.** When the orchestrator mints a directory for agents to write to, that path MUST be:
+   - Injected explicitly into the spawn prompt (already done by `_prompt_experiment_context()`)
+   - The ONLY path mentioned in the agent's persistent contract file (`.claude/agents/<name>.md`)
+   - The path that consumers (watch-training, wrapper auto-split, notebook generators) read from
+   - The path the gate enforces existence on
+   - **Centralised in a resolver function** so adding a new consumer is one import, not four hardcoded path strings.
+   - *Failure ref:* `logs/training/` appeared in 4 places (model-builder.md, wrapper.py:530, cli.py:2638, model-builder.md again in checklist) and `.zo/experiments/<exp_id>/` appeared in 1 place (orchestrator's spawn prompt). The mismatch surface area was 4× larger than the correct path.
+
+3. **Test for contract enforcement requires negative cases.** Tests that pass `result.md` + the new artifacts and assert PROCEED prove the happy path. Tests that OMIT each individual artifact and assert ITERATE prove the gate fails when the contract is bypassed. Both are mandatory — without negative tests, regressions can slip in (e.g., someone changes the gate to skip a check "because it broke a test" and the gate becomes aspirational again).
+   - *Failure ref:* The original `test_result_md_allows_automated_gate` only proved happy path. There was no test asserting "missing metrics.jsonl → gate ITERATEs" before this fix.
+
+### Verified Solution
+
+`src/zo/experiments.py`: new `resolve_active_experiment_dir()` — the canonical path resolver used by every consumer; resolution order is most-recent RUNNING → most-recent COMPLETE → None.
+
+`src/zo/cli.py:watch_training` and `src/zo/wrapper.py:_maybe_open_training_pane()`: both call `resolve_active_experiment_dir()` instead of hardcoding `logs/training/`. Wrapper now also passes `--repo` to the spawned `zo watch-training` subprocess so the dashboard resolves the same active experiment without cwd detection.
+
+`src/zo/orchestrator.py:_finalize_experiments()`: extended to require `metrics.jsonl` and `training_status.json` in every running experiment's dir alongside `result.md`. Missing artifacts surface in the gate rationale with the literal hint "ZOTrainingCallback not used" so the next iteration's Lead prompt makes the cause unambiguous.
+
+`.claude/agents/model-builder.md`: contradictory `log_dir="logs/training"` example removed; Training Metrics Protocol section now documents `for_experiment()` factory exclusively; stale "Experiment Tracking Log" + "Iteration Report" sections collapsed into a single pointer to the Phase 4 capture layer; Validation Checklist now includes existence checks for `metrics.jsonl` + `training_status.json`.
+
+`specs/agents.md` Section 3 (Model Builder): Key outputs + Validation checklist updated to match the agent file. Added "Training metrics protocol (hard gate)" subsection making the gate enforcement explicit at the spec level.
+
+19 new tests: 8 for `resolve_active_experiment_dir` (running-preferred-over-complete, fall-back-to-complete, skips-failed-and-aborted, etc.); 4 for Phase 4 gate enforcement (missing-metrics-blocks, missing-status-blocks, all-three-pass, rationale-lists-all-missing); 3 for `zo watch-training` path resolution (resolves-running-exp, falls-back-to-experiments-root, does-not-use-legacy-path); 4 for wrapper auto-split (skips-when-no-zo-dir, skips-when-no-active-exp, opens-pane-when-status-json-exists, ignores-legacy-logs-training-path). Plus `test_experiment_flow.py` + `test_auto_iteration.py` helpers updated to write the new required artifacts. Test count 706 → 725. ruff `src/zo/` clean. validate-docs 10/10.

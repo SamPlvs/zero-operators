@@ -624,3 +624,110 @@ class TestMonitorSessionLogs:
         )
         result = wrapper.monitor_session_logs(log_dir)
         assert len(result) == 2
+
+
+class TestMaybeOpenTrainingPane:
+    """The auto-split tmux pane must look at .zo/experiments/<exp_id>/.
+
+    Regression: previously hardcoded ``logs/training/training_status.json``,
+    which never matched the path ZOTrainingCallback writes.
+    """
+
+    def test_skips_when_no_zo_experiments_dir(
+        self, comms: CommsLogger, tmp_log_dir: Path, tmp_path: Path,
+    ) -> None:
+        delivery = tmp_path / "delivery"
+        delivery.mkdir()
+        wrapper = LifecycleWrapper(comms, log_dir=tmp_log_dir)
+        # These attributes are set by wait_for_completion(); poke them in
+        # directly so we can unit-test _maybe_open_training_pane in isolation.
+        wrapper._project_name = "demo"
+        wrapper._delivery_repo = delivery
+        wrapper._training_pane_id = None
+        # Force "in tmux" so we test the metrics-file branch, not
+        # the tmux check.
+        with mock.patch.object(
+            LifecycleWrapper, "_is_in_tmux", return_value=True,
+        ), mock.patch("subprocess.run") as mock_run:
+            wrapper._maybe_open_training_pane()
+        mock_run.assert_not_called()
+        assert wrapper._training_pane_id is None
+
+    def test_skips_when_no_active_experiment(
+        self, comms: CommsLogger, tmp_log_dir: Path, tmp_path: Path,
+    ) -> None:
+        delivery = tmp_path / "delivery"
+        (delivery / ".zo" / "experiments").mkdir(parents=True)
+        wrapper = LifecycleWrapper(comms, log_dir=tmp_log_dir)
+        # These attributes are set by wait_for_completion(); poke them in
+        # directly so we can unit-test _maybe_open_training_pane in isolation.
+        wrapper._project_name = "demo"
+        wrapper._delivery_repo = delivery
+        wrapper._training_pane_id = None
+        with mock.patch.object(
+            LifecycleWrapper, "_is_in_tmux", return_value=True,
+        ), mock.patch("subprocess.run") as mock_run:
+            wrapper._maybe_open_training_pane()
+        mock_run.assert_not_called()
+
+    def test_opens_pane_when_active_exp_has_status_json(
+        self, comms: CommsLogger, tmp_log_dir: Path, tmp_path: Path,
+    ) -> None:
+        from zo.experiments import mint_experiment
+
+        delivery = tmp_path / "delivery"
+        delivery.mkdir()
+        reg_dir = delivery / ".zo" / "experiments"
+        reg_dir.mkdir(parents=True)
+        exp = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        # Drop the status file in the experiment dir — this is what
+        # ZOTrainingCallback.for_experiment() writes.
+        (Path(exp.artifacts_dir) / "training_status.json").write_text(
+            '{"is_training": true, "epoch": 1}\n', encoding="utf-8",
+        )
+
+        wrapper = LifecycleWrapper(comms, log_dir=tmp_log_dir)
+        # These attributes are set by wait_for_completion(); poke them in
+        # directly so we can unit-test _maybe_open_training_pane in isolation.
+        wrapper._project_name = "demo"
+        wrapper._delivery_repo = delivery
+        wrapper._training_pane_id = None
+        with mock.patch.object(
+            LifecycleWrapper, "_is_in_tmux", return_value=True,
+        ), mock.patch(
+            "subprocess.run",
+            return_value=mock.Mock(returncode=0, stdout="%pane-1\n"),
+        ) as mock_run:
+            wrapper._maybe_open_training_pane()
+
+        assert wrapper._training_pane_id == "%pane-1"
+        # Verify the spawned watch-training got --repo so it can resolve
+        # the same active experiment without cwd detection.
+        cmd = mock_run.call_args[0][0]
+        assert "watch-training" in cmd
+        assert "--repo" in cmd
+
+    def test_does_not_check_legacy_logs_training_path(
+        self, comms: CommsLogger, tmp_log_dir: Path, tmp_path: Path,
+    ) -> None:
+        """Sanity: even if `<delivery>/logs/training/training_status.json`
+        exists, the wrapper ignores it (the path is no longer authoritative).
+        """
+        delivery = tmp_path / "delivery"
+        # Old-style legacy file present, but no .zo/experiments registry.
+        (delivery / "logs" / "training").mkdir(parents=True)
+        (delivery / "logs" / "training" / "training_status.json").write_text(
+            '{"is_training": true}\n', encoding="utf-8",
+        )
+        wrapper = LifecycleWrapper(comms, log_dir=tmp_log_dir)
+        # These attributes are set by wait_for_completion(); poke them in
+        # directly so we can unit-test _maybe_open_training_pane in isolation.
+        wrapper._project_name = "demo"
+        wrapper._delivery_repo = delivery
+        wrapper._training_pane_id = None
+        with mock.patch.object(
+            LifecycleWrapper, "_is_in_tmux", return_value=True,
+        ), mock.patch("subprocess.run") as mock_run:
+            wrapper._maybe_open_training_pane()
+        # Legacy file should NOT trigger the dashboard.
+        mock_run.assert_not_called()

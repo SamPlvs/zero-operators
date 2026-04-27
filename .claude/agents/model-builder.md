@@ -135,53 +135,15 @@ Example:
 }
 ```
 
-### Experiment Tracking Log
+### Per-Experiment Tracking and Reports
 
-File: `experiments/results/<experiment_id>.json`
-Format: JSON with per-iteration metrics.
-Example:
-```json
-{
-    "experiment_id": "exp_001",
-    "architecture": "TransformerRegressor",
-    "hyperparams": {"lr": 1e-4, "batch_size": 64, "hidden_dim": 256},
-    "epochs": 50,
-    "metrics_per_epoch": [
-        {"epoch": 1, "train_loss": 0.95, "val_loss": 0.97},
-        {"epoch": 50, "train_loss": 0.023, "val_loss": 0.031}
-    ],
-    "wall_time_seconds": 3600,
-    "gpu_memory_peak_mb": 4096,
-    "failure_modes": ["High error on regime_2 samples (>2x mean error)"],
-    "next_step_hypothesis": "Add regime-aware attention layer"
-}
-```
-
-### Iteration Report
-
-File: `experiments/results/<experiment_id>_report.md`
-Format: Markdown summary of training run with failure analysis.
-Example:
-```markdown
-# Experiment Report: exp_001
-
-## Architecture
-TransformerRegressor with 4 layers, 256 hidden dim, 8 attention heads.
-
-## Results
-- Val RMSE: 0.031 (target: < 0.05) -- PASS
-- Val MAE: 0.019
-- Training converged at epoch 45, early stopped at 50.
-
-## Failure Modes
-- Regime 2 samples show 2x mean error. Hypothesis: distribution shift in this regime.
-- Extreme values (>3 std) poorly predicted. Consider robust loss function.
-
-## Next Steps
-1. Add regime-aware attention layer
-2. Try Huber loss instead of MSE
-3. Request Data Engineer to add regime indicator feature
-```
+All per-experiment metrics, hypotheses, results, and follow-up ideas
+live in the experiment capture layer described above
+(`.zo/experiments/exp-NNN/`). Do **not** write parallel logs to
+`experiments/results/`, `logs/training/`, or any other ad-hoc path.
+The orchestrator, `zo watch-training`, `zo experiments`, and the
+autonomous loop all read from `.zo/experiments/` exclusively. Anything
+written elsewhere is invisible to the platform.
 
 ### Inference Script
 
@@ -206,47 +168,69 @@ Format: Python script with latency benchmarks.
 
 See `specs/agents.md` for full contract template and edge cases.
 
-## Training Metrics Protocol (REQUIRED)
+## Training Metrics Protocol (REQUIRED — Hard Gate)
 
-All training scripts **must** use the ZO training callback to emit structured metrics. This powers the live training dashboard visible during `zo build`.
+Every training script **must** use `ZOTrainingCallback.for_experiment()`.
+The orchestrator's Phase 4 gate **fails the phase** if
+`metrics.jsonl` and `training_status.json` are missing from the active
+experiment dir — there is no path through Phase 4 that bypasses this
+callback.
+
+The factory writes both files into `.zo/experiments/<exp_id>/` so
+`zo watch-training` and the auto-split tmux dashboard pick them up
+with zero extra wiring. Your spawn prompt receives the active
+`exp_id` — use it verbatim.
 
 ```python
-import sys
-sys.path.insert(0, "<ZO_REPO_ROOT>/src")  # if not already on PYTHONPATH
 from zo.training_metrics import ZOTrainingCallback
 
-cb = ZOTrainingCallback(
-    log_dir="logs/training",
-    experiment_id="exp-001",
-    experiment_name="<Architecture> / <Dataset>",
+# exp_id comes from the lead's spawn prompt — see the
+# "Experiment Capture Layer" section of the prompt.
+cb = ZOTrainingCallback.for_experiment(
+    registry_dir=".zo/experiments",
+    experiment_id=exp_id,
 )
-cb.on_training_start(total_epochs=100, config={"lr": 3e-4, "architecture": "ResNet-18"})
+cb.on_training_start(
+    total_epochs=total_epochs,
+    config={"lr": 3e-4, "architecture": "ResNet-18"},
+)
 
 for epoch in range(total_epochs):
     train_loss = train_one_epoch(model, train_loader, optimizer, criterion)
     val_metrics = validate(model, val_loader, criterion)
     cb.on_epoch_end(
-        epoch=epoch, total_epochs=total_epochs,
-        metrics={"train_loss": train_loss, "val_loss": val_metrics["loss"],
-                 "val_acc": val_metrics["accuracy"]},
+        epoch=epoch,
+        total_epochs=total_epochs,
+        metrics={
+            "train_loss": train_loss,
+            "val_loss": val_metrics["loss"],
+            "val_acc": val_metrics["accuracy"],
+        },
         learning_rate=optimizer.param_groups[0]["lr"],
     )
     if should_checkpoint(epoch, val_metrics):
         path = f"models/checkpoints/model_v1/epoch_{epoch}.pt"
         torch.save(checkpoint, path)
-        cb.on_checkpoint_saved(path=path, epoch=epoch,
-                               metrics={"val_acc": val_metrics["accuracy"]})
+        cb.on_checkpoint_saved(
+            path=path,
+            epoch=epoch,
+            metrics={"val_acc": val_metrics["accuracy"]},
+        )
 
 cb.on_training_end(final_metrics={"val_acc": best_acc})
 ```
 
-**Callbacks to call:**
-- `on_training_start()` — before the training loop (total epochs, config/hyperparams)
-- `on_epoch_end()` — after every epoch (all tracked metrics, learning rate)
-- `on_checkpoint_saved()` — whenever a checkpoint is written to disk (path, epoch, key metrics)
+**Required callbacks:**
+- `on_training_start()` — before the loop (total epochs, full config/hyperparams)
+- `on_epoch_end()` — after every epoch (all tracked metrics + learning rate)
+- `on_checkpoint_saved()` — whenever a checkpoint hits disk (path, epoch, key metrics)
 - `on_training_end()` — after training completes (final metrics)
 
-The callback writes to `logs/training/metrics.jsonl` (append-only history) and `logs/training/training_status.json` (current snapshot). The `zo watch-training` dashboard tails these files.
+**Do not write parallel logs.** No vanilla `print()` history dumps to
+`results.json`, no `logs/training/` directory, no custom JSONL paths.
+The capture layer is the single source of truth. Anything written
+elsewhere is invisible to `zo watch-training`, `zo experiments`, and
+the autonomous iteration loop.
 
 ## Coordination Rules
 
@@ -264,9 +248,9 @@ Before reporting done, verify:
 
 - [ ] Model trains without NaN loss across all epochs
 - [ ] Checkpoint saved at `models/checkpoints/` with full metadata (architecture, date, hyperparams, data split hash, final metrics)
-- [ ] Every training run is logged in `experiments/results/` with full hyperparams and per-epoch metrics
+- [ ] `ZOTrainingCallback.for_experiment(...)` was used; `metrics.jsonl` and `training_status.json` exist in `.zo/experiments/<exp_id>/` (Phase 4 gate fails otherwise)
+- [ ] `hypothesis.md`, `config.yaml`, and (post-result) `next.md` are written into the same `.zo/experiments/<exp_id>/` directory
 - [ ] Inference latency measured and documented (or explicitly flagged as not yet benchmarked)
-- [ ] Failure cases documented in iteration report (what the model struggles with, per-sample analysis)
 - [ ] No off-limits files were modified
 - [ ] DataLoader contract was validated before training began
 - [ ] All code has type hints, Google-style docstrings, functions under 50 lines, files under 500 lines

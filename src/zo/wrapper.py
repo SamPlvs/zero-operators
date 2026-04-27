@@ -520,6 +520,10 @@ class LifecycleWrapper:
 
         Only fires once.  Requires tmux and both *project_name* and
         *delivery_repo* to be set on the wrapper instance.
+
+        Looks for ``training_status.json`` inside the active Phase 4
+        experiment's artifacts dir (``.zo/experiments/<exp_id>/``),
+        which is where ``ZOTrainingCallback.for_experiment()`` writes.
         """
         if self._training_pane_id is not None:
             return  # already open (or attempted)
@@ -527,7 +531,12 @@ class LifecycleWrapper:
             return
         if not self._is_in_tmux():
             return
-        metrics_file = Path(self._delivery_repo) / "logs" / "training" / "training_status.json"
+        from zo.experiments import resolve_active_experiment_dir
+
+        active_dir = resolve_active_experiment_dir(Path(self._delivery_repo))
+        if active_dir is None:
+            return
+        metrics_file = active_dir / "training_status.json"
         if not metrics_file.exists():
             return
 
@@ -536,7 +545,8 @@ class LifecycleWrapper:
             result = subprocess.run(
                 ["tmux", "split-window", "-v", "-p", "40", "-d",
                  "-P", "-F", "#{pane_id}",
-                 "zo", "watch-training", "-p", self._project_name],
+                 "zo", "watch-training", "-p", self._project_name,
+                 "--repo", str(self._delivery_repo)],
                 capture_output=True, text=True, timeout=10,
             )
             pane_id = result.stdout.strip()

@@ -23,6 +23,7 @@ from zo.experiments import (
     parse_next_md,
     parse_result_md,
     render_hypothesis_md,
+    resolve_active_experiment_dir,
     save_registry,
     update_next_ideas,
     update_result,
@@ -458,3 +459,106 @@ class TestRenderHypothesisMd:
         exp = Experiment(id="exp-001", phase="phase_4")
         rendered = render_hypothesis_md(exp)
         assert "TODO" in rendered
+
+
+class TestResolveActiveExperimentDir:
+    """Resolution rules for `zo watch-training` and the wrapper auto-split.
+
+    The dashboard needs to point at the directory where ZOTrainingCallback
+    is writing for the live (or most recently completed) Phase 4 run.
+    """
+
+    def _registry_dir(self, delivery: Path) -> Path:
+        return delivery / ".zo" / "experiments"
+
+    def test_returns_none_when_no_zo_dir(self, tmp_path: Path) -> None:
+        # No .zo/ at all (delivery repo not yet initialised).
+        assert resolve_active_experiment_dir(tmp_path) is None
+
+    def test_returns_none_when_registry_missing(self, tmp_path: Path) -> None:
+        # .zo/experiments/ exists but no registry.json yet.
+        self._registry_dir(tmp_path).mkdir(parents=True)
+        assert resolve_active_experiment_dir(tmp_path) is None
+
+    def test_returns_none_when_registry_empty(self, tmp_path: Path) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        save_registry(reg_dir, ExperimentRegistry(project="demo"))
+        assert resolve_active_experiment_dir(tmp_path) is None
+
+    def test_returns_running_experiment(self, tmp_path: Path) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        exp = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        result = resolve_active_experiment_dir(tmp_path)
+        assert result == Path(exp.artifacts_dir)
+
+    def test_prefers_most_recent_running(self, tmp_path: Path) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        # Two running experiments; resolver picks the newest by `created`.
+        first = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        second = mint_experiment(
+            reg_dir, project="demo", phase="phase_4", parent_id=first.id,
+        )
+        # Force a strictly later created timestamp on `second` so the
+        # comparison is deterministic regardless of system clock resolution.
+        registry = load_registry(reg_dir)
+        registry.find(second.id).created = datetime.now(UTC).replace(
+            microsecond=999_999,
+        )
+        save_registry(reg_dir, registry)
+        result = resolve_active_experiment_dir(tmp_path)
+        assert result == Path(second.artifacts_dir)
+
+    def test_falls_back_to_most_recent_complete(
+        self, tmp_path: Path,
+    ) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        exp = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        update_result(
+            reg_dir,
+            exp.id,
+            ExperimentResult(
+                oracle_tier="should_pass",
+                primary_metric=PrimaryMetric(name="acc", value=0.95),
+            ),
+        )
+        # No RUNNING experiments now — fall back to COMPLETE.
+        result = resolve_active_experiment_dir(tmp_path)
+        assert result == Path(exp.artifacts_dir)
+
+    def test_running_preferred_over_complete(self, tmp_path: Path) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        # First experiment: complete.
+        first = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        update_result(
+            reg_dir,
+            first.id,
+            ExperimentResult(
+                oracle_tier="could_pass",
+                primary_metric=PrimaryMetric(name="acc", value=0.90),
+            ),
+        )
+        # Second experiment: running. Resolver should pick this one even
+        # though the complete one might be more recently mutated.
+        second = mint_experiment(
+            reg_dir, project="demo", phase="phase_4", parent_id=first.id,
+        )
+        result = resolve_active_experiment_dir(tmp_path)
+        assert result == Path(second.artifacts_dir)
+
+    def test_skips_failed_and_aborted(self, tmp_path: Path) -> None:
+        reg_dir = self._registry_dir(tmp_path)
+        reg_dir.mkdir(parents=True)
+        failed = mint_experiment(reg_dir, project="demo", phase="phase_4")
+        update_status(reg_dir, failed.id, ExperimentStatus.FAILED)
+        aborted = mint_experiment(
+            reg_dir, project="demo", phase="phase_4", parent_id=failed.id,
+        )
+        update_status(reg_dir, aborted.id, ExperimentStatus.ABORTED)
+        # No RUNNING and no COMPLETE — return None, don't silently
+        # surface a failed/aborted experiment as "active".
+        assert resolve_active_experiment_dir(tmp_path) is None
