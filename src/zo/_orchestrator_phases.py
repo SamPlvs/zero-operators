@@ -40,6 +40,43 @@ AGENT_PHASE_MAP: dict[str, list[str]] = {
 
 
 # ---------------------------------------------------------------------------
+# Low-token routing overrides
+# ---------------------------------------------------------------------------
+#
+# Two structural levers that push --low-token past the lead-only ~30%
+# ceiling toward the 50-60% target documented in
+# docs/reference/cost-benchmark.mdx:
+#
+# 1. LOW_TOKEN_HAIKU_AGENTS — pattern-matching agents (review, test,
+#    oracle) routed to Haiku 4.5 via the lead's spawn prompt. Haiku is
+#    ~3x cheaper than Sonnet and excels at structured pattern-matching
+#    tasks (SWE-bench 73.3%).
+# 2. LOW_TOKEN_PHASE_DROPS — per-phase agent skip list. Phase 1 spawns
+#    drop to just data-engineer; Phase 5 deep analysis (xai +
+#    domain-evaluator) skipped in favour of the lead writing a single
+#    summary. Cross-phase cross-cutting agents (research-scout) are
+#    handled separately in `_agents_for_phase`.
+#
+# Both knobs are documented in docs/reference/low-token-preset.mdx —
+# keep in sync.
+
+LOW_TOKEN_HAIKU_AGENTS: frozenset[str] = frozenset({
+    "code-reviewer",   # pattern-matching: convention checks, style review
+    "test-engineer",   # pattern-matching: pytest scaffolding, fixture writing
+    "oracle-qa",       # mostly mechanical: run eval, extract metrics, write result.md
+})
+
+LOW_TOKEN_PHASE_DROPS: dict[str, frozenset[str]] = {
+    "phase_1": frozenset({
+        "code-reviewer", "test-engineer", "domain-evaluator",
+    }),
+    "phase_5": frozenset({
+        "xai-agent", "domain-evaluator",
+    }),
+}
+
+
+# ---------------------------------------------------------------------------
 # Phase templates per workflow mode
 # ---------------------------------------------------------------------------
 
