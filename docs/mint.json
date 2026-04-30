@@ -74,6 +74,12 @@
         "reference/low-token-preset",
         "reference/cost-benchmark"
       ]
+    },
+    {
+      "group": "Project",
+      "pages": [
+        "roadmap"
+      ]
     }
   ],
   "footerSocials": {

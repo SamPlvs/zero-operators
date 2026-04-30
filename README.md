@@ -26,6 +26,14 @@ You stay in the loop at human checkpoints. ZO remembers everything across sessio
 
 ---
 
+## A note on cost
+
+ZO v1 is optimised for **production-grade research engineering**. Agents iterate, verify, and write production-quality code — and that burns tokens. A canonical reference run with the default profile is on the order of $10–15 of API credits.
+
+For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on a budget), the [`--low-token` mode](#low-token-mode) currently delivers **~30% measured savings** on the same workload. We're actively pushing that further — prompt caching, Batch API, Files API integration are all on the [Roadmap](#roadmap), targeting 70–80% reduction.
+
+---
+
 ## User Workflow
 
 ```
@@ -498,6 +506,24 @@ delivery-repo/
 | 1.0.2-post | `--low-token` cost-saving preset (two-tier model routing, per-phase trims) + `ZOTrainingCallback` hard gate enforcement | Done |
 
 735 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
+
+---
+
+## Roadmap
+
+What we're working on next, in priority order. Open an issue or join a discussion on [GitHub](https://github.com/SamPlvs/zero-operators/issues) to weigh in.
+
+### 1. Broader coding-agent provider support
+
+Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes — OpenAI Codex CLI, OpenCode, and others — would let users bring their preferred provider, widen account and hardware compatibility, and unlock new spawn-agent topologies. Also a useful hedge against any single-vendor disruption.
+
+### 2. No-install web UI for non-engineering researchers
+
+The CLI-first experience suits software engineers. Researchers from other disciplines — biology, finance, social sciences — often hit friction with environment variables, Node.js, and tmux. Some end up paying others to install the surrounding tooling just to get started. A web UI would let those users manage agents and watch progress visually (similar in shape to Codex's desktop app), with one-click setup that hides the host-tooling layer entirely.
+
+### 3. Push `--low-token` mode toward 70–80% savings
+
+Current preset gives ~30% measured savings on the canonical reference run. The path to higher reductions is architectural: prompt caching via direct Anthropic SDK integration (replacing the current `claude` CLI subprocess), Batch API for non-real-time phases, and Files API for shared context across the team. Multi-week effort, gated behind the SDK refactor.
 
 ---
 
