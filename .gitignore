@@ -33,3 +33,7 @@ memory/*
 
 # Design source files contain project-specific examples (client-identifying)
 docs/source-design/
+
+# Local client-identifier blocklist for validate-docs.sh (NEVER commit).
+# See CONTRIBUTING.md → Confidentiality for the rationale.
+scripts/.client-blocklist

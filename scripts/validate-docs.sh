@@ -229,24 +229,35 @@ echo ""
 # when onboarding new clients.
 
 echo -e "${DIM}Check 8: Client confidentiality...${RESET}"
-# Blocklist: add client project identifiers, real names, locations, product codes
-# that must never appear in tracked ZO files. Use | to separate patterns.
+# Patterns to block live in scripts/.client-blocklist (gitignored — see .gitignore).
+# One pattern per line. Lines starting with # are comments; blank lines are skipped.
 # Keep patterns lowercase — grep -i handles case-insensitive matching.
-CLIENT_BLOCKLIST="prod-001|prod-001|prod-001|prod-001|prod-001|prod-001|prod-001|prod-001|prod-001"
-# Search tracked files only (not gitignored). Exclude this script itself.
-LEAKS=$(git ls-files -- '*.md' '*.py' '*.yaml' '*.yml' '*.json' '*.sh' \
-    | grep -v 'validate-docs.sh' \
-    | xargs grep -liE "$CLIENT_BLOCKLIST" 2>/dev/null || true)
-if [[ -z "$LEAKS" ]]; then
-    pass "No client identifiers found in tracked files"
+# When onboarding a new client, append their identifiers (project name, location,
+# tag prefixes, product codes) to that local file. Never put them in this script.
+BLOCKLIST_FILE="${SCRIPT_DIR}/.client-blocklist"
+if [[ -f "$BLOCKLIST_FILE" ]]; then
+    CLIENT_BLOCKLIST=$(grep -vE '^(#|[[:space:]]*$)' "$BLOCKLIST_FILE" | paste -sd '|' -)
 else
-    LEAK_COUNT=$(echo "$LEAKS" | wc -l | tr -d ' ')
-    fail "Client identifiers found in ${LEAK_COUNT} tracked file(s):"
-    echo "$LEAKS" | while read -r f; do
-        echo -e "    ${RED}${f}${RESET}"
-    done
-    echo -e "    ${DIM}Blocklist: ${CLIENT_BLOCKLIST}${RESET}"
-    echo -e "    ${DIM}Use project aliases (prod-001, prod-002) instead.${RESET}"
+    CLIENT_BLOCKLIST=""
+fi
+if [[ -z "$CLIENT_BLOCKLIST" ]]; then
+    warn "Skipped — no blocklist file at scripts/.client-blocklist (see CONTRIBUTING.md)"
+else
+    # Search tracked files only (not gitignored). Exclude this script and the
+    # blocklist itself (the latter is gitignored anyway, but be defensive).
+    LEAKS=$(git ls-files -- '*.md' '*.py' '*.yaml' '*.yml' '*.json' '*.sh' \
+        | grep -vE '(validate-docs\.sh|\.client-blocklist)$' \
+        | xargs grep -liE "$CLIENT_BLOCKLIST" 2>/dev/null || true)
+    if [[ -z "$LEAKS" ]]; then
+        pass "No client identifiers found in tracked files"
+    else
+        LEAK_COUNT=$(echo "$LEAKS" | wc -l | tr -d ' ')
+        fail "Client identifiers found in ${LEAK_COUNT} tracked file(s):"
+        echo "$LEAKS" | while read -r f; do
+            echo -e "    ${RED}${f}${RESET}"
+        done
+        echo -e "    ${DIM}Use project aliases (prod-001, prod-002) instead.${RESET}"
+    fi
 fi
 
 echo ""
