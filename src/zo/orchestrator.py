@@ -509,17 +509,36 @@ class Orchestrator:
     # -- Phase management -----------------------------------------------------
 
     def get_current_phase(self) -> PhaseDefinition | None:
-        """Return the first actionable phase (GATED or PENDING with deps met).
+        """Return the first actionable phase for the current session.
 
-        GATED phases are returned first so the CLI can prompt for human
-        approval before re-launching a session.
+        Resolution order:
+
+        1. **GATED** — needs a human decision before work can resume; the
+           CLI prompts for approval and re-launches.
+        2. **ACTIVE** — phase was already in flight from a prior session
+           (set by ``apply_human_decision(ITERATE)`` or by the autonomous
+           experiment loop's CONTINUE verdict, then persisted to STATE.md
+           when the session ended). Resume it. Without this branch, an
+           interrupted session (Ctrl-C, disconnect, OS reboot) leaves the
+           phase ACTIVE in STATE.md and ``zo continue`` silently returns
+           ``None`` ("All phases complete") — the bug captured in PR-036.
+        3. **PENDING with all dependencies COMPLETED** — fresh phase,
+           ready to start.
+
+        BLOCKED phases are intentionally not returned: they require human
+        escalation outside the normal resume path.
         """
         if self._workflow is None:
             return None
-        # Return a GATED phase first — it needs human decision
+        # 1. GATED — needs human decision
         for phase in self._workflow.phases:
             if phase.status == PhaseStatus.GATED:
                 return phase
+        # 2. ACTIVE — resume in-flight phase from a prior session
+        for phase in self._workflow.phases:
+            if phase.status == PhaseStatus.ACTIVE:
+                return phase
+        # 3. PENDING with deps met — fresh start
         completed = {
             p.phase_id for p in self._workflow.phases
             if p.status == PhaseStatus.COMPLETED

@@ -504,6 +504,105 @@ class TestGetCurrentPhase:
         """Returns None when workflow hasn't been decomposed."""
         assert orchestrator.get_current_phase() is None
 
+    def test_returns_active_phase_on_resume(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """ACTIVE phase from a prior session is returned for resume.
+
+        Set by ``apply_human_decision(ITERATE)`` or the autonomous loop's
+        CONTINUE verdict, then persisted in STATE.md when the session ends.
+        Without this, an interrupted session (Ctrl-C, disconnect, crash)
+        leaves the phase ACTIVE in STATE.md and ``zo continue`` returns
+        None — silently dropping all in-flight work. Captured as PR-036.
+        """
+        decomp = orchestrator.decompose_plan()
+        decomp.phases[0].status = PhaseStatus.COMPLETED
+        decomp.phases[1].status = PhaseStatus.ACTIVE
+        phase = orchestrator.get_current_phase()
+        assert phase is not None
+        assert phase.phase_id == "phase_2"
+        assert phase.status == PhaseStatus.ACTIVE
+
+    def test_gated_takes_priority_over_active(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """GATED resolves before ACTIVE — human decision blocks resume."""
+        decomp = orchestrator.decompose_plan()
+        decomp.phases[0].status = PhaseStatus.GATED
+        decomp.phases[1].status = PhaseStatus.ACTIVE
+        phase = orchestrator.get_current_phase()
+        assert phase is not None
+        assert phase.phase_id == "phase_1"
+        assert phase.status == PhaseStatus.GATED
+
+    def test_active_takes_priority_over_pending(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """ACTIVE resolves before PENDING — finish in-flight work first."""
+        decomp = orchestrator.decompose_plan()
+        # phase_1 ACTIVE (in flight), phase_2..n PENDING
+        decomp.phases[0].status = PhaseStatus.ACTIVE
+        phase = orchestrator.get_current_phase()
+        assert phase is not None
+        assert phase.phase_id == "phase_1"
+        assert phase.status == PhaseStatus.ACTIVE
+
+    def test_blocked_phase_not_returned(
+        self, orchestrator: Orchestrator,
+    ) -> None:
+        """BLOCKED phases require human escalation and aren't auto-resumed.
+
+        Locks current behaviour: if every actionable phase is BLOCKED,
+        get_current_phase returns None so the CLI can surface the block
+        to the human via a separate path rather than re-entering the
+        normal build loop.
+        """
+        decomp = orchestrator.decompose_plan()
+        decomp.phases[0].status = PhaseStatus.COMPLETED
+        decomp.phases[1].status = PhaseStatus.BLOCKED
+        # Remaining phases stay PENDING but their deps aren't met.
+        phase = orchestrator.get_current_phase()
+        assert phase is None
+
+    def test_real_resume_via_state_md_round_trip(
+        self,
+        orchestrator: Orchestrator,
+    ) -> None:
+        """End-to-end: STATE.md with ACTIVE phase restores and resumes.
+
+        This is the prod-001 scenario from PR-036: a hand-edited or
+        crash-persisted STATE.md has ``phase_N: active``, the orchestrator
+        decomposes the plan, ``_restore_phase_states`` reads the saved
+        status, and ``get_current_phase`` returns that phase for resume.
+        """
+        from datetime import UTC, datetime
+
+        from zo.memory import SessionState
+
+        # Write a STATE.md with phase_2 ACTIVE through the orchestrator's
+        # own MemoryManager so start_session() reads it back.
+        orchestrator._memory.write_state(
+            SessionState(
+                timestamp=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+                phase="phase_2",
+                phase_states={
+                    "phase_1": "completed",
+                    "phase_2": "active",
+                    "phase_3": "pending",
+                },
+            )
+        )
+        # start_session loads STATE.md; decompose_plan calls _restore_phase_states
+        orchestrator.start_session()
+        decomp = orchestrator.decompose_plan()
+        phase = orchestrator.get_current_phase()
+        assert phase is not None, "ACTIVE phase from STATE.md must resume"
+        assert phase.phase_id == "phase_2"
+        assert phase.status == PhaseStatus.ACTIVE
+        # Sibling phases must reflect their saved status too
+        assert decomp.phases[0].status == PhaseStatus.COMPLETED
+        assert decomp.phases[2].status == PhaseStatus.PENDING
+
 
 # ---------------------------------------------------------------------------
 # Phase status transitions
