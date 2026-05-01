@@ -140,6 +140,73 @@ class TestStateRoundTrip:
 
 
 # ---------------------------------------------------------------------------
+# Phase status validation at parse time
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseStatusValidation:
+    """``parse_state`` rejects unknown phase statuses with a clear error.
+
+    A hand-edited STATE.md with a status outside the PhaseStatus enum used to
+    crash deep inside the orchestrator (``PhaseStatus(value)`` ValueError) with
+    no hint at which file or line was at fault. Validation now happens at
+    parse time so the error names the offending phase, status, and file.
+    """
+
+    def test_valid_phase_statuses_match_enum(self) -> None:
+        """Drift guard: ``_VALID_PHASE_STATUSES`` must mirror the enum."""
+        from zo._memory_formats import _VALID_PHASE_STATUSES
+        from zo._orchestrator_models import PhaseStatus
+
+        assert {s.value for s in PhaseStatus} == _VALID_PHASE_STATUSES
+
+    def test_unknown_status_raises_with_clear_message(self) -> None:
+        bad_state = (
+            "timestamp: 2026-05-01T00:00:00Z\n"
+            "mode: continue\n"
+            "phase: phase_3\n"
+            "\n"
+            "## Phases\n"
+            "phase_1: completed []\n"
+            "phase_3: prep_complete [some detail]\n"
+        )
+        with pytest.raises(ValueError) as exc_info:
+            _parse_state(bad_state)
+
+        msg = str(exc_info.value)
+        assert "prep_complete" in msg
+        assert "phase_3" in msg
+        assert "STATE.md" in msg
+        # Must enumerate valid options so the user knows what to write
+        assert "completed" in msg
+        assert "active" in msg
+
+    def test_known_statuses_accepted(self) -> None:
+        good_state = (
+            "timestamp: 2026-05-01T00:00:00Z\n"
+            "mode: continue\n"
+            "phase: phase_3\n"
+            "\n"
+            "## Phases\n"
+            "phase_1: completed []\n"
+            "phase_2: completed []\n"
+            "phase_3: active []\n"
+            "phase_4: pending []\n"
+            "phase_5: gated []\n"
+            "phase_6: skipped []\n"
+        )
+        loaded = _parse_state(good_state)
+        assert loaded.phase_states == {
+            "phase_1": "completed",
+            "phase_2": "completed",
+            "phase_3": "active",
+            "phase_4": "pending",
+            "phase_5": "gated",
+            "phase_6": "skipped",
+        }
+
+
+# ---------------------------------------------------------------------------
 # Atomic write
 # ---------------------------------------------------------------------------
 

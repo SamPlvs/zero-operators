@@ -1036,3 +1036,50 @@ Triple-layered contract violation:
 `specs/agents.md` Section 3 (Model Builder): Key outputs + Validation checklist updated to match the agent file. Added "Training metrics protocol (hard gate)" subsection making the gate enforcement explicit at the spec level.
 
 19 new tests: 8 for `resolve_active_experiment_dir` (running-preferred-over-complete, fall-back-to-complete, skips-failed-and-aborted, etc.); 4 for Phase 4 gate enforcement (missing-metrics-blocks, missing-status-blocks, all-three-pass, rationale-lists-all-missing); 3 for `zo watch-training` path resolution (resolves-running-exp, falls-back-to-experiments-root, does-not-use-legacy-path); 4 for wrapper auto-split (skips-when-no-zo-dir, skips-when-no-active-exp, opens-pane-when-status-json-exists, ignores-legacy-logs-training-path). Plus `test_experiment_flow.py` + `test_auto_iteration.py` helpers updated to write the new required artifacts. Test count 706 → 725. ruff `src/zo/` clean. validate-docs 10/10.
+
+---
+
+## PR-036: STATE.md Schema Validation Belongs at the Parser, Not the Consumer
+**Source:** Session 027 (2026-05-01), real `zo continue` run on prod-001
+**Root cause category:** missing_rule
+
+**Failure:** A hand-edited STATE.md on prod-001 contained `phase_3: prep_complete` (the operator was expressing "the prep wave is complete; the main wave is next" by inventing a status name) and `phase_3_main: pending` (an invented phase_id). Running `zo continue --repo .` crashed with:
+
+```
+File "src/zo/orchestrator.py", line 318, in _restore_phase_states
+    phase.status = PhaseStatus(saved_states[phase.phase_id])
+File "/usr/lib/python3.13/enum.py", line 726, in __call__
+    return cls.__new__(cls, value)
+ValueError: 'prep_complete' is not a valid PhaseStatus
+```
+
+The stack trace pointed at `enum.py` and `_restore_phase_states`. Nothing in the trace mentioned STATE.md, the offending value, or the valid options. The user had to read code to figure out where the problem was.
+
+The `phase_3_main:` line was silently dropped by the regex (`_PHASE_LINE_RE = r"^(phase_\d+):\s*(\w+)\s*(.*)"` only matches `phase_<digits>:`, so `phase_3_main:` is a no-match) — which masked the schema violation entirely from the operator's perspective.
+
+### Rules
+
+1. **A memory file with a schema is the parser's responsibility, not the consumer's.** When a memory layer publishes a structured field with constrained values (here, `phase_states[pid]` must be one of `pending|active|gated|blocked|completed|skipped`), validation belongs at the boundary that ingests the file — not three call-sites downstream.
+   - **Why:** Validation at the consumer surfaces a stack trace that doesn't mention the file. The operator has to walk the call graph backwards to figure out that STATE.md is at fault. Validation at the parser surfaces the file path, the field, the bad value, and the valid options in a single error message.
+   - **How to apply:** Whenever `_memory_formats.py` extracts a value from STATE.md / DECISION_LOG.md / PRIORS.md that downstream code coerces to a closed enum, add an explicit string check at parse time. Mirror the enum's values as a module-local frozenset to keep the import graph clean, and add a drift-guard test asserting the two stay in sync.
+
+2. **STATE.md is a hand-editable contract.** CLAUDE.md "On Every Commit" instructs both Claude and humans to update STATE.md directly (`Update memory/zo-platform/STATE.md — reflect current phase, completed items, known issues, what's next`). Any field with constrained values must (a) be documented in STATE.md or the memory spec, and (b) fail fast with a helpful error if hand-edited to an invalid value. A schema that's only enforced by a far-off `enum.py` is a footgun.
+   - **Why:** Hand-edits during fast-moving work (e.g. closing a wave at the end of a long session) are exactly when typos and invented vocabulary slip in. The operator's mental model ("phase 3 has two waves") may not match the data model ("phase_3 is one phase with one of six statuses"). The error must explain the mismatch, not punt to a stack trace.
+   - **How to apply:** Before adding any field to a SessionState/DecisionEntry/PriorEntry that has constrained values, write the parse-time validator + drift-guard test in the same PR. Memory schemas extend together: model → parser → validator → test.
+
+3. **Silent regex non-matches in a structured-line parser are a hazard.** The `phase_3_main: pending` line was silently ignored because `_PHASE_LINE_RE` is strict about `phase_<digits>:` only. The operator believed the line was being captured. There was no warning, no error, no log line. Future memory parsers should log a debug-level warning when a line in a structured section fails to match the expected pattern, OR the parse should be strict enough that any non-match in a known section raises.
+   - **Why:** Silent skip + invalid-status crash combined to make the failure mode confusing — the operator believed they had two phase entries, both of which were "wrong" in different ways, and the parser dropped one without comment while crashing on the other deep in the orchestrator.
+   - **How to apply:** This rule is captured for awareness; not enforced in PR-036 itself because adding a warning for unrecognised phase_ids would generate noise in legitimately stale STATE.md files. Revisit if the same failure mode recurs.
+
+### Verified Solution
+
+`src/zo/_memory_formats.py`: new module-level `_VALID_PHASE_STATUSES: frozenset[str]` constant mirroring `PhaseStatus.value`s. In `parse_state`, after extracting `(pid, status, rest)` from a `## Phases` line, check `status not in _VALID_PHASE_STATUSES` and raise `ValueError(f"Invalid phase status {status!r} for {pid!r} in STATE.md ## Phases section. Valid statuses: {valid}. Hand-edited STATE.md must use only these values; see PhaseStatus enum in zo._orchestrator_models.")` if the check fails. Constant placed near the existing `_BOLD_FIELD_RE` / `_DECISION_SPLIT_RE` / `_PRIOR_SPLIT_RE` pattern constants with a comment pointing back to `PhaseStatus`.
+
+`tests/unit/test_memory.py`: new `TestPhaseStatusValidation` class with three tests:
+- `test_valid_phase_statuses_match_enum`: drift guard, asserts `{s.value for s in PhaseStatus} == _VALID_PHASE_STATUSES`. Catches the case where someone adds `PhaseStatus.NEW_VALUE = "new_value"` without updating the parser's allowlist.
+- `test_unknown_status_raises_with_clear_message`: feeds a STATE.md with `phase_3: prep_complete`, asserts `ValueError` is raised, and asserts the error message contains `"prep_complete"`, `"phase_3"`, `"STATE.md"`, `"completed"`, `"active"` (so the operator sees the bad value, the offending phase, the file, and at least two valid options).
+- `test_known_statuses_accepted`: feeds a STATE.md with all six valid statuses across phase_1..phase_6, asserts they round-trip into `phase_states` correctly. Locks in the happy path so the validator can't be tightened too far.
+
+Test count 735 → 738 + 7 skipped. ruff `src/zo/_memory_formats.py` clean. validate-docs.sh 9 passed / 0 failed / 2 warnings (both pre-existing).
+
+The fix would have caught the original failure: with `parse_state` validating, the user's `zo continue` run would have raised `ValueError: Invalid phase status 'prep_complete' for 'phase_3' in STATE.md ## Phases section. Valid statuses: ['active', 'blocked', 'completed', 'gated', 'pending', 'skipped'].` at session-load time — pointing them straight at STATE.md and giving them the fix.
