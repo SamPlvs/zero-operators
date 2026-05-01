@@ -24,6 +24,13 @@ _BOLD_FIELD_RE = re.compile(r"\*\*(.+?)\*\*:\s*(.*)")
 _DECISION_SPLIT_RE = re.compile(r"(?=^## Decision: )", re.MULTILINE)
 _PRIOR_SPLIT_RE = re.compile(r"(?=^## Prior: )", re.MULTILINE)
 
+# Mirrors PhaseStatus in zo._orchestrator_models. Kept here as a string set so
+# this module stays free of orchestrator imports; a drift-guard test in
+# tests/unit/test_memory.py asserts the two stay in sync.
+_VALID_PHASE_STATUSES: frozenset[str] = frozenset({
+    "pending", "active", "gated", "blocked", "completed", "skipped",
+})
+
 
 def _format_list(items: list[str]) -> str:
     """Format a Python list as ``[a, b, c]``."""
@@ -148,6 +155,14 @@ def parse_state(text: str) -> SessionState:
             m = _PHASE_LINE_RE.match(stripped)
             if m:
                 pid, status, rest = m.group(1), m.group(2), m.group(3)
+                if status not in _VALID_PHASE_STATUSES:
+                    valid = sorted(_VALID_PHASE_STATUSES)
+                    raise ValueError(
+                        f"Invalid phase status {status!r} for {pid!r} in "
+                        f"STATE.md ## Phases section. Valid statuses: {valid}. "
+                        f"Hand-edited STATE.md must use only these values; "
+                        f"see PhaseStatus enum in zo._orchestrator_models."
+                    )
                 phase_states[pid] = status
                 completed_by_phase[pid] = _parse_bracket_list(rest)
             continue
