@@ -1083,3 +1083,70 @@ The `phase_3_main:` line was silently dropped by the regex (`_PHASE_LINE_RE = r"
 Test count 735 → 738 + 7 skipped. ruff `src/zo/_memory_formats.py` clean. validate-docs.sh 9 passed / 0 failed / 2 warnings (both pre-existing).
 
 The fix would have caught the original failure: with `parse_state` validating, the user's `zo continue` run would have raised `ValueError: Invalid phase status 'prep_complete' for 'phase_3' in STATE.md ## Phases section. Valid statuses: ['active', 'blocked', 'completed', 'gated', 'pending', 'skipped'].` at session-load time — pointing them straight at STATE.md and giving them the fix.
+
+---
+
+## PR-037: `get_current_phase` Must Return ACTIVE Phases on Resume — Otherwise Interrupted Sessions Silently Drop In-Flight Work
+**Source:** Session 027 (2026-05-01), follow-up investigation triggered by user pushback after PR-036 didn't fully fix `zo continue` on prod-001
+**Root cause category:** missing_rule (resume-semantics gap, not test-coverage gap — the existing tests covered the happy paths but not the interrupted-session scenario)
+
+**Failure:** After PR-036 fixed the parse-time crash on prod-001's hand-edited STATE.md, the operator updated `phase_3: prep_complete` to `phase_3: active` ("phase 3 in progress, prep wave done, main wave starting"). Running `zo continue --repo .` no longer crashed — but printed "All phases complete. Nothing to do." and exited with 0. The orchestrator silently dropped the request.
+
+Tracing revealed `Orchestrator.get_current_phase`:
+
+```python
+def get_current_phase(self) -> PhaseDefinition | None:
+    """Return the first actionable phase (GATED or PENDING with deps met)."""
+    if self._workflow is None:
+        return None
+    for phase in self._workflow.phases:
+        if phase.status == PhaseStatus.GATED:
+            return phase
+    completed = {p.phase_id for p in self._workflow.phases if p.status == PhaseStatus.COMPLETED}
+    for phase in self._workflow.phases:
+        if phase.status != PhaseStatus.PENDING:
+            continue
+        if all(dep in completed for dep in phase.depends_on):
+            return phase
+    return None
+```
+
+ACTIVE phases were silently skipped (`if phase.status != PhaseStatus.PENDING: continue`). But ACTIVE is a real, persisted state set by two production paths:
+
+- `apply_human_decision(GateDecision.ITERATE)` at orchestrator.py:707 — human "iterate" verdict resets phase to ACTIVE for the next iteration.
+- The autonomous experiment loop at orchestrator.py:1046 — CONTINUE verdict resets phase to ACTIVE so the next iteration mints a child experiment.
+
+If a session is interrupted (Ctrl-C, SSH disconnect, OS reboot, agent crash) between `phase.status = PhaseStatus.ACTIVE` and the next iteration's launch, the ACTIVE status persists in STATE.md. On the next `zo continue`, `_restore_phase_states` correctly reads "active" back into the phase, but `get_current_phase` drops it on the floor and the operator gets "All phases complete" on a phase that's actually mid-iteration.
+
+The user's prod-001 case (manual STATE.md edit reflecting a "phase 3 in progress" mental model) hit the same code path that any crashed-during-iteration session would hit — making this not just a UX issue but a real crash-recovery bug.
+
+### Rules
+
+1. **Persisted-state fields must be reachable by every consumer that reads them.** If the orchestrator's state machine writes ACTIVE to disk via `phase.status = PhaseStatus.ACTIVE` (orchestrator.py:707, 1046), then every code path that reads `phase.status` from disk must handle the ACTIVE value. A "writes ACTIVE / reads only PENDING" asymmetry is a contract violation that surfaces only on interrupted-session paths — exactly the paths least likely to be in default test coverage.
+   - **Why:** Same family as PR-036 (validation-at-the-wrong-layer) but applied to the read side. The disk format is a public contract between sessions; consumers can't pretend a value isn't there just because the happy path doesn't produce it.
+   - **How to apply:** When adding a new `PhaseStatus` value (or extending any persisted enum), the PR must include consumer-side coverage proving every place that reads the value from disk handles it correctly. A grep for the new enum member should turn up handlers in every consumer that reads the field, not just the producer that writes it.
+
+2. **Test coverage must include the interrupted-session axis.** The original `TestGetCurrentPhase` had 5 tests covering: returns first PENDING, skips blocked dependency, advances after completion, returns None when all done, returns None without decomposition. None of them seeded an ACTIVE phase. The test class proved the orchestrator handles a clean lifecycle (PENDING → COMPLETED → next PENDING) but said nothing about resume from a non-clean state. Crash-recovery is a first-class scenario for any persistent state machine; tests must explicitly cover "phase is in state X when the session loads" for every X the producer can write.
+   - **Why:** Test coverage that only exercises the producer's clean lifecycle creates a false sense of correctness. Real users hit Ctrl-C, lose SSH, run out of API budget mid-session, or hand-edit STATE.md (per CLAUDE.md "On Every Commit"). Each of those produces a "consumer reads a state the happy-path tests never seeded" scenario.
+   - **How to apply:** Every `TestX` class for a state-machine consumer must include at least one test per non-terminal status the producer can write. For PhaseStatus this is at least PENDING, ACTIVE, GATED. (BLOCKED and SKIPPED are intentional stop states; their handling can be locked-in with negative tests asserting they don't auto-resume.)
+
+3. **Priority order between status values is part of the contract.** GATED > ACTIVE > PENDING isn't arbitrary — GATED needs human input before any work can resume, ACTIVE finishes in-flight work before starting new work, PENDING starts fresh. Tests must lock the priority order with explicit GATED-vs-ACTIVE and ACTIVE-vs-PENDING comparisons, not just "does this status get returned at all" smoke tests.
+   - *Failure ref:* The existing `test_gated_phase_returned_by_get_current_phase` in `TestPhaseFlow` proved GATED gets returned but didn't compare against PENDING or ACTIVE. The new `test_gated_takes_priority_over_active` and `test_active_takes_priority_over_pending` make the priority explicit.
+
+### Verified Solution
+
+`src/zo/orchestrator.py:get_current_phase` extended with an ACTIVE-resolution branch placed between the existing GATED-first loop and the PENDING-with-deps-met loop. Docstring updated to document the resolution order (1) GATED, (2) ACTIVE, (3) PENDING-with-deps-met, plus an explicit note that BLOCKED is intentionally skipped (requires human escalation outside the normal resume path).
+
+`tests/unit/test_orchestrator.py:TestGetCurrentPhase` extended with five tests:
+
+- `test_returns_active_phase_on_resume` — completed phase_1 + active phase_2 → returns phase_2 ACTIVE. Locks the bug fix.
+- `test_gated_takes_priority_over_active` — gated phase_1 + active phase_2 → returns phase_1 GATED. Locks priority order.
+- `test_active_takes_priority_over_pending` — active phase_1 + pending phase_2..n → returns phase_1 ACTIVE. Locks priority order.
+- `test_blocked_phase_not_returned` — completed phase_1 + blocked phase_2 → returns None. Locks intentional behaviour with explicit rationale in docstring.
+- `test_real_resume_via_state_md_round_trip` — end-to-end: write `SessionState(phase_states={"phase_1": "completed", "phase_2": "active", "phase_3": "pending"})` → `start_session` → `decompose_plan` (which calls `_restore_phase_states`) → `get_current_phase` returns phase_2 ACTIVE. Reproduces the prod-001 user scenario at the unit-test level.
+
+Test count 738 → 743 + 7 skipped. ruff `src/zo/orchestrator.py tests/unit/test_orchestrator.py` clean.
+
+The fix would have caught the original failure: with ACTIVE handled, the user's `zo continue` on prod-001 with `phase_3: active` would have resumed cleanly into the Phase 3 main wave kickoff. With ACTIVE handled, any session interrupted during the autonomous experiment loop's CONTINUE iteration also recovers correctly — the more important durable benefit.
+
+**Cross-reference:** PR-036 (parse-time status validation, same investigation, same domain). Both ship in PR #64.
