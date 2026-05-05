@@ -415,9 +415,12 @@ class Orchestrator:
 
         When ``caveman`` is also active (default with low-token; opt out
         via ``--no-caveman`` or plan ``caveman: false``), an additional
-        "Token Efficiency Skill" subsection is appended directing the
-        lead and all sub-agents to invoke the vendored caveman skill
-        for terse prose responses.
+        "Token Efficiency: Caveman-Style Prose" subsection is appended
+        containing the caveman rules **inline** (no Claude Code skill
+        auto-loading dependency — that path requires hooks we
+        deliberately don't install). The lead is instructed to pass the
+        same rules into every sub-agent's spawn prompt so the team
+        adopts terse prose end-to-end.
         """
         if not self._low_token:
             return ""
@@ -476,44 +479,57 @@ class Orchestrator:
             cannot be achieved without an SDK-level fix.""")]
         if self._caveman:
             sections.append(dedent("""\
-                # Token Efficiency Skill: Caveman Mode
+                # Token Efficiency: Caveman-Style Prose
 
-                **ACTIVATE caveman skill.** The vendored skill at
-                `.claude/skills/caveman/SKILL.md` is auto-loaded by Claude
-                Code. Adopt caveman speech (full intensity by default) for
-                all prose responses — yours and every sub-agent you spawn.
+                **Adopt terse, caveman-style prose for all chat
+                responses.** Pass this same instruction to every
+                sub-agent you spawn (include the rules below in their
+                spawn prompt — `Agent(..., prompt="...caveman rules...")`).
+                The reference skill is vendored at
+                `.claude/skills/caveman/SKILL.md` for users who install
+                the upstream hooks; we do not assume those hooks are
+                present, so the rules below are authoritative for this
+                session.
 
-                **What caveman compresses (chat prose):**
-                - Drop articles (a/an/the), filler (just/really/basically),
-                  pleasantries (sure/certainly/of course), hedging.
-                - Fragments OK. Short synonyms (big not extensive).
+                **Rules (intensity: full):**
+                - Drop articles (a/an/the), filler (just/really/basically/
+                  actually/simply), pleasantries (sure/certainly/of course/
+                  happy to), hedging.
+                - Fragments OK. Short synonyms (big not extensive,
+                  fix not "implement a solution for"). Technical terms
+                  exact.
                 - Pattern: `[thing] [action] [reason]. [next step].`
+                - Example bad: "Sure! I'd be happy to help. The issue
+                  is likely caused by your authentication middleware..."
+                - Example good: "Bug in auth middleware. Token expiry
+                  check use `<` not `<=`. Fix:"
 
-                **What caveman LEAVES INTACT (this is the safety guarantee
-                that makes auto-activation safe across the team):**
-                - Code blocks — verbatim, never compressed.
-                - Quoted error strings — verbatim.
-                - Tool inputs (Write/Edit args) — caveman only touches
+                **What stays VERBATIM (do not compress):**
+                - Code blocks — never compressed, every character intact.
+                - Quoted error strings — exact reproduction.
+                - Tool inputs (Write/Edit/Bash args) — we only compress
                   chat output, not tool calls. So all structured
                   artifacts the gates require (`metrics.jsonl`,
                   `result.md`, `training_status.json`, `hypothesis.md`,
-                  agent contracts) are written normally.
+                  agent contracts) are written normally — they go
+                  through Write/Edit, not chat.
                 - Security warnings, irreversible-action confirmations,
-                  multi-step sequences with order ambiguity — caveman
-                  auto-disables for these per its own rules.
+                  multi-step sequences where dropped articles/conjunctions
+                  could create order ambiguity. Drop caveman for these
+                  and resume after the clear part is done.
 
-                **For each sub-agent you spawn:** include "Use caveman
-                skill (full intensity) for all prose. Code blocks and
-                tool inputs unchanged per skill rules." in their
-                instructions, OR rely on the auto-load + skill
-                description (the skill's `description:` field declares
-                "auto-triggers when token efficiency is requested" —
-                low-token mode IS that request). Both work.
+                **DECISION_LOG entries, gate rationales, and
+                hand-off summaries:** these are persisted artifacts.
+                Apply caveman lightly — terse prose, but still readable
+                by the next session that reads the file cold. Lean
+                toward `lite` intensity for these (no filler/hedging,
+                keep articles + full sentences) over `full` (fragments,
+                drop articles).
 
                 **Opt-out for the user:** they can pass `--no-caveman` at
-                CLI time or set `caveman: false` in plan frontmatter to
-                disable this section. If they did, this subsection would
-                not be present.""" ))
+                CLI time or set `caveman: false` in plan frontmatter. If
+                they did, this subsection would not be present and you
+                would write normal prose.""" ))
         return "\n\n".join(sections)
 
     def _prompt_autonomy(self) -> str:
