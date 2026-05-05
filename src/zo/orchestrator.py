@@ -171,6 +171,7 @@ class Orchestrator:
         gate_mode: GateMode = GateMode.SUPERVISED,
         plan_path: Path | None = None,
         low_token: bool = False,
+        caveman: bool = False,
         max_iterations_override: int | None = None,
     ) -> None:
         self._plan = plan
@@ -182,6 +183,7 @@ class Orchestrator:
         self._gate_mode = gate_mode
         self._plan_path = plan_path
         self._low_token = low_token
+        self._caveman = caveman
         self._max_iterations_override = max_iterations_override
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
@@ -206,6 +208,17 @@ class Orchestrator:
     def low_token(self) -> bool:
         """Whether the low-token preset is active for this orchestrator."""
         return self._low_token
+
+    @property
+    def caveman(self) -> bool:
+        """Whether the caveman terse-output skill is active.
+
+        Only meaningful when ``low_token`` is also True; outside
+        low-token mode the orchestrator does not auto-direct agents to
+        invoke caveman (the skill file is still available at
+        ``.claude/skills/caveman/SKILL.md`` for manual use).
+        """
+        return self._caveman
 
     @property
     def session_state(self) -> SessionState:
@@ -399,13 +412,19 @@ class Orchestrator:
         Without this two-tier routing the savings ceiling is ~30%
         (lead-swap-only); with it, the ceiling moves to ~50-60% per
         ``docs/reference/cost-benchmark.mdx``.
+
+        When ``caveman`` is also active (default with low-token; opt out
+        via ``--no-caveman`` or plan ``caveman: false``), an additional
+        "Token Efficiency Skill" subsection is appended directing the
+        lead and all sub-agents to invoke the vendored caveman skill
+        for terse prose responses.
         """
         if not self._low_token:
             return ""
         haiku_list = ", ".join(
             f"`{name}`" for name in sorted(LOW_TOKEN_HAIKU_AGENTS)
         )
-        return dedent(f"""\
+        sections = [dedent(f"""\
             # Low-Token Sub-Agent Model Override
 
             **CRITICAL:** Low-token mode is active. The lead session (you)
@@ -454,7 +473,48 @@ class Orchestrator:
             does not accept a `model` parameter, log a `DECISION_LOG`
             entry noting this and proceed without the override —
             lead-side savings still apply, but sub-agent savings
-            cannot be achieved without an SDK-level fix.""")
+            cannot be achieved without an SDK-level fix.""")]
+        if self._caveman:
+            sections.append(dedent("""\
+                # Token Efficiency Skill: Caveman Mode
+
+                **ACTIVATE caveman skill.** The vendored skill at
+                `.claude/skills/caveman/SKILL.md` is auto-loaded by Claude
+                Code. Adopt caveman speech (full intensity by default) for
+                all prose responses — yours and every sub-agent you spawn.
+
+                **What caveman compresses (chat prose):**
+                - Drop articles (a/an/the), filler (just/really/basically),
+                  pleasantries (sure/certainly/of course), hedging.
+                - Fragments OK. Short synonyms (big not extensive).
+                - Pattern: `[thing] [action] [reason]. [next step].`
+
+                **What caveman LEAVES INTACT (this is the safety guarantee
+                that makes auto-activation safe across the team):**
+                - Code blocks — verbatim, never compressed.
+                - Quoted error strings — verbatim.
+                - Tool inputs (Write/Edit args) — caveman only touches
+                  chat output, not tool calls. So all structured
+                  artifacts the gates require (`metrics.jsonl`,
+                  `result.md`, `training_status.json`, `hypothesis.md`,
+                  agent contracts) are written normally.
+                - Security warnings, irreversible-action confirmations,
+                  multi-step sequences with order ambiguity — caveman
+                  auto-disables for these per its own rules.
+
+                **For each sub-agent you spawn:** include "Use caveman
+                skill (full intensity) for all prose. Code blocks and
+                tool inputs unchanged per skill rules." in their
+                instructions, OR rely on the auto-load + skill
+                description (the skill's `description:` field declares
+                "auto-triggers when token efficiency is requested" —
+                low-token mode IS that request). Both work.
+
+                **Opt-out for the user:** they can pass `--no-caveman` at
+                CLI time or set `caveman: false` in plan frontmatter to
+                disable this section. If they did, this subsection would
+                not be present.""" ))
+        return "\n\n".join(sections)
 
     def _prompt_autonomy(self) -> str:
         """Tell the agent how much autonomy it has based on gate mode."""
