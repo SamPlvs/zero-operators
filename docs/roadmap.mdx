@@ -11,19 +11,55 @@ For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on
 
 ---
 
-## Top priorities
+## What we're working on
+
+Three workstreams shape the next 1–2 quarters, driven by recent user feedback on cost, accessibility, and cross-phase autonomy. Grouped by horizon: **Now**, **Next quarter**, and **Major design**.
+
+### Now (next 2–4 weeks)
+
+<CardGroup cols={2}>
+  <Card title="Caveman integration" icon="leaf">
+    Bundle the [caveman](https://github.com/JuliusBrussee/caveman) terse-output skill into `--low-token` mode, scoped to agents that don't emit structured artifacts (data work, summarisation; not the oracle or training-callback paths). Target: another 10–20pp on top of the measured ~30% savings. First validation of our planned-integrations promise.
+  </Card>
+
+  <Card title="Onboarding hardening" icon="wand-magic-sparkles">
+    One-line installer (`curl … | bash`), Homebrew formula, and a new `zo doctor` command for auto-detect-and-fix on missing dependencies. Reduces the setup-friction wall before we invest in a full UI.
+  </Card>
+</CardGroup>
+
+### Next quarter (1–3 months)
 
 <CardGroup cols={1}>
+  <Card title="Cross-phase backedge primitive — DAG to graph, step one" icon="arrows-rotate">
+    Today's orchestrator behaves like a directed acyclic graph: phases run forward, gate-by-gate. When an issue surfaces during modelling that traces back to preprocessing — for example, a flipped waveform polarity that's invisible in raw data but obvious in trained-model behaviour — it requires human steering to revisit earlier phases.
+
+    **What ships:** a new `RETURN_TO_PHASE` gate decision lets a later-phase agent autonomously request a revisit of any earlier phase, with budget guardrails (`--max-cross-phase-revisits N`), dead-end detection, and a revisit-reason payload that re-prompts the earlier phase with the new constraint. Validates the weighted-graph hypothesis cheaply, before the full refactor.
+  </Card>
+
+  <Card title="VS Code extension — agent dashboard, comms feed, gate approval" icon="display">
+    The CLI-first experience suits software engineers. Researchers from other disciplines often hit friction with environment variables, Node.js, and tmux. The answer: a **VS Code extension** (not a fork) that gives ZO a visual home alongside the editor, file tree, git, and integrated terminal researchers already have.
+
+    **Architecture:** headless tmux as the engine, xterm.js webview as the renderer. Claude Code keeps its real TTY (zero regression risk on the orchestration core); the UI gets agent status panels, a comms feed, training-metrics dashboards, and one-click gate approval — all in one window with the user's code. A "ZO Studio" bundled installer (VS Code + extension + Claude CLI + uv, one-click per platform) is on the table as a follow-on for non-technical researchers.
+  </Card>
+
+  <Card title="Push --low-token toward 70–80% savings" icon="gauge-high">
+    Current preset gives ~30% measured savings (see [cost benchmark](/reference/cost-benchmark)). The path higher is architectural: prompt caching via direct Anthropic SDK integration (replacing the `claude` CLI subprocess), Batch API for non-real-time phases, Files API for shared context across the team. Multi-week effort, gated behind the SDK refactor.
+  </Card>
+</CardGroup>
+
+### Major design (3–6+ months)
+
+<CardGroup cols={2}>
+  <Card title="Full weighted graph architecture" icon="diagram-project">
+    Phases as nodes with weighted reversible edges. Each node carries a "completeness" probability that updates as work progresses; the system ranks revisit weights and runs a prioritised ablation queue. Users can freeze any node manually if happy.
+
+    Enables a fast, loose end-to-end first pass — then the system autonomously revisits earlier nodes with better project context, instead of requiring human steering. Gated behind the cross-phase backedge primitive landing first.
+  </Card>
+
   <Card title="Broader coding-agent provider support" icon="plug">
-    Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes — OpenAI Codex CLI, OpenCode, and others — would let users bring their preferred provider, widen account and hardware compatibility, and unlock new spawn-agent topologies. Also a useful hedge against any single-vendor disruption.
-  </Card>
+    Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes — OpenAI Codex CLI, OpenCode, others — would let users bring their preferred provider and hedge single-vendor risk.
 
-  <Card title="No-install web UI for non-engineering researchers" icon="display">
-    The CLI-first experience suits software engineers. Researchers from other disciplines — biology, finance, social sciences — often hit friction with environment variables, Node.js, and tmux. Some end up paying others to install the surrounding tooling just to get started. A web UI would let those users manage agents and watch progress visually (similar in shape to Codex's desktop app), with one-click setup that hides the host-tooling layer entirely.
-  </Card>
-
-  <Card title="Push --low-token mode toward 70–80% savings" icon="leaf">
-    Current preset gives ~30% measured savings (see [cost benchmark](/reference/cost-benchmark)). The path to higher reductions is architectural: prompt caching via direct Anthropic SDK integration (replacing the current `claude` CLI subprocess), Batch API for non-real-time phases, and Files API for shared context across the team. Multi-week effort, gated behind the SDK refactor.
+    **Realistic scope:** worker-pool model (Claude Code lead dispatches single-agent jobs to alternate workers), not full peer-to-peer team parity. Full parity would mean rebuilding Claude Code's native `TeamCreate` / `Agent` / `SendMessage` infrastructure on top of bare APIs.
   </Card>
 </CardGroup>
 
@@ -31,7 +67,7 @@ For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on
 
 ## Where to weigh in
 
-These are our top three. If you have a use case one of these would unlock — or a different priority you'd argue for — open an issue or join the discussion.
+These priorities come from real user feedback. If you have a use case one of these would unlock — or a different priority you'd argue for — open an issue or join the discussion.
 
 <CardGroup cols={2}>
   <Card title="Issues" icon="github" href="https://github.com/SamPlvs/zero-operators/issues">
