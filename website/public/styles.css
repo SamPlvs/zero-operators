@@ -2116,11 +2116,16 @@ em, .it {
        brackets can't fit. Reflow Sculley to 2 columns with ML CODE spanning
        full width as the focal point; compact timeline group labels and segments. */
     @media (max-width: 720px) {
-      /* Sculley — 2-col reflow, ML CODE prominent */
+      /* ----------------------------------------------------------------
+         Sculley — 2-col reflow with ML CODE pinned full-width on the top
+         row as the focal block. The base rule's `width: 92px;
+         justify-self: center;` left it floating awkwardly between rows;
+         here we force it to span both columns and stretch.
+         ---------------------------------------------------------------- */
       .sculley-frame { padding: 22px 18px 18px; }
       .sculley {
         grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: auto;
+        grid-auto-rows: auto;
         gap: 6px;
       }
       .sk-config, .sk-collect, .sk-verify, .sk-machine,
@@ -2130,9 +2135,12 @@ em, .it {
       }
       .sk-mlcode {
         grid-column: 1 / -1;
+        grid-row: 1;
+        justify-self: stretch;
+        align-self: stretch;
         width: auto;
-        min-height: 52px;
-        padding: 12px 14px;
+        min-height: 56px;
+        padding: 14px 16px;
       }
       .sk-box { min-height: 56px; padding: 10px 12px; }
       .sk-box .sk-label { font-size: 9px; letter-spacing: 0.1em; }
@@ -2140,35 +2148,147 @@ em, .it {
       .sculley-cap { flex-direction: column; gap: 6px; }
       .sculley-cap .cap-r { text-align: left; }
 
-      /* Timeline group brackets — reduce font + drop wks count
-         (the legend below already lists "plumbing · 3 weeks", etc). */
-      .tl-group {
-        font-size: 8.5px;
-        letter-spacing: 0.08em;
-        padding: 5px 4px 6px;
-        gap: 4px;
-      }
-      .tl-group .tl-group-weeks { display: none; }
-      .tl-seg { font-size: 9px; padding: 0 6px; letter-spacing: 0.02em; }
-      .tl-annot-text { font-size: 9px; }
-
-      /* §03 ZO lane — tighten padding/font so 6 phases fit in 10 cols
-         at narrow widths. */
-      .zo-seg { padding: 0 6px; font-size: 9px; letter-spacing: 0.01em; }
-      .zo-seg.is-active::before { width: 4px; height: 4px; margin-right: 4px; }
-
-      /* §03 Human pins — pin-time labels ("WEEK 1") sit closer than the
-         column width allows; tighten font and stack tighter. */
-      .pin-time { font-size: 8px; letter-spacing: 0.1em; }
-      .pin-label .pl-dur { font-size: 11px; }
-
-      /* Lane row label column — shrink so the lanes get more room. */
-      .lanes-grid, .tl-grid, .tl-annot-row { grid-template-columns: 56px 1fr; }
-      .lanes-frame { padding: 24px 18px 22px; }
+      /* ----------------------------------------------------------------
+         §02 timeline — go VERTICAL on mobile. Horizontal 10-col bar
+         can't fit 8 phase labels on a phone (model exp/iteration text
+         overlap). Stack each phase as a full-width row, drop the ticks
+         and group brackets row (the legend below already lists the
+         3-week breakdown), and override the left→right clip-path
+         reveal with an opacity fade so the vertical bar still animates.
+         ---------------------------------------------------------------- */
       .timeline { padding: 22px 16px 18px; }
-      .between-label { font-size: 12px; padding: 12px 0 12px 4px; }
-      .between-note { font-size: 11px; }
-      .between-label::before { flex: 0 0 40px; }
+      /* Hide horizontal-only apparatus: annotation row, group brackets,
+         label column, and the ticks row. Specificity matters — the
+         groups row has both `.tl-grid` and `.tl-groups-row`, so the
+         hide rule needs both classes to win against `.tl-grid` below. */
+      .tl-grid { display: block; }
+      .tl-annot-row,
+      .tl-grid.tl-groups-row,
+      .tl-grid:has(.tl-ticks) { display: none; }
+      .tl-row-label { display: none; }
+
+      /* Vertical bar: each .tl-seg becomes a full-width row. The base
+         rule has `grid-column: span N` — we need to neutralise that
+         when the parent flips from grid to flex-column. */
+      .tl-bar {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        border-radius: 4px;
+        clip-path: none;
+      }
+      .tl-bar.is-visible { clip-path: none; opacity: 1; }
+      .tl-bar { opacity: 0; transition: opacity .8s var(--ease) .1s; }
+      .tl-seg {
+        height: 32px;
+        padding: 0 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--canvas);
+        font-size: 11px;
+        letter-spacing: 0.02em;
+      }
+      .tl-seg:last-child { border-bottom: none; }
+
+      /* Legend stacks already (flex-wrap) — ensure swatches line up. */
+      .tl-legend { gap: 8px 18px; }
+
+      /* ----------------------------------------------------------------
+         §03 ZO lane — same vertical stack treatment so 6 phases fit
+         readably and the "package · test · deploy" cell stops wrapping
+         mid-word.
+         ---------------------------------------------------------------- */
+      .lanes-frame { padding: 24px 18px 22px; }
+      /* Hide the lane row label ("ZO RUNS THE CYCLE", "YOU DIRECT")
+         and the bottom tick row — they assume a horizontal axis. */
+      .lanes-grid { grid-template-columns: 1fr; gap: 14px; }
+      .lane-label { display: none; }
+      .lanes-ticks { display: none; }
+      .between-row { display: block; }
+      .between-spacer { display: none; }
+
+      .zo-lane {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        border-radius: 4px;
+        clip-path: none;
+        opacity: 0;
+        transition: opacity .8s var(--ease) .1s;
+      }
+      .zo-lane.is-visible { clip-path: none; opacity: 1; }
+      .zo-seg {
+        padding: 10px 14px;
+        font-size: 11px;
+        letter-spacing: 0.01em;
+        border-right: none;
+        border-bottom: 1px solid oklch(0.74 0.14 35 / 0.18);
+      }
+      .zo-seg:last-child { border-bottom: none; }
+      .zo-seg.is-active::before { width: 5px; height: 5px; margin-right: 8px; }
+
+      /* "continuous direction" between-label — flow inline, drop the
+         leading dash since there's no horizontal bar to terminate. */
+      .between-label {
+        font-size: 13px;
+        padding: 6px 0;
+        gap: 8px;
+      }
+      .between-label::before { flex: 0 0 18px; }
+      .between-note { font-size: 12px; }
+
+      /* §03 You-direct lane — stack the 4 pins as a vertical checklist
+         instead of plotting them on a horizontal week axis. */
+      .human-lane {
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .human-baseline { display: none; }
+      .human-pin {
+        position: relative;
+        display: grid;
+        grid-template-columns: 28px 1fr auto;
+        grid-template-areas: "mark name time";
+        align-items: center;
+        gap: 12px;
+        padding: 4px 0;
+      }
+      .human-pin .pin-mark {
+        position: static;
+        margin: 0;
+        grid-area: mark;
+        width: 12px;
+        height: 12px;
+      }
+      .human-pin .pin-label {
+        position: static;
+        transform: none;
+        grid-area: name;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 10px;
+        white-space: normal;
+        text-align: left;
+      }
+      .pin-label .pl-name { display: inline; font-size: 10px; }
+      .pin-label .pl-dur { font-size: 12px; }
+      .human-pin .pin-time {
+        position: static;
+        transform: none;
+        grid-area: time;
+        font-size: 9px;
+      }
+      .human-pin.pin-edge-l .pin-label,
+      .human-pin.pin-edge-r .pin-label,
+      .human-pin.pin-edge-l .pin-time,
+      .human-pin.pin-edge-r .pin-time {
+        position: static;
+        transform: none;
+        text-align: left;
+        align-items: baseline;
+      }
 
       /* Lanes caption stacks vertically on mobile. */
       .lanes-cap { flex-direction: column; gap: 4px; font-size: 9px; }
