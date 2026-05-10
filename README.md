@@ -553,6 +553,20 @@ External CLI tools that fit ZO's launcher architecture and are being evaluated f
 
 ---
 
+## Acknowledgements
+
+No tool ships alone. With thanks to the *AI specialists, researchers and engineers* who tested, guided, broke things, and made ZO sharper:
+
+- [Arjun Agrawal](https://www.linkedin.com/in/arjunagraw/)
+- [Callum Adamson](https://www.linkedin.com/in/callumadamson/)
+- [Harry Davies](https://www.linkedin.com/in/harrydavies1/)
+- [Ken Chatfield](https://www.linkedin.com/in/kchatfield/)
+- [Nick Imrie](https://www.linkedin.com/in/nickimrie/)
+- [Sergey Podatelev](https://www.linkedin.com/in/sergey-podatelev/)
+- [Tianhong Dai](https://www.linkedin.com/in/tianhong-dai-71b166117/)
+
+---
+
 <div align="center">
 <br/>
 
