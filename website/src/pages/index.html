@@ -1071,20 +1071,38 @@
   <!-- v2 reveal observer for new section visuals (sculley · timeline · lanes · cites · litany) -->
   <script>
   (function () {
-    var SELECTORS = '.sculley, .tl-bar, .tl-annot, .zo-lane, .human-lane, .between-label, .litany-frame, .cites';
+    // Direct targets — pre-reveal CSS uses opacity/transform, which IntersectionObserver
+    // ignores, so these elements report intersection normally.
+    var DIRECT = '.sculley, .tl-annot, .human-lane, .between-label, .litany-frame, .cites';
+    // Wrapped targets — pre-reveal `clip-path: inset(0 100% 0 0)` collapses the element's
+    // intersection rect to zero so the observer never fires for it. Observe the wrapper
+    // (which has natural geometry) and reveal the inner clipped element on intersect.
+    var WRAPPED = [
+      { wrapper: '.timeline', inner: '.tl-bar' },
+      { wrapper: '.lanes-frame', inner: '.zo-lane' }
+    ];
+    function reveal(el) { el.classList.add('is-visible'); }
     if (!('IntersectionObserver' in window)) {
-      document.querySelectorAll(SELECTORS).forEach(function (el) { el.classList.add('is-visible'); });
+      document.querySelectorAll(DIRECT).forEach(reveal);
+      WRAPPED.forEach(function (w) { document.querySelectorAll(w.inner).forEach(reveal); });
       return;
     }
     var obs = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          e.target.classList.add('is-visible');
-          obs.unobserve(e.target);
-        }
+        if (!e.isIntersecting) return;
+        reveal(e.target);
+        WRAPPED.forEach(function (w) {
+          if (e.target.matches(w.wrapper)) {
+            e.target.querySelectorAll(w.inner).forEach(reveal);
+          }
+        });
+        obs.unobserve(e.target);
       });
     }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
-    document.querySelectorAll(SELECTORS).forEach(function (el) { obs.observe(el); });
+    document.querySelectorAll(DIRECT).forEach(function (el) { obs.observe(el); });
+    WRAPPED.forEach(function (w) {
+      document.querySelectorAll(w.wrapper).forEach(function (el) { obs.observe(el); });
+    });
   })();
   </script>
 

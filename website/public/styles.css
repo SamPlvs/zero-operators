@@ -2104,6 +2104,75 @@ em, .it {
       .cites { grid-template-columns: 1fr; }
       .lanes-grid, .tl-grid, .tl-annot-row { grid-template-columns: 80px 1fr; }
     }
+    /* Tablet / small-desktop — pin labels in §03 lanes overlap once the
+       human-lane is narrower than ~900px. Drop the descriptive name
+       (the pin-time below the diamond — "week 1", "week 3", etc — keeps
+       the label addressable). */
+    @media (max-width: 900px) {
+      .pin-label .pl-name { display: none; }
+      .pin-label .pl-dur { font-size: 12px; }
+    }
+    /* Narrow tablet / mobile — the Sculley 8-col grid and the timeline group
+       brackets can't fit. Reflow Sculley to 2 columns with ML CODE spanning
+       full width as the focal point; compact timeline group labels and segments. */
+    @media (max-width: 720px) {
+      /* Sculley — 2-col reflow, ML CODE prominent */
+      .sculley-frame { padding: 22px 18px 18px; }
+      .sculley {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto;
+        gap: 6px;
+      }
+      .sk-config, .sk-collect, .sk-verify, .sk-machine,
+      .sk-feature, .sk-analysis, .sk-serving, .sk-process, .sk-monitor {
+        grid-column: auto;
+        grid-row: auto;
+      }
+      .sk-mlcode {
+        grid-column: 1 / -1;
+        width: auto;
+        min-height: 52px;
+        padding: 12px 14px;
+      }
+      .sk-box { min-height: 56px; padding: 10px 12px; }
+      .sk-box .sk-label { font-size: 9px; letter-spacing: 0.1em; }
+      .sk-stuff { gap: 4px; }
+      .sculley-cap { flex-direction: column; gap: 6px; }
+      .sculley-cap .cap-r { text-align: left; }
+
+      /* Timeline group brackets — reduce font + drop wks count
+         (the legend below already lists "plumbing · 3 weeks", etc). */
+      .tl-group {
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        padding: 5px 4px 6px;
+        gap: 4px;
+      }
+      .tl-group .tl-group-weeks { display: none; }
+      .tl-seg { font-size: 9px; padding: 0 6px; letter-spacing: 0.02em; }
+      .tl-annot-text { font-size: 9px; }
+
+      /* §03 ZO lane — tighten padding/font so 6 phases fit in 10 cols
+         at narrow widths. */
+      .zo-seg { padding: 0 6px; font-size: 9px; letter-spacing: 0.01em; }
+      .zo-seg.is-active::before { width: 4px; height: 4px; margin-right: 4px; }
+
+      /* §03 Human pins — pin-time labels ("WEEK 1") sit closer than the
+         column width allows; tighten font and stack tighter. */
+      .pin-time { font-size: 8px; letter-spacing: 0.1em; }
+      .pin-label .pl-dur { font-size: 11px; }
+
+      /* Lane row label column — shrink so the lanes get more room. */
+      .lanes-grid, .tl-grid, .tl-annot-row { grid-template-columns: 56px 1fr; }
+      .lanes-frame { padding: 24px 18px 22px; }
+      .timeline { padding: 22px 16px 18px; }
+      .between-label { font-size: 12px; padding: 12px 0 12px 4px; }
+      .between-note { font-size: 11px; }
+      .between-label::before { flex: 0 0 40px; }
+
+      /* Lanes caption stacks vertically on mobile. */
+      .lanes-cap { flex-direction: column; gap: 4px; font-size: 9px; }
+    }
 
     /* Hero headline override — keep italic em flowing inline so longer
        headlines wrap naturally instead of each em jumping to its own line. */
