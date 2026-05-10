@@ -266,6 +266,9 @@ _LOW_TOKEN_PRESET: dict[str, object] = {
     "headlines_disabled": True,      # disable Haiku ticker (~60 calls/hr)
     "gate_mode": "full-auto",        # no human-loop overhead
     "compact_threshold": "60",       # CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+    "caveman": True,                 # vendor caveman skill at .claude/skills/caveman/
+                                     # for terse prose responses; preserves code blocks
+                                     # and structured artifacts. Opt out via --no-caveman.
 }
 
 
@@ -298,18 +301,45 @@ def _resolve_gate_mode(
     return "supervised"
 
 
+def _resolve_caveman(
+    *,
+    cli_no_caveman: bool,
+    plan_caveman: bool | None,
+    low_token: bool,
+) -> bool:
+    """Resolve effective caveman activation.
+
+    Precedence (highest first): CLI ``--no-caveman`` flag > plan field
+    ``caveman: false`` > preset default. Caveman only activates when
+    ``low_token`` is also True; outside low-token mode the skill file at
+    ``.claude/skills/caveman/SKILL.md`` is still available for manual
+    invocation, but ZO does not auto-direct agents to use it.
+    """
+    if not low_token:
+        return False
+    if cli_no_caveman:
+        return False
+    if plan_caveman is False:
+        return False
+    return bool(_LOW_TOKEN_PRESET["caveman"])
+
+
 def _show_banner(
     project: str = "",
     mode: str = "",
     phase: str = "",
     gate_mode: str = "",
     low_token: bool = False,
+    caveman: bool = False,
 ) -> None:
     """Display the ZO brand panel at startup.
 
     When ``low_token`` is True, appends a "low-token" badge to the
     banner so the user has constant visual confirmation that the
-    cost-saving preset is active.
+    cost-saving preset is active. When ``caveman`` is also True
+    (only meaningful with ``low_token``), the badge becomes
+    "low-token + caveman" to signal the additional terse-output skill
+    is engaged.
     """
     from rich.panel import Panel
     from rich.text import Text
@@ -319,7 +349,8 @@ def _show_banner(
     logo.append("Zero Operators", style="#F0C040 bold")
     logo.append(f"  v{_VERSION}", style=_DIM)
     if low_token:
-        logo.append("  [low-token]", style="#F0C040 bold")
+        badge = "  [low-token + caveman]" if caveman else "  [low-token]"
+        logo.append(badge, style="#F0C040 bold")
     logo.append("\n", style=_DIM)
     logo.append("     Autonomous AI Research & Engineering Teams\n", style=_DIM)
     if project:
@@ -910,6 +941,12 @@ def _launch_and_monitor(
     "--no-headlines", is_flag=True,
     help="Disable the Haiku headline ticker (saves ~60 small calls/hour).",
 )
+@click.option(
+    "--no-caveman", is_flag=True,
+    help="Opt out of caveman terse-output skill (auto-on with --low-token). "
+    "Use if your run produces structured prose that caveman would compress "
+    "ambiguously. Code blocks and structured artifacts are always preserved.",
+)
 def build(
     plan_path: Path,
     gate_mode: str | None,
@@ -918,6 +955,7 @@ def build(
     lead_model: str | None,
     max_iterations: int | None,
     no_headlines: bool,
+    no_caveman: bool,
 ) -> None:
     """Launch a project from a plan.md file.
 
@@ -960,6 +998,11 @@ def build(
         plan_lead_model=plan.frontmatter.lead_model,
         low_token=effective_low_token,
     )
+    effective_caveman = _resolve_caveman(
+        cli_no_caveman=no_caveman,
+        plan_caveman=plan.frontmatter.caveman,
+        low_token=effective_low_token,
+    )
     effective_headlines_disabled = (
         no_headlines or effective_low_token
     )
@@ -991,6 +1034,7 @@ def build(
         phase=state_check.phase if detected_mode == "continue" else "starting",
         gate_mode=effective_gate_mode,
         low_token=effective_low_token,
+        caveman=effective_caveman,
     )
 
     # 5. Create CommsLogger and SemanticIndex
@@ -1017,6 +1061,7 @@ def build(
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
         plan_path=plan_path,
         low_token=effective_low_token,
+        caveman=effective_caveman,
         max_iterations_override=max_iterations,
     )
     orchestrator.start_session()
@@ -1098,6 +1143,10 @@ def build(
     "--no-headlines", is_flag=True,
     help="Disable the Haiku headline ticker.",
 )
+@click.option(
+    "--no-caveman", is_flag=True,
+    help="Opt out of caveman terse-output skill (auto-on with --low-token).",
+)
 def continue_(
     project_name: str | None,
     repo: str | None,
@@ -1107,6 +1156,7 @@ def continue_(
     lead_model: str | None,
     max_iterations: int | None,
     no_headlines: bool,
+    no_caveman: bool,
 ) -> None:
     """Resume a paused project or reconnect on a new machine.
 
@@ -1172,6 +1222,7 @@ def continue_(
         lead_model=lead_model,
         max_iterations=max_iterations,
         no_headlines=no_headlines,
+        no_caveman=no_caveman,
     )
 
 

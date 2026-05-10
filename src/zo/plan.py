@@ -39,6 +39,12 @@ class PlanFrontmatter(BaseModel):
     activates the preset; ``lead_model`` overrides the lead orchestrator
     model. Both can also be supplied via CLI flags, which take
     precedence (CLI > plan field > preset default > base default).
+
+    ``caveman`` is opt-out for the caveman terse-output skill that
+    auto-activates with ``low_token``. ``None`` (the default) means
+    "use the preset default" (currently True). Set to ``False`` in plan
+    frontmatter to suppress caveman activation even when low-token is
+    on. CLI flag ``--no-caveman`` takes precedence over plan and preset.
     """
 
     project_name: str
@@ -49,6 +55,7 @@ class PlanFrontmatter(BaseModel):
     owner: str
     low_token: bool = False
     lead_model: str | None = None
+    caveman: bool | None = None
 
 
 class OracleDefinition(BaseModel):

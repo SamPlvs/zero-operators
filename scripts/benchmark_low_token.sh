@@ -1,25 +1,38 @@
 #!/usr/bin/env bash
-# benchmark_low_token.sh — measure token cost reduction from --low-token mode.
+# benchmark_low_token.sh — measure token cost reduction from --low-token mode
+# and caveman-skill ablation.
 #
-# Runs `zo build` against the MNIST plan twice (default mode + low-token mode),
-# captures Claude Code token usage via `npx ccusage`, and writes a comparison
-# JSON + console summary.
+# Runs `zo build` against the MNIST plan up to THREE times:
+#   - default              (no flags — historical anchor, ~$11)
+#   - low-token            (--low-token, caveman default-on — measures the
+#                           full preset including caveman skill)
+#   - low-token-no-caveman (--low-token --no-caveman — isolates caveman's
+#                           contribution within low-token mode)
+#
+# Comparing low-token vs low-token-no-caveman gives the caveman delta.
+# Comparing default vs low-token gives the full low-token-mode savings.
+#
+# Captures Claude Code token usage via `npx ccusage` and writes a
+# comparison JSON + console summary.
 #
 # Prerequisites:
 #   - `zo` CLI installed (this repo, ./setup.sh)
 #   - `claude` CLI logged in
 #   - `npx ccusage` available (npm install -g ccusage)
-#   - Mac or Linux dev box (Apple Silicon recommended for ~25min low-token wall time)
-#   - ~75 minutes wall time, ~$13-14 spend on Anthropic API
+#   - Mac or Linux dev box (Apple Silicon recommended)
+#   - ~110 minutes wall time across all three runs, ~$20-22 spend on Anthropic API
+#     (default ~$11 + low-token ~$5-6 + low-token-no-caveman ~$6-7)
 #
 # Usage:
 #   ./scripts/benchmark_low_token.sh
 #   ./scripts/benchmark_low_token.sh --delivery-prefix /tmp/zo-bench
-#   ./scripts/benchmark_low_token.sh --skip-default --skip-low-token  # dry preview
+#   ./scripts/benchmark_low_token.sh --skip-default       # only low-token variants
+#   ./scripts/benchmark_low_token.sh --skip-low-token-no-caveman  # skip ablation arm
+#   ./scripts/benchmark_low_token.sh --skip-default --skip-low-token --skip-low-token-no-caveman  # dry preview
 #   ./scripts/benchmark_low_token.sh --help
 #
 # Output:
-#   benchmark-results-{ISO-timestamp}.json — full diff + summary
+#   benchmark-results-{ISO-timestamp}.json — full diff + summary across all runs
 #   stdout — human-readable summary table
 
 set -euo pipefail
@@ -31,6 +44,7 @@ set -euo pipefail
 DELIVERY_PREFIX="${TMPDIR:-/tmp}/zo-low-token-bench"
 RUN_DEFAULT=true
 RUN_LOW_TOKEN=true
+RUN_LOW_TOKEN_NO_CAVEMAN=true
 TIMESTAMP="$(date -u +%Y%m%d-%H%M%S)"
 RESULT_FILE="benchmark-results-${TIMESTAMP}.json"
 
@@ -42,6 +56,8 @@ while [[ $# -gt 0 ]]; do
       RUN_DEFAULT=false; shift ;;
     --skip-low-token)
       RUN_LOW_TOKEN=false; shift ;;
+    --skip-low-token-no-caveman)
+      RUN_LOW_TOKEN_NO_CAVEMAN=false; shift ;;
     --help|-h)
       grep '^# ' "$0" | sed 's/^# //'
       exit 0 ;;
@@ -54,6 +70,7 @@ done
 
 DEFAULT_DELIVERY="${DELIVERY_PREFIX}-default"
 LOW_TOKEN_DELIVERY="${DELIVERY_PREFIX}-low-token"
+LOW_TOKEN_NO_CAVEMAN_DELIVERY="${DELIVERY_PREFIX}-low-token-no-caveman"
 PLAN_PATH="plans/mnist-digit-classifier.md"
 
 # ---------------------------------------------------------------------------
@@ -189,6 +206,10 @@ if [[ "$RUN_LOW_TOKEN" == "true" ]]; then
   run_one "low-token" "$LOW_TOKEN_DELIVERY" --low-token
 fi
 
+if [[ "$RUN_LOW_TOKEN_NO_CAVEMAN" == "true" ]]; then
+  run_one "low-token-no-caveman" "$LOW_TOKEN_NO_CAVEMAN_DELIVERY" --low-token --no-caveman
+fi
+
 # ---------------------------------------------------------------------------
 # Summarise
 # ---------------------------------------------------------------------------
@@ -213,7 +234,7 @@ results = {
     "runs": {}
 }
 
-for label in ("default", "low-token"):
+for label in ("default", "low-token", "low-token-no-caveman"):
     meta_path = Path(f"{prefix}-{label}-meta.json")
     if not meta_path.exists():
         continue
