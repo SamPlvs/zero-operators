@@ -2318,13 +2318,18 @@ em, .it {
       grid-template-columns: 1fr;
       gap: 22px;
     }
-    .footer-thanks .ft-kicker {
-      font-family: var(--mono); font-size: 10px; color: var(--coral);
-      letter-spacing: 0.24em; text-transform: uppercase;
-      display: flex; align-items: center; gap: 14px;
-    }
-    .footer-thanks .ft-kicker::before {
-      content: ""; width: 28px; height: 1px; background: var(--coral);
+    /* Section title — italic Cormorant display treatment, matching the
+       hero/section-title em pattern used elsewhere on the site. Honours
+       contributors with display weight rather than a bureaucratic kicker. */
+    .footer-thanks .ft-title {
+      font-family: var(--italic); font-style: italic;
+      font-size: clamp(28px, 3.6vw, 38px);
+      font-weight: 400;
+      color: var(--coral);
+      letter-spacing: -0.005em;
+      line-height: 1.1;
+      margin: 0;
+      text-wrap: balance;
     }
     .footer-thanks .ft-statement {
       font-family: var(--sans); font-size: 17px; font-weight: 300;
@@ -2356,6 +2361,7 @@ em, .it {
       color: var(--coral); border-bottom-color: var(--coral);
     }
     @media (max-width: 720px) {
+      .footer-thanks .ft-title { font-size: 26px; }
       .footer-thanks .ft-statement { font-size: 15px; }
       .footer-thanks .ft-names { font-size: 13px; }
     }
