@@ -1,0 +1,12 @@
+# Cloudflare Pages cache-control overrides.
+#
+# CSS and JS live at unhashed URLs (styles.css, app.js) so we cache them only
+# for 5 minutes — long enough to absorb a refresh storm, short enough that a
+# CSS-only fix lands quickly even for users whose browsers have the previous
+# build cached. The HTML already revalidates every load (max-age=0), so the
+# updated `?v=` query string in <link>/<script> picks up the new asset on the
+# next page load once the cache TTL expires.
+/styles.css
+  Cache-Control: public, max-age=300, must-revalidate
+/app.js
+  Cache-Control: public, max-age=300, must-revalidate
