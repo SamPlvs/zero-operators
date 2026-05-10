@@ -65,21 +65,22 @@
 
   
   <line x1="88" y1="230" x2="110" y2="230" stroke="#D87A57" stroke-width="1"></line>
-  <text x="124" y="234" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12" font-weight="500" fill="#D87A57" letter-spacing="2">AUTONOMOUS RESEARCH TEAM FOR ML</text>
+  <text x="124" y="234" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12" font-weight="500" fill="#D87A57" letter-spacing="2">AUTONOMOUS AI RESEARCH TEAM</text>
 
-  
-  <text x="88" y="304" font-size="64" font-weight="500" fill="#EBE3D2" letter-spacing="-2">You write the plan.</text>
-  <text x="88" y="384" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="70" font-weight="500" fill="#D87A57" letter-spacing="-1">We ship the model.</text>
 
-  
-  <text x="88" y="438" font-size="17" fill="#C8C0AE" font-weight="300">A specialised agent <tspan font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="19" font-weight="500" fill="#D87A57">team</tspan> turns a</text>
-  
-  <g transform="translate(342,422)">
+  <text x="88" y="300" font-size="56" font-weight="500" fill="#EBE3D2" letter-spacing="-1.5">An autonomous AI research team.</text>
+  <text x="88" y="378" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="64" font-weight="500" fill="#D87A57" letter-spacing="-1">You stay the director.</text>
+
+
+  <text x="88" y="432" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="19" font-weight="500" fill="#D87A57">Days, not weeks.</text>
+  <text x="248" y="432" font-size="17" fill="#C8C0AE" font-weight="300">ZO turns a</text>
+
+  <g transform="translate(342,416)">
     <rect width="76" height="22" fill="#7896C8" fill-opacity="0.14"></rect>
     <text x="6" y="16" font-family="JetBrains Mono, ui-monospace, monospace" font-size="15" fill="#8FAACB">plan.md</text>
   </g>
-  <text x="426" y="438" font-size="17" fill="#C8C0AE" font-weight="300">into an audit-ready</text>
-  <text x="88" y="464" font-size="17" fill="#C8C0AE" font-weight="300">trained model — recipe, checkpoint, audit log included.</text>
+  <text x="426" y="432" font-size="17" fill="#C8C0AE" font-weight="300">into an audit-ready</text>
+  <text x="88" y="458" font-size="17" fill="#C8C0AE" font-weight="300">trained model — recipe, checkpoint, audit log included.</text>
 
   
   <g transform="translate(88,556)">

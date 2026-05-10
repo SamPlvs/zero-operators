@@ -10,7 +10,8 @@ Source files for the banner shown at the top of the project [README](../../READM
 | `workshop.png` | Source photo for the right half (1536×1024, anime workshop scene). Identical to `website/public/assets/hero-workshop.png` — kept as a sibling here so the render script is self-contained. |
 | `readme-banner.png` | Final composite, 1280×640. **This is what the README references.** |
 | `readme-banner-2x.png` | Same composite at 2560×1280 for retina. |
-| `render.mjs` | Render script — composites `workshop.png` + `readme-banner.svg` → final PNGs. Re-run after editing the SVG. |
+| `render.mjs` | Render script for the in-browser Canvas sandbox — composites `workshop.png` + `readme-banner.svg` → final PNGs. |
+| `render-node.mjs` | Node-runnable equivalent of `render.mjs` (uses `sharp` from `website/node_modules`). Run this after editing the SVG. |
 
 ## Render parameters (current values, baked into render.mjs)
 
@@ -25,13 +26,17 @@ Source files for the banner shown at the top of the project [README](../../READM
 
 ## How to regenerate
 
-The full render logic lives in [`render.mjs`](./render.mjs) — that's the single source of truth, fully commented with edit points. It expects `workshop.png` and `readme-banner.svg` as siblings (so its working directory should be this `design/banner/` folder, or the four siblings dropped into a sandbox root).
+```bash
+node design/banner/render-node.mjs
+```
 
-It's written for the project's `run_script` sandbox (browser-side Canvas with helpers `readImage` / `readFile` / `createCanvas` / `saveFile`). To run from Node instead, swap those helpers for `fs` + `sharp` or `node-canvas` — the compositing logic itself is unchanged.
+This calls `sharp`'s librsvg backend to render the SVG (with the photo inlined as a data URL) at both 1× (1280×640) and 2× (2560×1280), writing both PNGs as siblings of the SVG. Sharp is pulled from `website/node_modules` so no extra install is required if you've already run `npm install` in `website/`.
+
+The original [`render.mjs`](./render.mjs) is kept for the project's in-browser Canvas sandbox; both produce equivalent output.
 
 ## To edit later
 
 - **Change copy / colors / layout** → edit `readme-banner.svg` directly. The whole left-half composition is there as plain SVG text, so you can tweak headline, taglines, badges, mark color, etc.
 - **Change the photo** → drop a new file at `workshop.png` (and update `website/public/assets/hero-workshop.png` to match if you want the website hero to follow). If you want a different crop, edit the `PHOTO_CROP` values in `render.mjs`.
 - **Change the mark** → edit the `<g transform="translate(88,88) scale(0.6111)">` block in the SVG. Source-of-truth definition lives in [`website/public/app.js`](../../website/public/app.js) (`zoMark()`).
-- **Re-render** → run `render.mjs` (writes `readme-banner.png` and `readme-banner-2x.png` next to it).
+- **Re-render** → run `node design/banner/render-node.mjs` from the repo root (writes `readme-banner.png` and `readme-banner-2x.png` next to the SVG).
