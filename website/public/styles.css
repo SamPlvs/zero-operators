@@ -2006,18 +2006,20 @@ em, .it {
     .lane-label { font: 10px/1.3 var(--mono); color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; text-align: right; align-self: center; padding-top: 4px; }
     .lane-label em { font-size: 1.15em; line-height: 1; }
     .lane-label .lane-sub { display: block; color: var(--ghost); letter-spacing: 0.1em; margin-top: 2px; font-size: 9px; text-transform: uppercase; }
-    .zo-lane { display: grid; grid-template-columns: repeat(10, 1fr); height: 56px; border-radius: 4px; overflow: hidden; background: var(--coral-soft); border: 1px solid var(--coral-ring); }
+    .zo-lane { display: grid; grid-template-columns: repeat(7, 1fr); height: 56px; border-radius: 4px; overflow: hidden; background: var(--coral-soft); border: 1px solid var(--coral-ring); }
     .zo-seg { display: flex; align-items: center; padding: 0 14px; font: 11px/1 var(--mono); color: var(--coral); letter-spacing: 0.04em; border-right: 1px solid oklch(0.74 0.14 35 / 0.18); }
     .zo-seg:last-child { border-right: none; }
     .zo-seg.is-active { background: oklch(0.74 0.14 35 / 0.22); }
     .zo-seg.is-active::before { content: ""; width: 6px; height: 6px; background: var(--coral); border-radius: 50%; margin-right: 8px; box-shadow: 0 0 8px var(--coral-ring); animation: zo-pulse 2.4s var(--ease) infinite; }
+    /* Weekend cell — visually distinct from work cells (no work happening). */
+    .zo-seg-weekend { background: var(--canvas); color: var(--ghost); font-family: var(--italic); font-style: italic; font-size: 13px; letter-spacing: 0; justify-content: center; border-left: 1px dashed var(--rule); }
     @keyframes zo-pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.4); } }
     .between-row { display: contents; }
     .between-spacer {}
     .between-label { font-family: var(--italic); font-style: italic; color: var(--coral); font-size: 14px; padding: 16px 0 16px 4px; display: flex; align-items: center; gap: 14px; }
     .between-label::before { content: ""; height: 1px; background: linear-gradient(90deg, var(--coral), transparent); flex: 0 0 80px; }
     .between-note { font-family: var(--sans); font-style: normal; color: var(--cream-2); font-size: 13px; font-weight: 300; margin-left: 4px; }
-    .human-lane { position: relative; height: 110px; display: grid; grid-template-columns: repeat(10, 1fr); }
+    .human-lane { position: relative; height: 110px; display: grid; grid-template-columns: repeat(7, 1fr); }
     .human-baseline { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: repeating-linear-gradient(90deg, var(--coral) 0 6px, transparent 6px 12px); opacity: 0.45; }
     .human-pin { grid-column: var(--col) / span 1; position: relative; }
     .pin-mark { width: 14px; height: 14px; background: var(--coral); transform: rotate(45deg); position: absolute; top: 50%; left: 50%; margin: -7px 0 0 -7px; z-index: 2; box-shadow: 0 0 0 4px var(--canvas-2), 0 0 18px var(--coral-ring); }
@@ -2028,10 +2030,13 @@ em, .it {
     .pin-time { position: absolute; top: calc(50% + 16px); left: 50%; transform: translateX(-50%); font: 9px/1 var(--mono); color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; }
     .human-pin.pin-edge-l .pin-label, .human-pin.pin-edge-l .pin-time { left: 0; transform: none; align-items: flex-start; text-align: left; }
     .human-pin.pin-edge-r .pin-label, .human-pin.pin-edge-r .pin-time { left: auto; right: 0; transform: none; align-items: flex-end; text-align: right; }
-    .lanes-ticks { display: grid; grid-template-columns: repeat(10, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
-    .lanes-ticks .tl-tick { color: var(--ghost); }
-    .lanes-ticks .tl-tick:nth-child(5n+1) { color: var(--dim); }
-    .lanes-cap { display: flex; justify-content: space-between; gap: 18px; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--rule); flex-wrap: wrap; }
+    .lanes-ticks { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+    .lanes-ticks .tl-tick { color: var(--dim); }
+    .lanes-ticks .tl-tick.is-weekend { color: var(--ghost); font-family: var(--italic); font-style: italic; text-transform: lowercase; letter-spacing: 0; }
+    .lanes-cap { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--rule); }
+    .lanes-cap > span { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; }
+    .lanes-cap .lanes-cap-headline { font-family: var(--sans); font-size: 17px; font-weight: 300; color: var(--cream); letter-spacing: 0; text-transform: none; line-height: 1.45; text-wrap: balance; }
+    .lanes-cap .lanes-cap-headline em { font-family: var(--italic); font-style: italic; color: var(--coral); font-weight: 400; font-size: 1.05em; }
     .lanes-pretitle { font-family: var(--mono); font-size: 10px; color: var(--coral); letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 22px; display: flex; align-items: center; gap: 14px; }
     .lanes-pretitle::before { content: ""; width: 28px; height: 1px; background: var(--coral); }
 
@@ -2290,8 +2295,14 @@ em, .it {
         align-items: baseline;
       }
 
-      /* Lanes caption stacks vertically on mobile. */
-      .lanes-cap { flex-direction: column; gap: 4px; font-size: 9px; }
+      /* Lanes caption — already stacks vertically. Tighten the
+         meta line on mobile and rebalance the headline size. */
+      .lanes-cap { gap: 8px; }
+      .lanes-cap > span { font-size: 9px; }
+      .lanes-cap .lanes-cap-headline { font-size: 14px; }
+
+      /* Weekend cell on mobile — center the italic label as a row. */
+      .zo-seg-weekend { padding: 12px 14px; }
     }
 
     /* Hero headline override — keep italic em flowing inline so longer

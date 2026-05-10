@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="styles.css?v=4"/>
+  <link rel="stylesheet" href="styles.css?v=5"/>
   <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
 </head>
 <body>
@@ -278,17 +278,17 @@
       <div class="section-head reveal">
         <span class="section-num">03<span class="section-kind">The unlock</span></span>
         <h2 class="section-title">
-          Same six phases. <em>Now autonomous.</em>
+          Same six phases. <em>Now in days.</em>
         </h2>
         <p class="section-lede">
-          Data engineering, cleaning, scaffolding, training infra, eval scripts,
-          packaging — the work that used to consume your weeks runs autonomously.
-          You stay the researcher: <em>reading results, choosing the next experiment,
-          deciding when to pivot.</em>
+          Data engineering, cleaning, scaffolding, eval scripts, packaging —
+          done in days, <em>fully automated</em>. You act as research director:
+          defining the model, reading results, choosing the next experiment.
+          <em>ZO executes everything else.</em>
         </p>
       </div>
 
-      <div class="lanes-pretitle reveal">10 weeks · same axis as above</div>
+      <div class="lanes-pretitle reveal">5 working days · compressed from 10 weeks</div>
 
       <div class="lanes-frame">
         <div class="lanes-grid">
@@ -298,12 +298,10 @@
               <span class="lane-sub">runs the cycle</span>
             </span>
             <div class="zo-lane">
-              <div class="zo-seg" style="grid-column: span 1">data</div>
-              <div class="zo-seg" style="grid-column: span 1">clean</div>
-              <div class="zo-seg" style="grid-column: span 1">scaffold</div>
-              <div class="zo-seg is-active" style="grid-column: span 2">model exp.</div>
-              <div class="zo-seg" style="grid-column: span 2">iteration</div>
-              <div class="zo-seg" style="grid-column: span 3">package · test · deploy</div>
+              <div class="zo-seg" style="grid-column: span 1">data · clean · scaffold</div>
+              <div class="zo-seg is-active" style="grid-column: span 3">model exp. ↻ ZO iterates till benchmark</div>
+              <div class="zo-seg" style="grid-column: span 1">package · test · deploy</div>
+              <div class="zo-seg zo-seg-weekend" style="grid-column: span 2">weekend</div>
             </div>
           </div>
 
@@ -311,7 +309,7 @@
             <div class="between-spacer"></div>
             <div class="between-label">
               <em>continuous direction</em>
-              <span class="between-note">— reading results, choosing the next experiment, deciding when to pivot</span>
+              <span class="between-note">— ZO tracks every run, recommends the next step, retrains till the oracle clears</span>
             </div>
           </div>
 
@@ -328,17 +326,17 @@
                   <span class="pl-dur">~30 min</span>
                 </span>
                 <span class="pin-mark"></span>
-                <span class="pin-time">week 1</span>
+                <span class="pin-time">day 1</span>
               </div>
-              <div class="human-pin" style="--col: 3">
+              <div class="human-pin" style="--col: 2">
                 <span class="pin-label">
                   <span class="pl-name">gate 2 · features</span>
                   <span class="pl-dur">~30 min</span>
                 </span>
                 <span class="pin-mark"></span>
-                <span class="pin-time">week 3</span>
+                <span class="pin-time">day 2</span>
               </div>
-              <div class="human-pin" style="--col: 6">
+              <div class="human-pin" style="--col: 4">
                 <span class="pin-label">
                   <span class="pl-name">oracle plateau</span>
                   <span class="pl-dur">~15 min</span>
@@ -346,13 +344,13 @@
                 <span class="pin-mark is-optional"></span>
                 <span class="pin-time">if needed</span>
               </div>
-              <div class="human-pin pin-edge-r" style="--col: 9">
+              <div class="human-pin pin-edge-r" style="--col: 5">
                 <span class="pin-label">
                   <span class="pl-name">gate 4 · analysis</span>
                   <span class="pl-dur">~45 min</span>
                 </span>
                 <span class="pin-mark"></span>
-                <span class="pin-time">week 9</span>
+                <span class="pin-time">day 5</span>
               </div>
             </div>
           </div>
@@ -360,14 +358,14 @@
           <div class="lane-row">
             <span class="lane-label" style="visibility: hidden">.</span>
             <div class="lanes-ticks">
-              <span class="tl-tick">w1</span><span class="tl-tick">2</span><span class="tl-tick">3</span><span class="tl-tick">4</span><span class="tl-tick">5</span><span class="tl-tick">6</span><span class="tl-tick">7</span><span class="tl-tick">8</span><span class="tl-tick">9</span><span class="tl-tick">10</span>
+              <span class="tl-tick">d1</span><span class="tl-tick">d2</span><span class="tl-tick">d3</span><span class="tl-tick">d4</span><span class="tl-tick">d5</span><span class="tl-tick is-weekend">d6</span><span class="tl-tick is-weekend">d7</span>
             </div>
           </div>
         </div>
 
         <div class="lanes-cap">
-          <span>2 hours of human attention · across 10 weeks of work</span>
-          <span>full audit trail · oracle-gated · reproducible</span>
+          <span class="lanes-cap-headline"><em>Weeks of work, reduced to days.</em> Fully automated — you direct, ZO executes.</span>
+          <span>2 hours of human attention · 5 days of work · oracle-gated · reproducible · full audit trail</span>
         </div>
       </div>
     </div>
