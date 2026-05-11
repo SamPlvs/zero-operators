@@ -17,7 +17,7 @@ The **Plan Architect** (Opus, lead) coordinates with the **Data Scout** (Sonnet)
 
 <Steps>
   <Step title="Inspect inputs">
-    Reads any source documents you provide (`--docs`), inspects data samples (`--data`), or asks you for a description (`--description`). All optional — the agent can also work conversationally with no inputs.
+    Reads any source documents you provide (`--docs`), inspects data samples (`--data`), or asks you for a description (`--description`). All optional, the agent can also work conversationally with no inputs.
   </Step>
   <Step title="Research">
     Research Scout surfaces relevant prior art: published benchmarks, baseline ranges, open-source implementations of analogous problems. For domain-specific projects, finds relevant techniques.
@@ -29,7 +29,7 @@ The **Plan Architect** (Opus, lead) coordinates with the **Data Scout** (Sonnet)
     Plan Architect drafts every section: objective, oracle (with must/should/could tiers), workflow mode, data sources, domain priors, agents (with adaptations and custom agents if relevant), constraints, milestones, delivery, environment.
   </Step>
   <Step title="Confirm and write">
-    Each section is presented for your approval. Validates against the schema as it generates. The agent runs `--dry-run` first; you see exactly what will land. Then writes to the main repo (not worktrees — see [PR-013](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
+    Each section is presented for your approval. Validates against the schema as it generates. The agent runs `--dry-run` first; you see exactly what will land. Then writes to the main repo (not worktrees, see [PR-013](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
   </Step>
   <Step title="Wrap-up">
     Asks "anything else?", then tells you to `/exit` and run `zo build`.
@@ -71,10 +71,10 @@ Two of the most powerful plan features are populated during draft:
 
 <AccordionGroup>
   <Accordion title="Custom agents" icon="user-plus">
-    Project-specific specialists not in the standard roster. The Plan Architect proposes them based on Research Scout findings. Example: for vibration-signal analysis, a `signal-analyst: Sonnet — frequency-domain reasoning, BPFO/BPFI fault frequencies, envelope demodulation` block lands in the plan, and the orchestrator auto-creates `.claude/agents/custom/signal-analyst.md` at build start.
+    Project-specific specialists not in the standard roster. The Plan Architect proposes them based on Research Scout findings. Example: for vibration-signal analysis, a `signal-analyst: Sonnet, frequency-domain reasoning, BPFO/BPFI fault frequencies, envelope demodulation` block lands in the plan, and the orchestrator auto-creates `.claude/agents/custom/signal-analyst.md` at build start.
   </Accordion>
   <Accordion title="Agent adaptations" icon="sliders">
-    Per-project tuning of generic agents. The Plan Architect drafts adaptations for `xai-agent` and `domain-evaluator` (which are generic shells by design — see [PR-020](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)). Adaptations are appended to the spawn prompt at build time; the agent's `.md` file stays unchanged and reusable.
+    Per-project tuning of generic agents. The Plan Architect drafts adaptations for `xai-agent` and `domain-evaluator` (which are generic shells by design, see [PR-020](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)). Adaptations are appended to the spawn prompt at build time; the agent's `.md` file stays unchanged and reusable.
   </Accordion>
 </AccordionGroup>
 

@@ -21,7 +21,7 @@ This is the ordering ZO assumes. Each command is designed for a specific point i
 
 <CardGroup cols={2}>
   <Card title="zo init" icon="circle-plus" href="/cli/init">
-    Scaffold a new project — memory files, target file, plan skeleton, delivery repo. Conversational by default; `--no-tmux` for headless.
+    Scaffold a new project, memory files, target file, plan skeleton, delivery repo. Conversational by default; `--no-tmux` for headless.
   </Card>
   <Card title="zo draft" icon="pen" href="/cli/draft">
     Launch the Plan Architect + scouts to draft `plan.md` against the schema. Confirms each section before writing.
@@ -83,7 +83,7 @@ Most project-aware commands also accept:
 
 <Tabs>
   <Tab title="Conversational (default)">
-    `init`, `draft`, and `build` launch a tmux pane with a Claude Code session. Useful for the first run of a project — the agents inspect the host, ask clarifying questions, and confirm decisions before writing.
+    `init`, `draft`, and `build` launch a tmux pane with a Claude Code session. Useful for the first run of a project, the agents inspect the host, ask clarifying questions, and confirm decisions before writing.
   </Tab>
   <Tab title="Headless (--no-tmux)">
     Skip the conversational layer. Useful for CI, scripts, and reproducible re-runs. `zo init --no-tmux` takes flags for every decision the conversational flow would ask about (`--branch`, `--existing-repo`, `--base-image`, `--gpu-host`, `--data-path`, `--layout-mode`).
@@ -93,9 +93,9 @@ Most project-aware commands also accept:
 ## Discovering details
 
 ```bash
-zo --help                # top-level — banner + QUICK START + commands
-zo build --help          # per-command — DESCRIPTION + OPTIONS
-zo experiments --help    # subcommand groups — lists subcommands
+zo --help                # top-level, banner + QUICK START + commands
+zo build --help          # per-command, DESCRIPTION + OPTIONS
+zo experiments --help    # subcommand groups, lists subcommands
 zo experiments list --help
 ```
 

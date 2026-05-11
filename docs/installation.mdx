@@ -38,7 +38,7 @@ cd zero-operators
     Confirms you're inside a git repo (ZO uses git for worktree detection and commit conventions).
   </Step>
   <Step title="Project deps via uv sync">
-    Resolves and installs `pyproject.toml` dependencies — pydantic, fastembed, click, rich, pyyaml.
+    Resolves and installs `pyproject.toml` dependencies, pydantic, fastembed, click, rich, pyyaml.
   </Step>
   <Step title="Agent definitions">
     Confirms 20 agent `.md` files in `.claude/agents/`.
@@ -47,7 +47,7 @@ cd zero-operators
     Confirms 24 commands in `.claude/commands/`.
   </Step>
   <Step title="zo on PATH">
-    Symlinks `.venv/bin/zo` into `~/.local/bin/zo` so the CLI is callable from any shell (handles conda/pyenv/system-Python users — see [PR-012](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
+    Symlinks `.venv/bin/zo` into `~/.local/bin/zo` so the CLI is callable from any shell (handles conda/pyenv/system-Python users, see [PR-012](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md)).
   </Step>
 </Steps>
 
@@ -65,10 +65,10 @@ If you prefer to install dependencies yourself:
 <Tabs>
   <Tab title="macOS (Homebrew)">
     ```bash
-    # Python 3.11+ — comes with macOS 14+ or via brew
+    # Python 3.11+, comes with macOS 14+ or via brew
     brew install python@3.11
 
-    # uv — fast Python package manager
+    # uv, fast Python package manager
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
     # tmux
@@ -138,7 +138,7 @@ zo preflight plans/mnist-digit-classifier.md
 # Ready for zo build.
 ```
 
-If anything fails, check [troubleshooting](https://github.com/SamPlvs/zero-operators/blob/main/docs/TROUBLESHOOTING.md) — most issues are covered by the priors documented there.
+If anything fails, check [troubleshooting](https://github.com/SamPlvs/zero-operators/blob/main/docs/TROUBLESHOOTING.md), most issues are covered by the priors documented there.
 
 ## Next
 

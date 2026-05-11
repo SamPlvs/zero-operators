@@ -7,7 +7,7 @@ The oracle is **the most important section of any plan.** It's the answer to: *h
 
 ## Why oracles matter
 
-Autonomous agents without measurable criteria don't stop. They produce more code, more reports, more iterations — none of which are verified. The oracle is the system's source of truth: until the oracle says PASS, no deliverable is complete.
+Autonomous agents without measurable criteria don't stop. They produce more code, more reports, more iterations, none of which are verified. The oracle is the system's source of truth: until the oracle says PASS, no deliverable is complete.
 
 Karpathy's framing: *autonomy scales through rigorous specification, not natural-language ambiguity.* A vague oracle ("model should perform well") gives agents nowhere to anchor. A hard oracle ("test accuracy ≥ 0.95 on a held-out 10K-sample MNIST test set, computed via `correct / total` over a forward pass") gives them a contract.
 
@@ -24,7 +24,7 @@ Karpathy's framing: *autonomy scales through rigorous specification, not natural
     The deterministic procedure that produces the metric value. Code-level specificity. *"Forward pass over the full test set, argmax over softmax, compute correct / total."*
   </Step>
   <Step title="Target threshold (tiered)">
-    Three tiers — **must_pass** (the floor; below this is failure), **should_pass** (the goal), **could_pass** (the stretch). Each is a number.
+    Three tiers, **must_pass** (the floor; below this is failure), **should_pass** (the goal), **could_pass** (the stretch). Each is a number.
   </Step>
   <Step title="Evaluation frequency">
     When does the oracle run? After every training epoch, after each Phase 4 iteration, only at Gate 5, etc.
@@ -41,9 +41,9 @@ ZO uses three tiers because real projects rarely have a single accept/reject lin
 ```yaml
 oracle:
   primary_metric: test_accuracy
-  must_pass: 0.95     # Tier 1 — required to ship
-  should_pass: 0.98   # Tier 2 — meets stakeholder expectations
-  could_pass: 0.99    # Tier 3 — research-grade
+  must_pass: 0.95     # Tier 1, required to ship
+  should_pass: 0.98   # Tier 2, meets stakeholder expectations
+  could_pass: 0.99    # Tier 3, research-grade
 ```
 
 The autonomous experiment loop uses `stop_on_tier` to decide when to stop iterating. Default is `must_pass` (stop at the floor); set to `could_pass` to keep iterating until you hit research-grade or run out of budget.
@@ -60,7 +60,7 @@ The autonomous experiment loop uses `stop_on_tier` to decide when to stop iterat
     Evaluation frequency: After every training run
     Secondary metrics: Per-digit accuracy, confusion matrix, inference latency
     ```
-    **v1 reference run:** 99.66% — Tier 3 (could_pass).
+    **v1 reference run:** 99.66%, Tier 3 (could_pass).
   </Tab>
   <Tab title="Image classification (CIFAR-10)">
     ```yaml
@@ -71,7 +71,7 @@ The autonomous experiment loop uses `stop_on_tier` to decide when to stop iterat
     Evaluation frequency: After every training run
     Secondary metrics: Per-class accuracy, confusion matrix, inference latency, parameter count
     ```
-    **v1 reference run:** 91.62% — Tier 3 (could_pass). Note that thresholds are calibrated to *the architecture allowed by the plan's constraints* (≤3 conv blocks, no pretrained models), not to the literature SOTA.
+    **v1 reference run:** 91.62%, Tier 3 (could_pass). Note that thresholds are calibrated to *the architecture allowed by the plan's constraints* (≤3 conv blocks, no pretrained models), not to the literature SOTA.
   </Tab>
   <Tab title="Time-series forecasting">
     ```yaml
@@ -98,7 +98,7 @@ When the oracle is wrong (chosen poorly, or revealed wrong by Phase 4 results), 
 
 ## Statistical significance
 
-For models trained on small or noisy data, raw metric values aren't enough — the question is whether observed performance is *reliably better than baseline*. The oracle's statistical-significance section (optional) defines:
+For models trained on small or noisy data, raw metric values aren't enough, the question is whether observed performance is *reliably better than baseline*. The oracle's statistical-significance section (optional) defines:
 
 - Bootstrap confidence intervals (e.g. 95% Wilson CI on classification accuracy)
 - Paired tests against a baseline model

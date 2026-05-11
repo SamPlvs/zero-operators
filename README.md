@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="design/banner/readme-banner.png" alt="Zero Operators — An autonomous AI research team. You stay the director." width="1000"/>
+<img src="design/banner/readme-banner.png" alt="Zero Operators · An autonomous AI research team. You stay the director." width="1000"/>
 
 <br/>
 <br/>
@@ -20,17 +20,17 @@
 
 ## What is this
 
-Zero Operators (ZO) is an autonomous AI research and engineering team. You give it a project — a GitHub repo, some source documents, and success criteria — and it builds, trains, validates, and delivers. A coordinated team of AI agents handles the full ML lifecycle: data engineering, model building, oracle validation, code review, testing, and explainability.
+Zero Operators (ZO) is an autonomous AI research and engineering team. You give it a project (a GitHub repo, some source documents, and success criteria) and it builds, trains, validates, and delivers. A coordinated team of AI agents handles the full ML lifecycle: data engineering, model building, oracle validation, code review, testing, and explainability.
 
-You stay in the loop at human checkpoints. ZO remembers everything across sessions. It learns from its mistakes. And the delivery repo stays clean — zero ZO artifacts leak into your project.
+You stay in the loop at human checkpoints. ZO remembers everything across sessions. It learns from its mistakes. And the delivery repo stays clean: zero ZO artifacts leak into your project.
 
 ---
 
 ## A note on cost
 
-ZO v1 is optimised for **production-grade research engineering**. Agents iterate, verify, and write production-quality code — and that burns tokens. A canonical reference run with the default profile is on the order of $10–15 of API credits.
+ZO v1 is optimised for **production-grade research engineering**. Agents iterate, verify, and write production-quality code, and that burns tokens. A canonical reference run with the default profile is on the order of $10–15 of API credits.
 
-For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on a budget), the [`--low-token` mode](#low-token-mode) currently delivers **~30% measured savings** on the same workload. We're actively pushing that further — prompt caching, Batch API, Files API integration are all on the [Roadmap](#roadmap), targeting 70–80% reduction.
+For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on a budget), the [`--low-token` mode](#low-token-mode) currently delivers **~30% measured savings** on the same workload. We're actively pushing that further: prompt caching, Batch API, Files API integration are all on the [Roadmap](#roadmap), targeting 70–80% reduction.
 
 ---
 
@@ -77,32 +77,32 @@ For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on
 
 **Step by step:**
 
-1. **Draft a plan** — `zo draft --project my-project` opens an interactive Claude session that drafts a `plan.md` conversationally. Optionally provide source docs or a description (`-d`)
-2. **Review the plan** — edit `plans/my-project.md` to sharpen the objective, set oracle thresholds, add domain knowledge
-3. **Launch** — `zo build plans/my-project.md` shows a phase review (subtasks, agents, oracle criteria), prompts for additional instructions, then spawns the agent team in tmux
-4. **Approve at gates** — in supervised mode (default), every phase transition pauses for your review. You can also type directly into the Lead Orchestrator's Claude Code session
-5. **Session continuity** — stop anytime. Run `zo build` again — it auto-detects the current phase and resumes. Or use `zo continue my-project` as shorthand
-6. **Self-evolution** — when something fails, ZO runs a post-mortem: fix the symptom, update the rule that allowed it, verify the rule prevents recurrence
-7. **Clean delivery** — your project repo contains only code, models, reports, and tests. Zero ZO infrastructure
+1. **Draft a plan**: `zo draft --project my-project` opens an interactive Claude session that drafts a `plan.md` conversationally. Optionally provide source docs or a description (`-d`)
+2. **Review the plan**: edit `plans/my-project.md` to sharpen the objective, set oracle thresholds, add domain knowledge
+3. **Launch**: `zo build plans/my-project.md` shows a phase review (subtasks, agents, oracle criteria), prompts for additional instructions, then spawns the agent team in tmux
+4. **Approve at gates**: in supervised mode (default), every phase transition pauses for your review. You can also type directly into the Lead Orchestrator's Claude Code session
+5. **Session continuity**: stop anytime. Run `zo build` again, it auto-detects the current phase and resumes. Or use `zo continue my-project` as shorthand
+6. **Self-evolution**: when something fails, ZO runs a post-mortem: fix the symptom, update the rule that allowed it, verify the rule prevents recurrence
+7. **Clean delivery**: your project repo contains only code, models, reports, and tests. Zero ZO infrastructure
 
 ---
 
 ## Commands
 
-### `zo build` — The primary command
+### `zo build`: The primary command
 
 ```bash
 zo build plans/my-project.md --gate-mode supervised
 ```
 
 Smart mode detection:
-- **Fresh project** (no state) — builds from scratch
-- **Existing state** — continues from the current phase
-- **Plan edited** since last run — re-decomposes and resumes
+- **Fresh project** (no state): builds from scratch
+- **Existing state**: continues from the current phase
+- **Plan edited** since last run: re-decomposes and resumes
 
 Shows a brand panel, phase review with subtasks/agents/oracle criteria, and prompts for additional instructions before launching.
 
-### `zo continue` — Resume shorthand
+### `zo continue`: Resume shorthand
 
 ```bash
 zo continue my-project
@@ -112,7 +112,7 @@ zo continue                              # auto-detect if cwd has .zo/config.yam
 
 Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path. With `--repo`, reads project config from the delivery repo's `.zo/` directory. If cwd contains `.zo/config.yaml`, the project name is auto-detected.
 
-### `zo draft` — Draft a plan with scout team
+### `zo draft`: Draft a plan with scout team
 
 ```bash
 zo draft -p my-project --docs ~/docs/ --data ~/data/    # docs + data inspection
@@ -120,11 +120,11 @@ zo draft -p churn-forecast -d "Tabular churn model, gradient boosting, 0.85 AUC 
 zo draft -p my-project                                    # fully conversational
 ```
 
-Launches a **Plan Architect** (Opus) that drafts `plan.md` conversationally with you. Optionally spawns **Data Scout** (inspects `--data` paths for schema, distributions, quality flags) and **Research Scout** (finds prior art and baselines) in the background. Scout findings are woven into the plan as they arrive. All args are optional — if nothing provided, the architect asks you everything conversationally.
+Launches a **Plan Architect** (Opus) that drafts `plan.md` conversationally with you. Optionally spawns **Data Scout** (inspects `--data` paths for schema, distributions, quality flags) and **Research Scout** (finds prior art and baselines) in the background. Scout findings are woven into the plan as they arrive. All args are optional. If nothing provided, the architect asks you everything conversationally.
 
-The Plan Architect also populates two Agent Configuration knobs based on scout findings: **Custom agents** (new specialist roles the project needs — signal processing, calibration, NLP specialists, etc. — auto-created as `.claude/agents/custom/*.md` at build start) and **Agent adaptations** (domain-specific prompt additions for existing agents like `xai-agent` and `domain-evaluator`, appended at spawn time so the agent's `.md` file stays reusable across projects). Custom agents extend the team; adaptations tailor existing members. Both flow through to the build automatically.
+The Plan Architect also populates two Agent Configuration knobs based on scout findings: **Custom agents** (new specialist roles the project needs, such as signal processing, calibration, or NLP specialists, auto-created as `.claude/agents/custom/*.md` at build start) and **Agent adaptations** (domain-specific prompt additions for existing agents like `xai-agent` and `domain-evaluator`, appended at spawn time so the agent's `.md` file stays reusable across projects). Custom agents extend the team; adaptations tailor existing members. Both flow through to the build automatically.
 
-### `zo init` — Scaffold a new project (conversational by default)
+### `zo init`: Scaffold a new project (conversational by default)
 
 ```bash
 zo init my-project                                              # conversational (default)
@@ -136,7 +136,7 @@ Default behaviour launches the **Init Architect** (Opus) in a tmux pane. The age
 
 Creates: `memory/{project}/`, `targets/{project}.target.md`, `plans/{project}.md` (with auto-populated `## Environment` section), and a delivery repo scaffold. With `--existing-repo`, adds only ZO infrastructure dirs (`configs/`, `experiments/`, `docker/`) without touching existing code. With `--layout-mode=adaptive`, preserves your code layout entirely. If you need to start over, `zo init {project} --reset` deletes the ZO artifacts (memory, target, plan) without ever touching the delivery repo. See [Delivery Repo Structure](docs/DELIVERY_STRUCTURE.md) and [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full flag surface.
 
-### `zo preflight` — Validate before launch
+### `zo preflight`: Validate before launch
 
 ```bash
 zo preflight plans/my-project.md --target-repo /path/to/delivery
@@ -144,7 +144,7 @@ zo preflight plans/my-project.md --target-repo /path/to/delivery
 
 Runs local-only validation: Claude CLI, tmux, plan parsing, agent definitions, memory round-trip, Docker, GPU availability. Fix failures before running `zo build`.
 
-### `zo status` — Check current state
+### `zo status`: Check current state
 
 ```bash
 zo status my-project
@@ -154,7 +154,7 @@ zo status                              # auto-detect if cwd has .zo/config.yaml
 
 Displays the current `STATE.md`: active phase, blockers, next steps, agent statuses. With `--repo`, reads state from the delivery repo's `.zo/memory/` directory.
 
-### `zo migrate` — Portable project memory
+### `zo migrate`: Portable project memory
 
 ```bash
 zo migrate my-project
@@ -163,13 +163,13 @@ zo migrate my-project --repo /path/to/delivery --clean
 
 Copies project state (memory, plan, config) into the delivery repo's `.zo/` directory, making the project portable across machines via `git pull`. Use `--clean` to remove legacy artifacts from the ZO repo after migration.
 
-### `zo watch-training` — Live training dashboard
+### `zo watch-training`: Live training dashboard
 
 ```bash
 zo watch-training --project my-project
 ```
 
-Persistent Rich panel showing epoch progress, metrics table (current/best/target), loss sparkline, and checkpoint history. Auto-launched by `zo build` during Phase 4 via tmux split-pane — no window switching needed. Training scripts emit metrics via `ZOTrainingCallback` from `zo.training_metrics`.
+Persistent Rich panel showing epoch progress, metrics table (current/best/target), loss sparkline, and checkpoint history. Auto-launched by `zo build` during Phase 4 via tmux split-pane, no window switching needed. Training scripts emit metrics via `ZOTrainingCallback` from `zo.training_metrics`.
 
 ---
 
@@ -183,20 +183,20 @@ Control how much autonomy ZO has at phase transitions.
 | **Auto** | `--gate-mode auto` | Only gates marked `BLOCKING` in the plan require approval. Automated gates proceed if all subtasks pass. |
 | **Full Auto** | `--gate-mode full-auto` | No human gates. ZO runs start to finish autonomously. Use when you trust the pipeline. |
 
-You can switch modes at runtime — start supervised, watch the first few phases, then switch to auto once you trust the flow.
+You can switch modes at runtime: start supervised, watch the first few phases, then switch to auto once you trust the flow.
 
-### `zo gates set` — Change gate mode mid-session
+### `zo gates set`: Change gate mode mid-session
 
 ```bash
 zo gates set auto --project my-project
 zo gates set full-auto -p my-project
 ```
 
-Writes the new mode to `memory/{project}/gate_mode`. The running orchestrator and wrapper pick it up on the next poll cycle — no restart needed.
+Writes the new mode to `memory/{project}/gate_mode`. The running orchestrator and wrapper pick it up on the next poll cycle, no restart needed.
 
 ### Live Status & Haiku Headlines
 
-During `zo build`, the main terminal shows a live activity feed: tasks, agent progress, comms events. Every 60 seconds, Claude Haiku generates a 1-line headline summarising recent activity — like news ticker for your build.
+During `zo build`, the main terminal shows a live activity feed: tasks, agent progress, comms events. Every 60 seconds, Claude Haiku generates a 1-line headline summarising recent activity, like news ticker for your build.
 
 ---
 
@@ -218,12 +218,12 @@ zo init my-project
 zo draft ~/docs/requirements.md ~/data/ --project my-project
 
 # 4. Option B: Write a plan manually
-#    Edit plans/my-project.md — fill in all 8 sections
+#    Edit plans/my-project.md: fill in all 8 sections
 
 # 5. Start tmux (required for agent visibility)
 tmux new -s zo
 
-# 6. Launch — you'll see a phase review, then agents in tmux panes
+# 6. Launch: you'll see a phase review, then agents in tmux panes
 zo build plans/my-project.md
 
 # 7. Navigate tmux panes
@@ -252,7 +252,7 @@ zo build plans/my-project.md --low-token
 
 The preset trades some quality at the lead step for cost savings (Sonnet lead instead of Opus, **Haiku for code-reviewer / test-engineer / oracle-qa**, 2 Phase-4 iterations instead of 10, **trimmed Phase 1 to data-engineer only and Phase 5 to model-builder + oracle-qa only**, no Haiku headlines, full-auto gates, earlier auto-compaction). First measured on the MNIST bench (2026-04-27): ~30% reduction ($7.75 vs. ~$11 default) with the lead-only swap. New targets after the Haiku routing + per-phase agent trims: ~50-60% (a second bench post-update is needed to confirm). See [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx) for the full breakdown and the path to ~70-80% via SDK refactor (prompt caching + Batch API + Files API).
 
-Plan-level equivalent — set `low_token: true` in YAML frontmatter to persist per project.
+Plan-level equivalent: set `low_token: true` in YAML frontmatter to persist per project.
 
 Override individual knobs while the preset is active:
 
@@ -273,12 +273,12 @@ Starting a new Claude Code session? Use `/zo-dev` to get full context:
 /zo-dev
 ```
 
-This loads STATE.md, DECISION_LOG, PRIORS, presents a briefing of where you are, and asks what to work on. No need to explain context manually — ZO remembers everything.
+This loads STATE.md, DECISION_LOG, PRIORS, presents a briefing of where you are, and asks what to work on. No need to explain context manually, ZO remembers everything.
 
 Other session commands:
-- `/memory/prime zo-platform` — detailed context briefing with semantic search
-- `/memory/recall "query"` — search past decisions for a specific topic
-- `/memory/session-summary` — wrap up the current session cleanly
+- `/memory/prime zo-platform`: detailed context briefing with semantic search
+- `/memory/recall "query"`: search past decisions for a specific topic
+- `/memory/session-summary`: wrap up the current session cleanly
 
 ---
 
@@ -309,16 +309,16 @@ ZO follows a structured pipeline defined in `specs/workflow.md`. Three modes ava
 Phase 1: Data Review & Pipeline     → Gate (automated)
   13 subtasks covering schema validation, outlier detection, class imbalance, split strategy, and more
 
-Phase 2: Feature Engineering        → Gate (BLOCKING — human approves features)
+Phase 2: Feature Engineering        → Gate (BLOCKING: human approves features)
   Feature creation, statistical filtering, multicollinearity pruning
 
 Phase 3: Model Design               → Gate (automated)
   Architecture selection, loss design, training strategy, oracle setup
 
-Phase 4: Training & Iteration       → Gate (automated — oracle loop)
+Phase 4: Training & Iteration       → Gate (automated: oracle loop)
   Baseline training, iteration protocol, cross-validation, ensemble
 
-Phase 5: Analysis & Validation      → Gate (BLOCKING — human approves model)
+Phase 5: Analysis & Validation      → Gate (BLOCKING: human approves model)
   SHAP/explainability, domain consistency, error analysis, significance testing
 
 Phase 6: Packaging                  → Gate (automated)
@@ -372,11 +372,11 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 4: Delivery Repo (clean)                             │
 │                                                             │
-│  src/ models/ reports/ tests/ — zero ZO artifacts           │
+│  src/ models/ reports/ tests/. Zero ZO artifacts.          │
 │  Isolation enforced via target.py zo_only_paths blocklist   │
 │                                                             │
 │  Optional: .zo/ directory for portable project memory       │
-│  (config, state, plans — travels with the repo via git)     │
+│  (config, state, plans, travels with the repo via git)     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -385,7 +385,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 
 ## Agent Teams
 
-**Project Delivery Team** — 11 agents that execute ML/research projects:
+**Project Delivery Team** (11 agents that execute ML/research projects):
 
 | Agent | Model | When Active | What They Do |
 |-------|-------|-------------|-------------|
@@ -401,11 +401,11 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | ML Engineer | Sonnet | Phases 4-6 | Inference optimization, experiment tracking |
 | Infra Engineer | Haiku | Phases 1, 6 | Environment setup, packaging, deployment |
 | Plan Architect | Opus | zo draft | Leads plan drafting, spawns scouts, converses with human |
-| Data Scout | Sonnet | zo draft | Quick data inspection — schema, distributions, quality flags |
+| Data Scout | Sonnet | zo draft | Quick data inspection, schema, distributions, quality flags |
 
 Code Reviewer and Research Scout are cross-cutting agents present in all phases by default.
 
-**Dynamic agents** — if your project needs expertise not covered (NLP, time-series, security), the Lead Orchestrator creates a new agent definition on the fly.
+**Dynamic agents**: if your project needs expertise not covered (NLP, time-series, security), the Lead Orchestrator creates a new agent definition on the fly.
 
 ---
 
@@ -465,7 +465,7 @@ ZO has been validated end-to-end on full ML-lifecycle reference projects. The ag
 - Trained against per-experiment metric capture (`metrics.jsonl`, `training_status.json`) with hard gate enforcement on artifact contracts
 - Produced explainability artifacts (saliency / GradCAM / attention), ablation studies, statistical-significance testing, reproducibility verification
 - Delivered clean repos with comprehensive test suites (data, ML, integration tiers)
-- Zero ZO artifacts leaked — every delivery repo passes the isolation enforcer
+- Zero ZO artifacts leaked. Every delivery repo passes the isolation enforcer
 
 Measured cost, accuracy, and wall-time figures for the canonical reference run are tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx) and refreshed on every release.
 
@@ -490,7 +490,7 @@ delivery-repo/
 
 ## Status
 
-**v1.0.2 — All phases complete. Validated end-to-end. Brand v2 + autonomous experiment loop shipped.**
+**v1.0.2: All phases complete. Validated end-to-end. Brand v2 + autonomous experiment loop shipped.**
 
 | Phase | What | Status |
 |-------|------|--------|
@@ -515,11 +515,11 @@ What we're working on next, in priority order. Open an issue or join a discussio
 
 ### 1. Broader coding-agent provider support
 
-Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes — OpenAI Codex CLI, OpenCode, and others — would let users bring their preferred provider, widen account and hardware compatibility, and unlock new spawn-agent topologies. Also a useful hedge against any single-vendor disruption.
+Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes (OpenAI Codex CLI, OpenCode, and others) would let users bring their preferred provider, widen account and hardware compatibility, and unlock new spawn-agent topologies. Also a useful hedge against any single-vendor disruption.
 
 ### 2. No-install web UI for non-engineering researchers
 
-The CLI-first experience suits software engineers. Researchers from other disciplines — biology, finance, social sciences — often hit friction with environment variables, Node.js, and tmux. Some end up paying others to install the surrounding tooling just to get started. A web UI would let those users manage agents and watch progress visually (similar in shape to Codex's desktop app), with one-click setup that hides the host-tooling layer entirely.
+The CLI-first experience suits software engineers. Researchers from other disciplines (biology, finance, social sciences) often hit friction with environment variables, Node.js, and tmux. Some end up paying others to install the surrounding tooling just to get started. A web UI would let those users manage agents and watch progress visually (similar in shape to Codex's desktop app), with one-click setup that hides the host-tooling layer entirely.
 
 ### 3. Push `--low-token` mode toward 70–80% savings
 
@@ -531,25 +531,25 @@ Current preset gives ~30% measured savings on the canonical reference run. The p
 
 Zero Operators stands on the shoulders of:
 
-- [Claude Code](https://www.anthropic.com/claude-code) by Anthropic — the agent runtime ZO orchestrates
-- [Pydantic](https://github.com/pydantic/pydantic) (MIT) — schema validation
-- [Click](https://github.com/pallets/click) (BSD-3-Clause) — CLI framework
-- [Rich](https://github.com/Textualize/rich) (MIT) — terminal rendering
-- [nbformat](https://github.com/jupyter/nbformat) (BSD-3-Clause) — notebook I/O
-- [PyYAML](https://github.com/yaml/pyyaml) (MIT) — YAML I/O
-- [FastEmbed](https://github.com/qdrant/fastembed) (Apache-2.0, optional) — semantic memory
-- [uv](https://github.com/astral-sh/uv) — package management
-- [Ruff](https://github.com/astral-sh/ruff) (MIT) — linting
-- [Astro](https://github.com/withastro/astro) (MIT) — marketing site
-- [Mintlify](https://mintlify.com) — documentation hosting
+- [Claude Code](https://www.anthropic.com/claude-code) by Anthropic: the agent runtime ZO orchestrates
+- [Pydantic](https://github.com/pydantic/pydantic) (MIT): schema validation
+- [Click](https://github.com/pallets/click) (BSD-3-Clause): CLI framework
+- [Rich](https://github.com/Textualize/rich) (MIT): terminal rendering
+- [nbformat](https://github.com/jupyter/nbformat) (BSD-3-Clause): notebook I/O
+- [PyYAML](https://github.com/yaml/pyyaml) (MIT): YAML I/O
+- [FastEmbed](https://github.com/qdrant/fastembed) (Apache-2.0, optional): semantic memory
+- [uv](https://github.com/astral-sh/uv): package management
+- [Ruff](https://github.com/astral-sh/ruff) (MIT): linting
+- [Astro](https://github.com/withastro/astro) (MIT): marketing site
+- [Mintlify](https://mintlify.com): documentation hosting
 
 ### Optional integrations (planned)
 
 External CLI tools that fit ZO's launcher architecture and are being evaluated for opt-in integration:
 
-- [ccusage](https://github.com/ryoppippi/ccusage) (MIT) — Claude Code token usage monitor
-- [Repomix](https://github.com/yamadashy/repomix) (MIT) — repo context packing for agent prompts
-- [caveman](https://github.com/JuliusBrussee/caveman) (MIT) by Julius Brussee — terse-output skill
+- [ccusage](https://github.com/ryoppippi/ccusage) (MIT): Claude Code token usage monitor
+- [Repomix](https://github.com/yamadashy/repomix) (MIT): repo context packing for agent prompts
+- [caveman](https://github.com/JuliusBrussee/caveman) (MIT) by Julius Brussee: terse-output skill
 
 ---
 
@@ -557,13 +557,13 @@ External CLI tools that fit ZO's launcher architecture and are being evaluated f
 
 No tool ships alone. With thanks to the *specialists, researchers and engineers* who tested, broke things, pushed back when it counted, and made ZO sharper:
 
-- [Arjun Agrawal](https://www.linkedin.com/in/arjunagraw/)
 - [Callum Adamson](https://www.linkedin.com/in/callumadamson/)
-- [Harry Davies](https://www.linkedin.com/in/harrydavies1/)
+- [Arjun Agrawal](https://www.linkedin.com/in/arjunagraw/)
 - [Ken Chatfield](https://www.linkedin.com/in/kchatfield/)
+- [Tianhong Dai](https://www.linkedin.com/in/tianhong-dai-71b166117/)
+- [Harry Davies](https://www.linkedin.com/in/harrydavies1/)
 - [Nick Imrie](https://www.linkedin.com/in/nickimrie/)
 - [Sergey Podatelev](https://www.linkedin.com/in/sergey-podatelev/)
-- [Tianhong Dai](https://www.linkedin.com/in/tianhong-dai-71b166117/)
 
 ---
 

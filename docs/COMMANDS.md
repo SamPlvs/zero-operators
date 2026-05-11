@@ -25,10 +25,10 @@ zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
 ```
 
 **Cost-saving options:**
-- `--low-token` — activates the cost-saving preset (Sonnet lead, 2 max iterations, full-auto gates, no headlines, earlier auto-compaction). Equivalent to `low_token: true` in plan frontmatter. ~70-80% reduction. See `docs/concepts/low-token-mode.mdx`.
-- `--lead-model` — override lead orchestrator model. Composes with `--low-token`.
-- `--max-iterations N` — hard cap on Phase-4 experiment iterations. Wins over plan and preset.
-- `--no-headlines` — disable the Haiku headline ticker (saves ~60 small calls/hour).
+- `--low-token`: activates the cost-saving preset (Sonnet lead, 2 max iterations, full-auto gates, no headlines, earlier auto-compaction). Equivalent to `low_token: true` in plan frontmatter. ~70-80% reduction. See `docs/concepts/low-token-mode.mdx`.
+- `--lead-model`: override lead orchestrator model. Composes with `--low-token`.
+- `--max-iterations N`: hard cap on Phase-4 experiment iterations. Wins over plan and preset.
+- `--no-headlines`: disable the Haiku headline ticker (saves ~60 small calls/hour).
 
 ### zo continue
 
@@ -41,30 +41,30 @@ zo continue [project-name] [--repo PATH] [--gate-mode supervised|auto|full-auto]
 ```
 
 **Options:**
-- `project-name` — optional if cwd contains `.zo/config.yaml` (auto-detected)
-- `--repo PATH` — path to delivery repo (overrides target file lookup)
-- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines` — same semantics as `zo build`
+- `project-name`: optional if cwd contains `.zo/config.yaml` (auto-detected)
+- `--repo PATH`: path to delivery repo (overrides target file lookup)
+- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines`: same semantics as `zo build`
 
 ### zo draft
 
-Draft a plan with a scout team. Launches a Plan Architect (Opus) that converses with you while Data Scout and Research Scout gather intelligence in the background. All args are optional — if nothing provided, the architect asks conversationally.
+Draft a plan with a scout team. Launches a Plan Architect (Opus) that converses with you while Data Scout and Research Scout gather intelligence in the background. All args are optional, if nothing provided, the architect asks conversationally.
 
 ```
 zo draft --project NAME [--docs PATH...] [--data PATH...] [-d DESC] [--no-tmux]
 ```
 
-- `--docs` — source documents (requirements, scope of work) for plan context
-- `--data` — data files/dirs for the Data Scout to inspect (schema, distributions, quality)
-- `-d` — free-text project description
+- `--docs`: source documents (requirements, scope of work) for plan context
+- `--data`: data files/dirs for the Data Scout to inspect (schema, distributions, quality)
+- `-d`: free-text project description
 
 The Plan Architect populates two Agent Configuration blocks in the resulting `plan.md` based on scout findings:
 
-- **Custom agents** — new specialist roles the project needs (e.g. `signal-analyst`, `calibration-expert`). Each entry is auto-created as a `.claude/agents/custom/{name}.md` file at build start. Format:
+- **Custom agents**: new specialist roles the project needs (e.g. `signal-analyst`, `calibration-expert`). Each entry is auto-created as a `.claude/agents/custom/{name}.md` file at build start. Format:
   ```
   **Custom agents:**
-  - signal-analyst: Sonnet — Signal processing specialist for vibration data
+  - signal-analyst: Sonnet, Signal processing specialist for vibration data
   ```
-- **Agent adaptations** — project-specific prompt additions for existing agents (most commonly `xai-agent` and `domain-evaluator`, which are generic by default and need domain context). The adaptation text is appended to the agent's base spawn prompt at build time; the agent's `.md` file is unchanged. Format:
+- **Agent adaptations**: project-specific prompt additions for existing agents (most commonly `xai-agent` and `domain-evaluator`, which are generic by default and need domain context). The adaptation text is appended to the agent's base spawn prompt at build time; the agent's `.md` file is unchanged. Format:
   ```
   **Agent adaptations:**
 
@@ -74,11 +74,11 @@ The Plan Architect populates two Agent Configuration blocks in the resulting `pl
     relevant for time-series signal data.
   ```
 
-Custom agents and adaptations are complementary: custom agents extend the team roster; adaptations tailor existing members. Both flow through to the build automatically — the Lead Orchestrator reads the plan's `# Per-project Agent Adaptations` section in its spawn prompt and appends each adaptation when it spawns the corresponding agent.
+Custom agents and adaptations are complementary: custom agents extend the team roster; adaptations tailor existing members. Both flow through to the build automatically, the Lead Orchestrator reads the plan's `# Per-project Agent Adaptations` section in its spawn prompt and appends each adaptation when it spawns the corresponding agent.
 
 ### zo init
 
-Initialize a project. **Conversational by default** — launches the **Init Architect** in a tmux pane to interview you (new vs existing repo, branch, training host, data location), inspect the target repo, then call the headless CLI to write all artifacts.
+Initialize a project. **Conversational by default**: launches the **Init Architect** in a tmux pane to interview you (new vs existing repo, branch, training host, data location), inspect the target repo, then call the headless CLI to write all artifacts.
 
 ```
 zo init project-name                          # conversational (default)
@@ -87,16 +87,16 @@ zo init project-name --no-tmux [flags...]     # headless / CI mode
 
 **Headless flags** (used with `--no-tmux`, also generated by the Init Architect when it makes the underlying call):
 
-- `--branch BRANCH` — target git branch on the delivery repo (default: `main`)
-- `--scaffold-delivery PATH` — create a fresh delivery repo at `PATH`
-- `--existing-repo PATH` — overlay ZO structure onto an existing local repo (must be a git repo). Adds only what's missing; never touches existing code.
-- `--layout-mode {standard,adaptive}` — `standard` creates the full `src/data/`, `src/model/`, etc.; `adaptive` skips them so an existing code layout is preserved. Adaptive requires `--existing-repo`.
-- `--base-image IMAGE` — Docker base image (auto-suggested from host CUDA when omitted)
-- `--gpu-host HOST` — remote GPU host for training (recorded in plan Environment)
-- `--data-path PATH` — local path or remote string `host:/abs/path` (recorded in plan Environment + Docker mounts)
-- `--no-detect` — skip host environment auto-detection; leave Environment placeholders as TODO
-- `--dry-run` — preview what would be written without touching the filesystem. The Init Architect runs this automatically before committing; you can also invoke it directly with `--no-tmux --dry-run`.
-- `--reset` — **delete** ZO artifacts for the project (`memory/{project}/`, `targets/{project}.target.md`, `plans/{project}.md`). Prompts for the project name to confirm. The delivery repo is never touched. Pair with `-y` / `--yes` to skip confirmation in scripts.
+- `--branch BRANCH`: target git branch on the delivery repo (default: `main`)
+- `--scaffold-delivery PATH`: create a fresh delivery repo at `PATH`
+- `--existing-repo PATH`: overlay ZO structure onto an existing local repo (must be a git repo). Adds only what's missing; never touches existing code.
+- `--layout-mode {standard,adaptive}`: `standard` creates the full `src/data/`, `src/model/`, etc.; `adaptive` skips them so an existing code layout is preserved. Adaptive requires `--existing-repo`.
+- `--base-image IMAGE`: Docker base image (auto-suggested from host CUDA when omitted)
+- `--gpu-host HOST`: remote GPU host for training (recorded in plan Environment)
+- `--data-path PATH`: local path or remote string `host:/abs/path` (recorded in plan Environment + Docker mounts)
+- `--no-detect`: skip host environment auto-detection; leave Environment placeholders as TODO
+- `--dry-run`: preview what would be written without touching the filesystem. The Init Architect runs this automatically before committing; you can also invoke it directly with `--no-tmux --dry-run`.
+- `--reset`: **delete** ZO artifacts for the project (`memory/{project}/`, `targets/{project}.target.md`, `plans/{project}.md`). Prompts for the project name to confirm. The delivery repo is never touched. Pair with `-y` / `--yes` to skip confirmation in scripts.
 
 `--scaffold-delivery` and `--existing-repo` are mutually exclusive.
 `--layout-mode=adaptive` requires `--existing-repo`.
@@ -120,8 +120,8 @@ zo status [project-name] [--repo PATH]
 ```
 
 **Options:**
-- `project-name` — optional if cwd contains `.zo/config.yaml` (auto-detected)
-- `--repo PATH` — path to delivery repo (reads state from `.zo/memory/`)
+- `project-name`: optional if cwd contains `.zo/config.yaml` (auto-detected)
+- `--repo PATH`: path to delivery repo (reads state from `.zo/memory/`)
 
 ### zo migrate
 
@@ -130,8 +130,8 @@ Migrate project state from ZO repo to delivery repo `.zo/` directory.
 **Usage:** `zo migrate <project_name> [--repo PATH] [--clean]`
 
 **Options:**
-- `--repo PATH` — Path to delivery repo. If omitted, resolved from `targets/{project}.target.md`
-- `--clean` — Remove legacy artifacts from ZO repo after migration
+- `--repo PATH`: Path to delivery repo. If omitted, resolved from `targets/{project}.target.md`
+- `--clean`: Remove legacy artifacts from ZO repo after migration
 
 Copies memory (STATE.md, DECISION_LOG, PRIORS, sessions), plan, and target config into the delivery repo's `.zo/` directory, making the project portable across machines via git.
 
@@ -173,9 +173,9 @@ zo experiments show EXP_ID --project NAME [--repo PATH]
 zo experiments diff EXP_A EXP_B --project NAME [--repo PATH]
 ```
 
-- **list** — table of all experiments (id, phase, parent, hypothesis, primary metric, Δ vs parent, status).
-- **show** — full details for one experiment including the content of every authored markdown artefact.
-- **diff** — side-by-side comparison of two experiments' metrics and shortfalls. Useful for sibling comparisons (two parallel variants) and parent-child comparisons (did the iteration actually improve?).
+- **list**: table of all experiments (id, phase, parent, hypothesis, primary metric, Δ vs parent, status).
+- **show**: full details for one experiment including the content of every authored markdown artefact.
+- **diff**: side-by-side comparison of two experiments' metrics and shortfalls. Useful for sibling comparisons (two parallel variants) and parent-child comparisons (did the iteration actually improve?).
 
 ---
 

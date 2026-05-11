@@ -2154,155 +2154,44 @@ em, .it {
       .sculley-cap .cap-r { text-align: left; }
 
       /* ----------------------------------------------------------------
-         §02 timeline — go VERTICAL on mobile. Horizontal 10-col bar
-         can't fit 8 phase labels on a phone (model exp/iteration text
-         overlap). Stack each phase as a full-width row, drop the ticks
-         and group brackets row (the legend below already lists the
-         3-week breakdown), and override the left→right clip-path
-         reveal with an opacity fade so the vertical bar still animates.
+         §02 timeline + §03 lanes — preserve the horizontal layout on
+         mobile and let the visual scroll horizontally. Matches the
+         team-diagram pattern: full-bleed container + min-width on the
+         inner grid so users can swipe across the week/day axis instead
+         of collapsing it into a vertical list (which loses the
+         "compressed timeline" semantic the visual exists to show).
          ---------------------------------------------------------------- */
-      .timeline { padding: 22px 16px 18px; }
-      /* Hide horizontal-only apparatus: annotation row, group brackets,
-         label column, and the ticks row. Specificity matters — the
-         groups row has both `.tl-grid` and `.tl-groups-row`, so the
-         hide rule needs both classes to win against `.tl-grid` below. */
-      .tl-grid { display: block; }
-      .tl-annot-row,
-      .tl-grid.tl-groups-row,
-      .tl-grid:has(.tl-ticks) { display: none; }
-      .tl-row-label { display: none; }
-
-      /* Vertical bar: each .tl-seg becomes a full-width row. The base
-         rule has `grid-column: span N` — we need to neutralise that
-         when the parent flips from grid to flex-column. */
-      .tl-bar {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        border-radius: 4px;
-        clip-path: none;
-      }
-      .tl-bar.is-visible { clip-path: none; opacity: 1; }
-      .tl-bar { opacity: 0; transition: opacity .8s var(--ease) .1s; }
-      .tl-seg {
-        height: 32px;
-        padding: 0 14px;
+      .timeline,
+      .lanes-frame {
+        margin-left: -20px;
+        margin-right: -20px;
+        padding: 22px 16px 18px;
+        border-left: none;
         border-right: none;
-        border-bottom: 1px solid var(--canvas);
-        font-size: 11px;
-        letter-spacing: 0.02em;
+        border-radius: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
-      .tl-seg:last-child { border-bottom: none; }
-
-      /* Legend stacks already (flex-wrap) — ensure swatches line up. */
-      .tl-legend { gap: 8px 18px; }
-
-      /* ----------------------------------------------------------------
-         §03 ZO lane — same vertical stack treatment so 6 phases fit
-         readably and the "package · test · deploy" cell stops wrapping
-         mid-word.
-         ---------------------------------------------------------------- */
-      .lanes-frame { padding: 24px 18px 22px; }
-      /* Hide the lane row label ("ZO RUNS THE CYCLE", "YOU DIRECT")
-         and the bottom tick row — they assume a horizontal axis. */
-      .lanes-grid { grid-template-columns: 1fr; gap: 14px; }
-      .lane-label { display: none; }
-      .lanes-ticks { display: none; }
-      .between-row { display: block; }
-      .between-spacer { display: none; }
-
-      .zo-lane {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        border-radius: 4px;
-        clip-path: none;
-        opacity: 0;
-        transition: opacity .8s var(--ease) .1s;
+      /* Force inner content to keep its horizontal width so the
+         container actually scrolls. Anything narrower than 640px on
+         mobile makes the labels overlap. */
+      .timeline .tl-annot-row,
+      .timeline .tl-grid {
+        min-width: 640px;
       }
-      .zo-lane.is-visible { clip-path: none; opacity: 1; }
-      .zo-seg {
-        padding: 10px 14px;
-        font-size: 11px;
-        letter-spacing: 0.01em;
-        border-right: none;
-        border-bottom: 1px solid oklch(0.74 0.14 35 / 0.18);
+      .lanes-frame .lanes-grid {
+        min-width: 640px;
       }
-      .zo-seg:last-child { border-bottom: none; }
-      .zo-seg.is-active::before { width: 5px; height: 5px; margin-right: 8px; }
-
-      /* "continuous direction" between-label — flow inline, drop the
-         leading dash since there's no horizontal bar to terminate. */
-      .between-label {
-        font-size: 13px;
-        padding: 6px 0;
-        gap: 8px;
+      /* Legend + caption don't need the wide content area — let them
+         flow naturally below the scrollable visual. */
+      .timeline .tl-legend,
+      .lanes-frame .lanes-cap {
+        min-width: 0;
       }
-      .between-label::before { flex: 0 0 18px; }
-      .between-note { font-size: 12px; }
-
-      /* §03 You-direct lane — stack the 4 pins as a vertical checklist
-         instead of plotting them on a horizontal week axis. */
-      .human-lane {
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .human-baseline { display: none; }
-      .human-pin {
-        position: relative;
-        display: grid;
-        grid-template-columns: 28px 1fr auto;
-        grid-template-areas: "mark name time";
-        align-items: center;
-        gap: 12px;
-        padding: 4px 0;
-      }
-      .human-pin .pin-mark {
-        position: static;
-        margin: 0;
-        grid-area: mark;
-        width: 12px;
-        height: 12px;
-      }
-      .human-pin .pin-label {
-        position: static;
-        transform: none;
-        grid-area: name;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: 6px 10px;
-        white-space: normal;
-        text-align: left;
-      }
-      .pin-label .pl-name { display: inline; font-size: 10px; }
-      .pin-label .pl-dur { font-size: 12px; }
-      .human-pin .pin-time {
-        position: static;
-        transform: none;
-        grid-area: time;
-        font-size: 9px;
-      }
-      .human-pin.pin-edge-l .pin-label,
-      .human-pin.pin-edge-r .pin-label,
-      .human-pin.pin-edge-l .pin-time,
-      .human-pin.pin-edge-r .pin-time {
-        position: static;
-        transform: none;
-        text-align: left;
-        align-items: baseline;
-      }
-
-      /* Lanes caption — already stacks vertically. Tighten the
-         meta line on mobile and rebalance the headline size. */
-      .lanes-cap { gap: 8px; }
-      .lanes-cap > span { font-size: 9px; }
+      .tl-legend { font-size: 11px; gap: 8px 18px; }
+      .lanes-cap { gap: 8px; padding-top: 14px; }
+      .lanes-cap > span { font-size: 10px; }
       .lanes-cap .lanes-cap-headline { font-size: 14px; }
-
-      /* Weekend cell on mobile — center the italic label as a row. */
-      .zo-seg-weekend { padding: 12px 14px; }
     }
 
     /* Hero headline override — keep italic em flowing inline so longer

@@ -38,7 +38,7 @@ Layout in the delivery repo:
 delivery/
 ├── .zo/
 │   ├── config.yaml              # portable project config (committed)
-│   ├── local.yaml               # machine-specific (paths, GPU info — gitignored)
+│   ├── local.yaml               # machine-specific (paths, GPU info, gitignored)
 │   ├── memory/
 │   │   ├── STATE.md
 │   │   ├── DECISION_LOG.md
@@ -73,7 +73,7 @@ The CLI auto-detects the `.zo/` layout, loads project context, and resumes from 
 
 ## Semantic search
 
-`DECISION_LOG.md` accumulates rapidly — a long-running project might have 200+ decision entries. The semantic index lets agents query in natural language:
+`DECISION_LOG.md` accumulates rapidly, a long-running project might have 200+ decision entries. The semantic index lets agents query in natural language:
 
 ```bash
 # Inside a Claude Code session:
@@ -85,7 +85,7 @@ How it works:
 - Queries cosine-match against the summary embedding
 - The full entry is injected into context (not just the summary)
 - Storage: SQLite at `{memory_root}/index.db`
-- Embeddings: `fastembed` (optional dependency; falls back to word-overlap if missing — see [DECISION_LOG entry from session 2](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/DECISION_LOG.md))
+- Embeddings: `fastembed` (optional dependency; falls back to word-overlap if missing, see [DECISION_LOG entry from session 2](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/DECISION_LOG.md))
 
 This optimises for **context-window density**: 3 highly relevant full decisions beat 10 noisy fragments.
 
@@ -124,10 +124,10 @@ This prevents accumulation of irrelevant reasoning and keeps token costs predict
 
 The 34 priors in [`memory/zo-platform/PRIORS.md`](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) are the cumulative output of this protocol. A few examples:
 
-- **PR-001** — `claude --print --dangerously-skip-permissions` exits immediately. Captured after a tmux pane stayed blank during MNIST testing.
-- **PR-005** — Aspirational rules without enforcement are dead letter. Captured after a documentation cascade was repeatedly ignored despite being written in CLAUDE.md.
-- **PR-028** — Project memory belongs in the delivery repo, not the platform repo. Captured after a Mac → GPU server transfer broke `zo status`.
-- **PR-034** — PyTorch MPS tensor extraction returns garbage under pytest. Captured after CIFAR-10 oracle tests failed mysteriously despite the same code working in training.
+- **PR-001**: `claude --print --dangerously-skip-permissions` exits immediately. Captured after a tmux pane stayed blank during MNIST testing.
+- **PR-005**: Aspirational rules without enforcement are dead letter. Captured after a documentation cascade was repeatedly ignored despite being written in CLAUDE.md.
+- **PR-028**: Project memory belongs in the delivery repo, not the platform repo. Captured after a Mac → GPU server transfer broke `zo status`.
+- **PR-034**: PyTorch MPS tensor extraction returns garbage under pytest. Captured after CIFAR-10 oracle tests failed mysteriously despite the same code working in training.
 
 Each prior was earned by a real failure. The same mistake never happens twice.
 

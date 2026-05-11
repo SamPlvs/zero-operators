@@ -1,13 +1,13 @@
 ---
 title: "Roadmap"
-description: "What's next for Zero Operators — priorities, scope, and how to weigh in."
+description: "What's next for Zero Operators, priorities, scope, and how to weigh in."
 ---
 
 ## A note on cost, first
 
-ZO v1 is optimised for **production-grade research engineering**. Agents iterate, verify, and write production-quality code — and that burns tokens. A canonical reference run with the default profile is on the order of $10–15 of API credits.
+ZO v1 is optimised for **production-grade research engineering**. Agents iterate, verify, and write production-quality code, and that burns tokens. A canonical reference run with the default profile is on the order of $10–15 of API credits.
 
-For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on a budget), the [`--low-token` preset](/concepts/low-token-mode) currently delivers **~30% measured savings** on the same workload. We're actively pushing that further — details below.
+For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on a budget), the [`--low-token` preset](/concepts/low-token-mode) currently delivers **~30% measured savings** on the same workload. We're actively pushing that further, details below.
 
 ---
 
@@ -30,16 +30,16 @@ Three workstreams shape the next 1–2 quarters, driven by recent user feedback 
 ### Next quarter (1–3 months)
 
 <CardGroup cols={1}>
-  <Card title="Cross-phase backedge primitive — DAG to graph, step one" icon="arrows-rotate">
-    Today's orchestrator behaves like a directed acyclic graph: phases run forward, gate-by-gate. When an issue surfaces during modelling that traces back to preprocessing — for example, a flipped waveform polarity that's invisible in raw data but obvious in trained-model behaviour — it requires human steering to revisit earlier phases.
+  <Card title="Cross-phase backedge primitive, DAG to graph, step one" icon="arrows-rotate">
+    Today's orchestrator behaves like a directed acyclic graph: phases run forward, gate-by-gate. When an issue surfaces during modelling that traces back to preprocessing, for example, a flipped waveform polarity that's invisible in raw data but obvious in trained-model behaviour, it requires human steering to revisit earlier phases.
 
     **What ships:** a new `RETURN_TO_PHASE` gate decision lets a later-phase agent autonomously request a revisit of any earlier phase, with budget guardrails (`--max-cross-phase-revisits N`), dead-end detection, and a revisit-reason payload that re-prompts the earlier phase with the new constraint. Validates the weighted-graph hypothesis cheaply, before the full refactor.
   </Card>
 
-  <Card title="VS Code extension — agent dashboard, comms feed, gate approval" icon="display">
+  <Card title="VS Code extension, agent dashboard, comms feed, gate approval" icon="display">
     The CLI-first experience suits software engineers. Researchers from other disciplines often hit friction with environment variables, Node.js, and tmux. The answer: a **VS Code extension** (not a fork) that gives ZO a visual home alongside the editor, file tree, git, and integrated terminal researchers already have.
 
-    **Architecture:** headless tmux as the engine, xterm.js webview as the renderer. Claude Code keeps its real TTY (zero regression risk on the orchestration core); the UI gets agent status panels, a comms feed, training-metrics dashboards, and one-click gate approval — all in one window with the user's code. A "ZO Studio" bundled installer (VS Code + extension + Claude CLI + uv, one-click per platform) is on the table as a follow-on for non-technical researchers.
+    **Architecture:** headless tmux as the engine, xterm.js webview as the renderer. Claude Code keeps its real TTY (zero regression risk on the orchestration core); the UI gets agent status panels, a comms feed, training-metrics dashboards, and one-click gate approval, all in one window with the user's code. A "ZO Studio" bundled installer (VS Code + extension + Claude CLI + uv, one-click per platform) is on the table as a follow-on for non-technical researchers.
   </Card>
 
   <Card title="Push --low-token toward 70–80% savings" icon="gauge-high">
@@ -53,11 +53,11 @@ Three workstreams shape the next 1–2 quarters, driven by recent user feedback 
   <Card title="Full weighted graph architecture" icon="diagram-project">
     Phases as nodes with weighted reversible edges. Each node carries a "completeness" probability that updates as work progresses; the system ranks revisit weights and runs a prioritised ablation queue. Users can freeze any node manually if happy.
 
-    Enables a fast, loose end-to-end first pass — then the system autonomously revisits earlier nodes with better project context, instead of requiring human steering. Gated behind the cross-phase backedge primitive landing first.
+    Enables a fast, loose end-to-end first pass, then the system autonomously revisits earlier nodes with better project context, instead of requiring human steering. Gated behind the cross-phase backedge primitive landing first.
   </Card>
 
   <Card title="Broader coding-agent provider support" icon="plug">
-    Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes — OpenAI Codex CLI, OpenCode, others — would let users bring their preferred provider and hedge single-vendor risk.
+    Today ZO orchestrates [Claude Code](https://www.anthropic.com/claude-code). Adding adapters for other coding-agent runtimes, OpenAI Codex CLI, OpenCode, others, would let users bring their preferred provider and hedge single-vendor risk.
 
     **Realistic scope:** worker-pool model (Claude Code lead dispatches single-agent jobs to alternate workers), not full peer-to-peer team parity. Full parity would mean rebuilding Claude Code's native `TeamCreate` / `Agent` / `SendMessage` infrastructure on top of bare APIs.
   </Card>
@@ -67,7 +67,7 @@ Three workstreams shape the next 1–2 quarters, driven by recent user feedback 
 
 ## Where to weigh in
 
-These priorities come from real user feedback. If you have a use case one of these would unlock — or a different priority you'd argue for — open an issue or join the discussion.
+These priorities come from real user feedback. If you have a use case one of these would unlock, or a different priority you'd argue for, open an issue or join the discussion.
 
 <CardGroup cols={2}>
   <Card title="Issues" icon="github" href="https://github.com/SamPlvs/zero-operators/issues">
