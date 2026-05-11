@@ -1,0 +1,18 @@
+# Zero Operators code ownership
+# Every PR touching these paths requires @SamPlvs review.
+# Order matters: later patterns override earlier ones.
+
+# Default owner for everything not otherwise specified.
+# Solo maintainer — formalises what's already true: Sam reviews every change.
+*                           @SamPlvs
+
+# Protected brand surface (explicit for clarity; catch-all also covers them)
+/website/                   @SamPlvs
+/docs/                      @SamPlvs
+/design/                    @SamPlvs
+
+# Governance and CI infrastructure — must not be modifiable by contributors
+/.github/                   @SamPlvs
+/scripts/validate-docs.sh   @SamPlvs
+/CONTRIBUTING.md            @SamPlvs
+/LICENSE                    @SamPlvs
