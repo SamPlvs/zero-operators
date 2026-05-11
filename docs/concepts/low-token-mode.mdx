@@ -3,7 +3,7 @@ title: "Low-token mode"
 description: "Run ZO on a Pro plan or student account by trading some quality for substantial token savings. One flag, one preset, predictable cost."
 ---
 
-ZO is built around a Lead Orchestrator (Opus by default) plus an autonomous experiment loop that can iterate up to ten times in Phase 4. That's the right shape for an API user with budget headroom — and the wrong shape for a Pro-plan subscriber whose daily message cap is finite. **Low-token mode** swaps several knobs in unison so ZO fits inside a Pro budget without forcing you to learn five flags.
+ZO is built around a Lead Orchestrator (Opus by default) plus an autonomous experiment loop that can iterate up to ten times in Phase 4. That's the right shape for an API user with budget headroom, and the wrong shape for a Pro-plan subscriber whose daily message cap is finite. **Low-token mode** swaps several knobs in unison so ZO fits inside a Pro budget without forcing you to learn five flags.
 
 ## Activate it
 
@@ -49,15 +49,15 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 
 ## Measured savings
 
-First measured bench (MNIST, 2026-04-27) landed at **\$7.75** vs. the historical default-mode reference of **~\$11** — a **~30% reduction**.
+First measured bench (MNIST, 2026-04-27) landed at **\$7.75** vs. the historical default-mode reference of **~\$11**, a **~30% reduction**.
 
-That bench used the lead-only swap. The preset has since added two structural levers — **Haiku routing for review/test/oracle agents** and **per-phase agent trims** (Phase 1 + Phase 5) — that target a **~50-60% ceiling**. A second bench post-update is needed to confirm the new measured number.
+That bench used the lead-only swap. The preset has since added two structural levers, **Haiku routing for review/test/oracle agents** and **per-phase agent trims** (Phase 1 + Phase 5), that target a **~50-60% ceiling**. A second bench post-update is needed to confirm the new measured number.
 
-The honest reason the original 70-80% projection was off: in default mode, sub-agents are *already* on Sonnet via their `.md` frontmatter. Only the Lead Orchestrator is Opus. So a lead-only swap only affects the lead's ~30-40% cost share. At ~5× cheaper per token, that's a ceiling of ~25-30% on the total — exactly what the first bench measured. The path past that ceiling is right-sizing pattern-matching agents (Haiku) and trimming non-essential reviewers per phase, both of which the preset now does.
+The honest reason the original 70-80% projection was off: in default mode, sub-agents are *already* on Sonnet via their `.md` frontmatter. Only the Lead Orchestrator is Opus. So a lead-only swap only affects the lead's ~30-40% cost share. At ~5× cheaper per token, that's a ceiling of ~25-30% on the total, exactly what the first bench measured. The path past that ceiling is right-sizing pattern-matching agents (Haiku) and trimming non-essential reviewers per phase, both of which the preset now does.
 
-**For a path past 50-60%**, see [Cost benchmark → What would push savings higher](/reference/cost-benchmark#what-would-push-savings-higher) — prompt caching via SDK refactor, Batch API for parallel evaluation, Files API for repeated context.
+**For a path past 50-60%**, see [Cost benchmark → What would push savings higher](/reference/cost-benchmark#what-would-push-savings-higher): prompt caching via SDK refactor, Batch API for parallel evaluation, Files API for repeated context.
 
-The 30% (or post-update 50-60%) headline depends on plan shape. Plans that hit the iteration cap on default mode (harder problems, multiple Phase 4 retries) see more — `max_iterations` 10 → 2 starts to bite. Plans with no Phase 4 (data-only, feature-engineering-only) see less — only the lead-model swap and headline disable matter (~15-20%).
+The 30% (or post-update 50-60%) headline depends on plan shape. Plans that hit the iteration cap on default mode (harder problems, multiple Phase 4 retries) see more, `max_iterations` 10 → 2 starts to bite. Plans with no Phase 4 (data-only, feature-engineering-only) see less, only the lead-model swap and headline disable matter (~15-20%).
 
 ## Override individual knobs
 
@@ -78,10 +78,10 @@ zo build plans/my-project.md --low-token --gate-mode supervised
 
 Highest first:
 
-1. **CLI flag** — `--lead-model`, `--max-iterations`, `--gate-mode`
-2. **Plan field** — `lead_model:` in YAML frontmatter, `## Experiment Loop` section
-3. **Low-token preset** — applied when `--low-token` or `low_token: true`
-4. **Base default** — Opus, 10 iterations, supervised, etc.
+1. **CLI flag**: `--lead-model`, `--max-iterations`, `--gate-mode`
+2. **Plan field**: `lead_model:` in YAML frontmatter, `## Experiment Loop` section
+3. **Low-token preset**: applied when `--low-token` or `low_token: true`
+4. **Base default**: Opus, 10 iterations, supervised, etc.
 
 This means a plan can opt back into research-grade settings (high iteration count, Opus lead) even with `low_token: true` set globally. The preset is a "sensible defaults" layer, not a hard clamp.
 
@@ -100,7 +100,7 @@ Low-token mode is a quality-for-cost trade. Be honest with yourself about which 
 
 - The first end-to-end run of a **research-grade project** where you don't yet know what the right plan looks like.
 - A **production launch** where the cost of a poorly-converged model is far higher than the token cost of running on Opus.
-- **Time-sensitive demos** — no headlines means less live signal to your stakeholders.
+- **Time-sensitive demos**: no headlines means less live signal to your stakeholders.
 
 In each case, run on default settings, validate the result, then switch on `low_token: true` for subsequent replays and ablations.
 
@@ -108,10 +108,10 @@ In each case, run on default settings, validate the result, then switch on `low_
 
 The features below would help but require a larger architectural change (switching ZO from `claude` CLI launcher to direct Anthropic SDK). They're tracked as future work, not in scope for low-token mode v1:
 
-- **Prompt caching** — Anthropic's 5-minute TTL cache. Would save ~90% on cached input tokens.
-- **Batch API** — 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
-- **Files API** — upload static artifacts (plans, specs) once, reference by ID.
-- **Extended thinking budget tuning** — cap thinking tokens explicitly.
+- **Prompt caching**: Anthropic's 5-minute TTL cache. Would save ~90% on cached input tokens.
+- **Batch API**: 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
+- **Files API**: upload static artifacts (plans, specs) once, reference by ID.
+- **Extended thinking budget tuning**: cap thinking tokens explicitly.
 
 ## Side-by-side comparison
 
@@ -122,11 +122,11 @@ What changes, end-to-end, between a default run and a low-token run on the same 
 | Lead orchestrator session | Opus, 200 turns | Sonnet, 200 turns | Per-turn cost ~5× cheaper |
 | Lead-prompt build | Full roster + dedicated adaptations section + per-agent contracts | Compact roster + inline adaptations only + per-agent contracts | ~2-5 KB removed per phase |
 | Phase 1-3 gates | Pause for human (supervised) | Auto-PROCEED (full-auto) | No human-loop overhead |
-| Phase 4 first iteration | Same | Same | — |
+| Phase 4 first iteration | Same | Same |, |
 | Phase 4 iteration cap | 10 attempts | 2 attempts | The big multiplier |
 | Phase 4 stop condition | `must_pass` tier | `could_pass` tier | Stops earlier on weakest acceptable result |
 | Cross-cutting `research-scout` | Spawned per phase | Skipped | ~6 spawns × ~1 KB contract |
-| Cross-cutting `code-reviewer` | Spawned per phase | Spawned per phase | (kept — quality safety net) |
+| Cross-cutting `code-reviewer` | Spawned per phase | Spawned per phase | (kept, quality safety net) |
 | Haiku headline ticker | Every 60s | Disabled | ~60 small calls/hour |
 | End-of-session Haiku summary | Generated | Skipped | 1 small call per session |
 | Auto-compaction trigger | ~83% of context window | 60% of context window | Earlier compaction → less degraded reasoning at the tail |
@@ -154,7 +154,7 @@ zo build plans/mnist-digit-classifier.md --low-token
 # Wall time: ~75 min (one stuck-gate cycle in this run)
 ```
 
-**Cost breakdown of the measured run:** Lead orchestrator \$4.48 + sub-agents \$3.27 = \$7.75 total (captured via `npx ccusage --instances`). Phase 1 alone was \$3.47, the largest single phase — Phase 4 only ran one iteration.
+**Cost breakdown of the measured run:** Lead orchestrator \$4.48 + sub-agents \$3.27 = \$7.75 total (captured via `npx ccusage --instances`). Phase 1 alone was \$3.47, the largest single phase, Phase 4 only ran one iteration.
 
 Full bench writeup with the why-30%-not-70% breakdown: [reference/cost-benchmark](/reference/cost-benchmark).
 
@@ -183,7 +183,7 @@ If your plan finishes inside Phase 3 (data-only or feature-engineering-only proj
 
 - The first end-to-end run of a **research-grade project** where you don't yet know what the right plan looks like. Default mode's higher iteration count gives you more attempts to discover what works.
 - A **production launch** where the cost of a poorly-converged model is far higher than the token cost.
-- **Time-sensitive demos** — no headlines means less live signal to your stakeholders. (Consider `--low-token` plus `--gate-mode supervised` to keep the human-in-loop signal at gates.)
+- **Time-sensitive demos**: no headlines means less live signal to your stakeholders. (Consider `--low-token` plus `--gate-mode supervised` to keep the human-in-loop signal at gates.)
 
 In each case: run on default settings, validate the result, then switch on `low_token: true` for subsequent replays and ablations.
 
@@ -191,7 +191,7 @@ In each case: run on default settings, validate the result, then switch on `low_
 
 <AccordionGroup>
   <Accordion title="Does low-token mode reduce model quality?">
-    Yes — that's the trade. The lead orchestrator (Opus → Sonnet) is the biggest quality reduction, but Sonnet 4.6 is excellent at execution and decomposition for well-defined plans. Where it falls down is open-ended creative interpretation of an under-specified plan. The Phase-4 iteration cap (10 → 2) means hard problems get fewer attempts to converge — `zo status` surfaces this so you can re-run without `--low-token` if the oracle wasn't met.
+    Yes, that's the trade. The lead orchestrator (Opus → Sonnet) is the biggest quality reduction, but Sonnet 4.6 is excellent at execution and decomposition for well-defined plans. Where it falls down is open-ended creative interpretation of an under-specified plan. The Phase-4 iteration cap (10 → 2) means hard problems get fewer attempts to converge, `zo status` surfaces this so you can re-run without `--low-token` if the oracle wasn't met.
   </Accordion>
 
   <Accordion title="Can I use low-token mode AND keep Opus for the lead?">
@@ -199,7 +199,7 @@ In each case: run on default settings, validate the result, then switch on `low_
   </Accordion>
 
   <Accordion title="What happens if Phase 4 doesn't converge in 2 iterations?">
-    The autonomous loop stops with `BUDGET_EXHAUSTED`. The phase remains in a state where you can re-run without `--low-token` (or with a higher `--max-iterations`) and the loop picks up from where it left off — child experiments inherit `parent_id` so the lineage is preserved. You don't lose the work, you just unlock more iterations.
+    The autonomous loop stops with `BUDGET_EXHAUSTED`. The phase remains in a state where you can re-run without `--low-token` (or with a higher `--max-iterations`) and the loop picks up from where it left off, child experiments inherit `parent_id` so the lineage is preserved. You don't lose the work, you just unlock more iterations.
   </Accordion>
 
   <Accordion title="Is `low_token: true` in the plan equivalent to `--low-token` on the CLI?">
@@ -207,25 +207,25 @@ In each case: run on default settings, validate the result, then switch on `low_
   </Accordion>
 
   <Accordion title="Why isn't research-scout in low-token mode?">
-    The research-scout agent provides cross-cutting baseline literature review. It's useful but not essential — its absence rarely changes the outcome of a specific phase, and dropping it saves ~6 spawns and their contracts per build. Code-reviewer is kept for quality safety; research-scout is the safer drop. If you genuinely need research-scout active in low-token mode, add it explicitly to your plan's `**Active agents:**` block — but note that the orchestrator filters research-scout regardless of the active list when `low_token=True` (this is documented as a known limitation; an opt-out mechanism may land in v2 if requested).
+    The research-scout agent provides cross-cutting baseline literature review. It's useful but not essential, its absence rarely changes the outcome of a specific phase, and dropping it saves ~6 spawns and their contracts per build. Code-reviewer is kept for quality safety; research-scout is the safer drop. If you genuinely need research-scout active in low-token mode, add it explicitly to your plan's `**Active agents:**` block, but note that the orchestrator filters research-scout regardless of the active list when `low_token=True` (this is documented as a known limitation; an opt-out mechanism may land in v2 if requested).
   </Accordion>
 
   <Accordion title="Does this work with `zo continue` and `zo draft`?">
-    `zo continue` accepts the same flags as `zo build` and forwards them. `zo draft` does NOT yet support `--low-token` — drafting uses Opus + 100 max-turns by default. Adding low-token support to draft is tracked as a follow-up; the savings are smaller anyway because draft is shorter than build.
+    `zo continue` accepts the same flags as `zo build` and forwards them. `zo draft` does NOT yet support `--low-token`, drafting uses Opus + 100 max-turns by default. Adding low-token support to draft is tracked as a follow-up; the savings are smaller anyway because draft is shorter than build.
   </Accordion>
 
   <Accordion title="Do sub-agents (data-engineer, model-builder, etc.) also run on Sonnet in low-token mode?">
-    Yes — sub-agents are on Sonnet 4.6 in **both** default mode and low-token mode. Default mode never had sub-agents on Opus; their `.md` frontmatter declares `model: claude-sonnet-4-6`. So switching to `--low-token` doesn't change the sub-agent cost rate. This is also the reason the savings ceiling is ~30% rather than the 70-80% an "everyone-was-Opus" projection would imply.
+    Yes, sub-agents are on Sonnet 4.6 in **both** default mode and low-token mode. Default mode never had sub-agents on Opus; their `.md` frontmatter declares `model: claude-sonnet-4-6`. So switching to `--low-token` doesn't change the sub-agent cost rate. This is also the reason the savings ceiling is ~30% rather than the 70-80% an "everyone-was-Opus" projection would imply.
 
     The lead orchestrator's prompt in low-token mode does include a **Sub-Agent Model Override** section that explicitly passes `model="claude-sonnet-4-6"` to every `Agent()` call as a defence-in-depth measure (in case some future Claude Code version changes the default). Verified working end-to-end on Claude Code 2.1.107: `ps aux` during the measured bench showed all four processes (lead + 3 sub-agents) on `claude-sonnet-4-6`.
   </Accordion>
 
   <Accordion title="Can I see how much I'm saving in real time?">
-    Not yet. ZO doesn't ship a built-in token meter (the `claude` CLI logs tokens to `~/.claude/projects/*.jsonl` but ZO doesn't surface them). The [Optional integrations (planned)](https://github.com/SamPlvs/zero-operators#optional-integrations-planned) section in the README lists [ccusage](https://github.com/ryoppippi/ccusage) — a Claude Code token usage monitor — as a near-term opt-in for `zo usage`. For now: run `npx ccusage --json` after a build to see per-session totals.
+    Not yet. ZO doesn't ship a built-in token meter (the `claude` CLI logs tokens to `~/.claude/projects/*.jsonl` but ZO doesn't surface them). The [Optional integrations (planned)](https://github.com/SamPlvs/zero-operators#optional-integrations-planned) section in the README lists [ccusage](https://github.com/ryoppippi/ccusage), a Claude Code token usage monitor, as a near-term opt-in for `zo usage`. For now: run `npx ccusage --json` after a build to see per-session totals.
   </Accordion>
 
   <Accordion title="Why not lower lead to Haiku?">
-    Haiku 4.5 is excellent on coding (SWE-bench 73.3%, rivalling Sonnet 4) and very cheap. But the Lead Orchestrator's job is multi-step orchestration, contract reasoning, gate evaluation, and team coordination — Haiku struggles with multi-step planning under uncertainty. Sonnet is the safer default for v1. You can manually opt into Haiku lead with `--lead-model haiku` if you want to push the savings further (probably 10-15× cheaper than Opus, but with material quality risk).
+    Haiku 4.5 is excellent on coding (SWE-bench 73.3%, rivalling Sonnet 4) and very cheap. But the Lead Orchestrator's job is multi-step orchestration, contract reasoning, gate evaluation, and team coordination, Haiku struggles with multi-step planning under uncertainty. Sonnet is the safer default for v1. You can manually opt into Haiku lead with `--lead-model haiku` if you want to push the savings further (probably 10-15× cheaper than Opus, but with material quality risk).
   </Accordion>
 
   <Accordion title="What happens at gates in low-token mode?">
@@ -233,12 +233,12 @@ In each case: run on default settings, validate the result, then switch on `low_
   </Accordion>
 
   <Accordion title="What's NOT in this mode?">
-    Several Anthropic API features could provide additional savings but require switching ZO from the `claude` CLI launcher to direct Anthropic SDK calls — out of scope for low-token v1:
+    Several Anthropic API features could provide additional savings but require switching ZO from the `claude` CLI launcher to direct Anthropic SDK calls, out of scope for low-token v1:
 
-    - **Prompt caching** — 5-minute TTL cache. Would save ~90% on cached input tokens.
-    - **Batch API** — 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
-    - **Files API** — upload static artifacts (plans, specs) once, reference by ID.
-    - **Extended thinking budget tuning** — cap thinking tokens explicitly.
+    - **Prompt caching**: 5-minute TTL cache. Would save ~90% on cached input tokens.
+    - **Batch API**: 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
+    - **Files API**: upload static artifacts (plans, specs) once, reference by ID.
+    - **Extended thinking budget tuning**: cap thinking tokens explicitly.
 
     Tracked as future work; would be a separate, larger architectural change.
   </Accordion>
@@ -246,8 +246,8 @@ In each case: run on default settings, validate the result, then switch on `low_
 
 ## See also
 
-- [Low-token preset reference](/reference/low-token-preset) — the compact reference card
-- [Cost benchmark](/reference/cost-benchmark) — measured savings on the MNIST reference run
-- [`zo build` CLI reference](/cli/build) — full options
-- [The plan](/concepts/the-plan) — `low_token` and `lead_model` frontmatter fields
-- [Phases and gates](/concepts/phases-and-gates) — how `max_iterations` and `stop_on_tier` interact with Phase-4 gates
+- [Low-token preset reference](/reference/low-token-preset): the compact reference card
+- [Cost benchmark](/reference/cost-benchmark): measured savings on the MNIST reference run
+- [`zo build` CLI reference](/cli/build): full options
+- [The plan](/concepts/the-plan): `low_token` and `lead_model` frontmatter fields
+- [Phases and gates](/concepts/phases-and-gates): how `max_iterations` and `stop_on_tier` interact with Phase-4 gates

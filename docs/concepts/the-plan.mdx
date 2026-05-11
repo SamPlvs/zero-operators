@@ -1,6 +1,6 @@
 ---
 title: "The plan"
-description: "A single Markdown file is the human's only lever of control. This is what makes ZO autonomous — and what keeps it grounded."
+description: "A single Markdown file is the human's only lever of control. This is what makes ZO autonomous, and what keeps it grounded."
 ---
 
 The `plan.md` file is the **brief, the contract, and the source of truth** for every project. The human's role is to write it (or approve a drafted version); the agent team's role is to execute against it.
@@ -21,8 +21,8 @@ ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous 
 
     Two **optional** frontmatter fields control the cost-saving preset:
 
-    - `low_token: true` — activates [low-token mode](/concepts/low-token-mode) for this project (Sonnet lead, 2 max iterations, no headlines, full-auto gates, earlier auto-compaction). Equivalent to passing `--low-token` on every `zo build` for this plan.
-    - `lead_model: sonnet` — overrides the lead orchestrator model. Accepts `opus`, `sonnet`, or `haiku`. Composes with `low_token: true` (lead model wins).
+    - `low_token: true`: activates [low-token mode](/concepts/low-token-mode) for this project (Sonnet lead, 2 max iterations, no headlines, full-auto gates, earlier auto-compaction). Equivalent to passing `--low-token` on every `zo build` for this plan.
+    - `lead_model: sonnet`: overrides the lead orchestrator model. Accepts `opus`, `sonnet`, or `haiku`. Composes with `low_token: true` (lead model wins).
 
     Example:
 
@@ -40,7 +40,7 @@ ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous 
     ```
   </Step>
   <Step title="Objective">
-    What you're building, in business or research terms. Two paragraphs maximum. **No technical solution language** — that comes later.
+    What you're building, in business or research terms. Two paragraphs maximum. **No technical solution language**. That comes later.
   </Step>
   <Step title="Oracle definition">
     The verifiable success metric. Includes primary metric, ground-truth source, evaluation method, target threshold (must/should/could tiers), evaluation frequency. See [the oracle](/concepts/the-oracle).
@@ -52,7 +52,7 @@ ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous 
     Where the data lives, format, access method, known issues. Each source gets its own subsection.
   </Step>
   <Step title="Domain priors">
-    What you already know — ML knowledge, expected relationships, known risks, edge cases. This is where domain expertise lands.
+    What you already know, ML knowledge, expected relationships, known risks, edge cases. This is where domain expertise lands.
   </Step>
   <Step title="Agents">
     Active agents (executed every phase), phase-in agents (activated for specific phases), inactive agents (explicitly skipped). Optional `**Custom agents:**` for project-specific specialists, and `**Agent adaptations:**` for per-project tuning of generic agents.
@@ -64,9 +64,9 @@ ZO follows Karpathy's hard-oracle discipline: autonomy scales through *rigorous 
 
 Three additional **optional sections** complete the schema:
 
-- **Milestones** — phase-level deadlines tied to gates.
-- **Delivery specification** — target repo path, branch, output structure.
-- **Environment** — auto-populated from `zo.environment.detect_environment()` at `init` time. Captures host platform, Python version, GPU/CUDA details, base image, data layout.
+- **Milestones**: phase-level deadlines tied to gates.
+- **Delivery specification**: target repo path, branch, output structure.
+- **Environment**: auto-populated from `zo.environment.detect_environment()` at `init` time. Captures host platform, Python version, GPU/CUDA details, base image, data layout.
 
 ## Authoring options
 
@@ -93,9 +93,9 @@ Three additional **optional sections** complete the schema:
 
 Plans aren't immutable. Edit `plan.md` at any time, then re-run `zo build`:
 
-- **Smart mode detection** — ZO auto-detects whether to start fresh, continue, or re-decompose due to plan edits.
-- **Gate confirmation** — before re-execution, the orchestrator surfaces a diff and asks for human approval if the change crosses a phase boundary.
-- **Memory continuity** — completed phase artifacts are preserved; the orchestrator only re-runs what the diff requires.
+- **Smart mode detection**: ZO auto-detects whether to start fresh, continue, or re-decompose due to plan edits.
+- **Gate confirmation**: before re-execution, the orchestrator surfaces a diff and asks for human approval if the change crosses a phase boundary.
+- **Memory continuity**: completed phase artifacts are preserved; the orchestrator only re-runs what the diff requires.
 
 ## What a good plan looks like
 
@@ -103,7 +103,7 @@ The reference example is [`plans/mnist-digit-classifier.md`](https://github.com/
 
 - ~80 lines total
 - Oracle with explicit must/should/could tiers (0.95 / 0.98 / 0.99)
-- Domain priors that capture *why* (e.g. "MNIST is a solved benchmark — simple CNNs achieve >99%")
+- Domain priors that capture *why* (e.g. "MNIST is a solved benchmark, simple CNNs achieve >99%")
 - Constraints that explicitly limit complexity ("max 2 conv layers, no pre-trained models")
 
 The CIFAR-10 plan ([`plans/cifar10-classifier.md`](https://github.com/SamPlvs/zero-operators/blob/main/plans/cifar10-classifier.md)) is a longer example covering a harder problem with richer domain priors (cat-dog confusion, augmentation criticality, animal-vs-vehicle pose variation).

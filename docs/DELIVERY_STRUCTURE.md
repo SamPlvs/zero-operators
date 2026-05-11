@@ -1,6 +1,6 @@
 # Delivery Repo Structure
 
-Reference for the delivery repo layout created by `zo init` (or, for an existing repo, `zo init --no-tmux --existing-repo PATH [--layout-mode adaptive]`). When the conversational Init Architect runs, it inspects the target repo first and may pick `adaptive` mode automatically — in which case only the ZO meta-dirs (`configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`, `STRUCTURE.md`) are added; your existing `src/` and `data/` layout is preserved.
+Reference for the delivery repo layout created by `zo init` (or, for an existing repo, `zo init --no-tmux --existing-repo PATH [--layout-mode adaptive]`). When the conversational Init Architect runs, it inspects the target repo first and may pick `adaptive` mode automatically, in which case only the ZO meta-dirs (`configs/`, `experiments/`, `reports/`, `notebooks/phase/`, `docker/`, `STRUCTURE.md`) are added; your existing `src/` and `data/` layout is preserved.
 
 ---
 
@@ -19,37 +19,37 @@ Reference for the delivery repo layout created by `zo init` (or, for an existing
 ```
 {project}/
 ├── configs/
-│   ├── data/                     — dataset paths, splits, preprocessing
-│   ├── model/                    — architecture hyperparameters
-│   ├── training/                 — optimizer, LR schedule, epochs, batch size
-│   └── experiment/base.yaml      — master config composing the above
+│   ├── data/                    , dataset paths, splits, preprocessing
+│   ├── model/                   , architecture hyperparameters
+│   ├── training/                , optimizer, LR schedule, epochs, batch size
+│   └── experiment/base.yaml     , master config composing the above
 ├── src/
-│   ├── data/                     — Dataset classes, transforms, DataLoader, splits
-│   ├── model/                    — Model zoo (architectures, heads, base classes)
-│   ├── engineering/              — Training loop, DDP/FSDP, tracking, checkpointing
-│   ├── inference/                — Production inference, ONNX/TorchScript export
-│   └── utils/                    — File I/O, plotting, logging, reproducibility
+│   ├── data/                    , Dataset classes, transforms, DataLoader, splits
+│   ├── model/                   , Model zoo (architectures, heads, base classes)
+│   ├── engineering/             , Training loop, DDP/FSDP, tracking, checkpointing
+│   ├── inference/               , Production inference, ONNX/TorchScript export
+│   └── utils/                   , File I/O, plotting, logging, reproducibility
 ├── data/
-│   ├── raw/                      — original data (gitignored)
-│   └── processed/                — cleaned, split, versioned
-├── models/                       — trained checkpoints (*.pt, *.onnx)
+│   ├── raw/                     , original data (gitignored)
+│   └── processed/               , cleaned, split, versioned
+├── models/                      , trained checkpoints (*.pt, *.onnx)
 ├── experiments/
-│   ├── README.md                 — index of experiments + current direction
-│   └── exp-NNN/                  — config.yaml, results.json, notes.md
+│   ├── README.md                , index of experiments + current direction
+│   └── exp-NNN/                 , config.yaml, results.json, notes.md
 ├── reports/
-│   ├── figures/                  — plots, charts
-│   └── *.md                      — phase reports, model card, validation report
+│   ├── figures/                 , plots, charts
+│   └── *.md                     , phase reports, model card, validation report
 ├── notebooks/
-│   └── phase/                    — sequentially numbered notebooks (01_data_pipeline, 02_feature_engineering, etc.)
+│   └── phase/                   , sequentially numbered notebooks (01_data_pipeline, 02_feature_engineering, etc.)
 ├── tests/
-│   ├── unit/                     — code correctness tests
-│   ├── ml/                       — oracle threshold checks, benchmarks
-│   └── fixtures/                 — test data and mocks
+│   ├── unit/                    , code correctness tests
+│   ├── ml/                      , oracle threshold checks, benchmarks
+│   └── fixtures/                , test data and mocks
 ├── docker/
-│   ├── Dockerfile                — multi-stage build
-│   ├── docker-compose.yml        — GPU service
+│   ├── Dockerfile               , multi-stage build
+│   ├── docker-compose.yml       , GPU service
 │   └── .dockerignore
-├── STRUCTURE.md                  — directory reference (agents read this)
+├── STRUCTURE.md                 , directory reference (agents read this)
 ├── pyproject.toml
 ├── .gitignore
 └── README.md
@@ -106,11 +106,11 @@ All configuration lives in `configs/` as YAML files. Agents edit configs, not co
 
 ```
 configs/
-├── data/           — dataset paths, splits, preprocessing, augmentation
-├── model/          — architecture hyperparams (layers, hidden dims, dropout)
-├── training/       — optimizer, learning rate schedule, epochs, batch size
+├── data/          , dataset paths, splits, preprocessing, augmentation
+├── model/         , architecture hyperparams (layers, hidden dims, dropout)
+├── training/      , optimizer, learning rate schedule, epochs, batch size
 └── experiment/
-    └── base.yaml   — master config that composes data + model + training
+    └── base.yaml  , master config that composes data + model + training
 ```
 
 `experiment/base.yaml` imports the other configs and defines the current active experiment. When an experiment starts, the orchestrator copies this file into `experiments/exp-NNN/config.yaml` as a frozen snapshot.
@@ -121,7 +121,7 @@ configs/
 
 ```
 notebooks/
-└── phase/      — sequentially numbered per-phase notebooks
+└── phase/     , sequentially numbered per-phase notebooks
     ├── 01_data_pipeline.ipynb
     ├── 02_feature_engineering.ipynb
     ├── 03_baseline_models.ipynb
@@ -136,9 +136,9 @@ All notebooks live in `notebooks/phase/` with sequential numbering matching the 
 
 ```
 tests/
-├── unit/       — code correctness (imports, shapes, edge cases, I/O)
-├── ml/         — oracle threshold checks, latency benchmarks, regression
-└── fixtures/   — shared test data and mocks
+├── unit/      , code correctness (imports, shapes, edge cases, I/O)
+├── ml/        , oracle threshold checks, latency benchmarks, regression
+└── fixtures/  , shared test data and mocks
 ```
 
 **`unit/`** -- standard pytest tests written by the Test Engineer. Verify that code works correctly independent of model quality.
@@ -151,8 +151,8 @@ tests/
 
 ```
 docker/
-├── Dockerfile            — multi-stage build (base + train + serve)
-├── docker-compose.yml    — GPU service with volume mounts
+├── Dockerfile           , multi-stage build (base + train + serve)
+├── docker-compose.yml   , GPU service with volume mounts
 └── .dockerignore
 ```
 

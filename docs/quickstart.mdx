@@ -13,7 +13,7 @@ By the end of this page you'll have ZO installed, a project initialised, a plan 
 
 <CardGroup cols={3}>
   <Card title="Claude Code" icon="circle-c">
-    The Claude CLI is required. Install via the official curl method — see [installation](/installation).
+    The Claude CLI is required. Install via the official curl method, see [installation](/installation).
   </Card>
   <Card title="Python 3.11+" icon="python">
     Plus `uv` for dependency management. ZO is built on PyTorch.
@@ -48,11 +48,11 @@ zo init mnist-demo
 
 This launches the **Init Architect** in a tmux pane. The agent interviews you (target dataset, repo location, accelerator), inspects the host environment (GPU? Docker? CUDA version?), then writes:
 
-- `memory/mnist-demo/{STATE,DECISION_LOG,PRIORS}.md` — project memory
-- `targets/mnist-demo.target.md` — delivery repo path
-- `plans/mnist-demo.md` — auto-populated `## Environment` section
-- `<delivery-path>/.zo/` — portable project state in the delivery repo
-- `<delivery-path>/{src,configs,experiments,reports,docker}/` — scaffolded structure
+- `memory/mnist-demo/{STATE,DECISION_LOG,PRIORS}.md`: project memory
+- `targets/mnist-demo.target.md`: delivery repo path
+- `plans/mnist-demo.md`: auto-populated `## Environment` section
+- `<delivery-path>/.zo/`: portable project state in the delivery repo
+- `<delivery-path>/{src,configs,experiments,reports,docker}/`: scaffolded structure
 
 Want to skip the conversational interview? Run `zo init mnist-demo --no-tmux --branch main --base-image pytorch/pytorch:2.4.0-cpu` for headless one-shot init.
 
@@ -87,7 +87,7 @@ WARN  GPU: nvidia-smi not found (no GPU or not on GPU server)
 Ready for zo build.
 ```
 
-The `WARN` on `nvidia-smi` is expected on macOS — Docker Desktop has no GPU passthrough; ZO emits a CPU-only compose template automatically.
+The `WARN` on `nvidia-smi` is expected on macOS, Docker Desktop has no GPU passthrough; ZO emits a CPU-only compose template automatically.
 
 ## 5. Build
 
@@ -156,13 +156,13 @@ The **MNIST oracle threshold** is 95% test accuracy must-pass; v1 reference run 
 
 ## What just happened
 
-You ran a complete six-phase ML project — data review, feature engineering, model design, training, analysis, packaging — driven by a coordinated team of AI agents, with you involved only at plan approval and two gates.
+You ran a complete six-phase ML project, data review, feature engineering, model design, training, analysis, packaging, driven by a coordinated team of AI agents, with you involved only at plan approval and two gates.
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Read the concepts" icon="book" href="/concepts/overview">
-    The plan, the oracle, agents, phases, memory — the mental model.
+    The plan, the oracle, agents, phases, memory, the mental model.
   </Card>
   <Card title="Try CIFAR-10" icon="image">
     Same pattern, different dataset, harder problem. The v1 reference run hit 91.62%.

@@ -6,7 +6,7 @@ description: "The compact reference card for what --low-token actually flips, wi
 A one-page reference for the `--low-token` cost-saving preset. For motivation, trade-offs, and FAQ, see the [low-token mode concept page](/concepts/low-token-mode).
 
 <Note>
-**Measured savings:** ~30% on the first MNIST bench (\$7.75 vs. ~\$11 default, 2026-04-27). The preset since added two structural levers — **Haiku routing for code-reviewer / test-engineer / oracle-qa** and **per-phase agent drops** (Phase 1 and Phase 5) — which target the **~50-60%** ceiling. A second bench post-PR-C is required to confirm the new measured number; this page updates when the next bench lands. Full breakdown: [Cost benchmark](/reference/cost-benchmark).
+**Measured savings:** ~30% on the first MNIST bench (\$7.75 vs. ~\$11 default, 2026-04-27). The preset since added two structural levers, **Haiku routing for code-reviewer / test-engineer / oracle-qa** and **per-phase agent drops** (Phase 1 and Phase 5), which target the **~50-60%** ceiling. A second bench post-PR-C is required to confirm the new measured number; this page updates when the next bench lands. Full breakdown: [Cost benchmark](/reference/cost-benchmark).
 </Note>
 
 ## Activation
@@ -102,11 +102,11 @@ When `low_token` is on AND a plan `## Experiment Loop` field is set, the plan fi
 
 ## Precedence (highest first)
 
-1. **CLI flag** — `--lead-model`, `--max-iterations`, `--gate-mode`, `--no-headlines`
-2. **Plan YAML frontmatter** — `lead_model`, `low_token`
-3. **Plan body section** — `## Experiment Loop` for loop knobs
-4. **Low-token preset** — applied when `--low-token` or `low_token: true` is set
-5. **Base default** — Opus, 10 iterations, supervised, etc.
+1. **CLI flag**: `--lead-model`, `--max-iterations`, `--gate-mode`, `--no-headlines`
+2. **Plan YAML frontmatter**: `lead_model`, `low_token`
+3. **Plan body section**: `## Experiment Loop` for loop knobs
+4. **Low-token preset**: applied when `--low-token` or `low_token: true` is set
+5. **Base default**: Opus, 10 iterations, supervised, etc.
 
 Concrete examples:
 
@@ -137,7 +137,7 @@ When low-token is active, the ZO banner shows a `[low-token]` badge:
 
 ## See also
 
-- [Low-token mode concept](/concepts/low-token-mode) — motivation, trade-offs, FAQ
-- [Cost benchmark](/reference/cost-benchmark) — measured savings on the MNIST reference run
+- [Low-token mode concept](/concepts/low-token-mode): motivation, trade-offs, FAQ
+- [Cost benchmark](/reference/cost-benchmark): measured savings on the MNIST reference run
 - [`zo build` CLI reference](/cli/build)
-- [The plan](/concepts/the-plan) — frontmatter fields
+- [The plan](/concepts/the-plan): frontmatter fields

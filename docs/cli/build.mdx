@@ -21,7 +21,7 @@ zo build PLAN_PATH [OPTIONS]
 | **In-progress** | Continue from the recorded phase. Loads the previous phase's snapshot for context. |
 | **Plan edited since last run** | Detects the diff via timestamp + content hash. Re-decomposes. Surfaces the change to the human if the diff crosses a phase boundary. |
 
-You don't pass a flag for this — `zo build` figures it out.
+You don't pass a flag for this, `zo build` figures it out.
 
 ## What it does
 
@@ -146,9 +146,9 @@ While `zo build` is running, you have several windows into what the team is doin
     ```bash
     zo build plans/replay.md --gate-mode full-auto
     ```
-    Use only for plans that have run successfully before — full-auto skips all human review.
+    Use only for plans that have run successfully before, full-auto skips all human review.
   </Accordion>
-  <Accordion title="Pro plan / student account — minimise token spend">
+  <Accordion title="Pro plan / student account, minimise token spend">
     ```bash
     zo build plans/my-project.md --low-token
     ```
@@ -183,19 +183,19 @@ Agent session running in tmux.
 Ctrl-b n → agent window  |  Ctrl-b p → back here
 Ctrl-b q N → jump to pane N  |  Ctrl-b z → zoom pane
 
-▸ Phase 1 — Data Engineer loading MNIST, validating schema
-▸ Phase 1 — Test Engineer writing data pipeline tests
-▸ Gate 1 PROCEED — all artifacts present, all tests pass
+▸ Phase 1, Data Engineer loading MNIST, validating schema
+▸ Phase 1, Test Engineer writing data pipeline tests
+▸ Gate 1 PROCEED, all artifacts present, all tests pass
 ...
 ```
 
 ## When `zo build` stops
 
 The session ends cleanly when:
-- **Phase 6 completes** — all artifacts present, all tests pass, oracle confirmed. The final delivery is in the delivery repo.
-- **A blocking gate is hit** — human input required. The session stays alive in tmux; you approve/reject via slash commands.
-- **The autonomous experiment loop returns DEAD_END or BUDGET_EXHAUSTED** — escalates to human.
-- **You `/exit`** — graceful shutdown. Session summary written, tmux window killed.
+- **Phase 6 completes**: all artifacts present, all tests pass, oracle confirmed. The final delivery is in the delivery repo.
+- **A blocking gate is hit**: human input required. The session stays alive in tmux; you approve/reject via slash commands.
+- **The autonomous experiment loop returns DEAD_END or BUDGET_EXHAUSTED**: escalates to human.
+- **You `/exit`**: graceful shutdown. Session summary written, tmux window killed.
 
 ## Next
 

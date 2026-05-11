@@ -13,12 +13,12 @@ A step-by-step guide to running Zero Operators on a CIFAR-10 image classifier. U
 cd /path/to/zero-operators
 ./setup.sh
 
-# 2. Initialize — conversational by default (Init Architect interviews you)
+# 2. Initialize: conversational by default (Init Architect interviews you)
 zo init cifar10-demo
 # ...or headless for scripts/CI:
 zo init cifar10-demo --no-tmux --scaffold-delivery ~/projects/cifar10-delivery
 
-# 3. Draft a plan (or write one manually — see Step 2 below)
+# 3. Draft a plan (or write one manually: see Step 2 below)
 zo draft --project cifar10-demo              # interactive prompt
 zo draft --project cifar10-demo -d "CIFAR-10 CNN, PyTorch, 85%+ accuracy"
 
@@ -36,7 +36,7 @@ zo build plans/cifar10-demo.md
 ssh your-server
 tmux new -s zo
 
-# Verify ZO environment — auto-fixes missing dependencies
+# Verify ZO environment: auto-fixes missing dependencies
 cd /path/to/zero-operators
 ./setup.sh
 ```
@@ -47,7 +47,7 @@ All 10 checks should pass. `setup.sh` will offer to install missing tools (uv, C
 
 ## Step 1: Initialize the Project
 
-**Default (recommended): conversational** — the Init Architect inspects your environment, asks a short interview (new vs existing repo, branch, training host, data location), runs a dry-run preview, and only commits writes after you approve.
+**Default (recommended): conversational**, the Init Architect inspects your environment, asks a short interview (new vs existing repo, branch, training host, data location), runs a dry-run preview, and only commits writes after you approve.
 
 ```bash
 zo init cifar10-demo
@@ -64,7 +64,7 @@ zo init cifar10-demo --no-tmux --scaffold-delivery ~/projects/cifar10-delivery
 **Working with an existing repo** (e.g. you already have a project at `~/code/cifar10-demo`):
 
 ```bash
-# Conversational — agent inspects layout, picks adaptive vs standard mode for you
+# Conversational: agent inspects layout, picks adaptive vs standard mode for you
 zo init cifar10-demo
 
 # Or headless with explicit flags
@@ -448,7 +448,7 @@ tmux attach -t zo
 
 ## Troubleshooting
 
-**`zo build` appears stuck:** Check the tmux pane — agents may be waiting for permission. Review `.claude/settings.json` allow rules.
+**`zo build` appears stuck:** Check the tmux pane, agents may be waiting for permission. Review `.claude/settings.json` allow rules.
 
 **Phase restarts from 1:** Verify `memory/cifar10-demo/STATE.md` has a `## Phases` section. If not, the old STATE.md format is being used.
 

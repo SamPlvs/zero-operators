@@ -24,13 +24,13 @@ Each agent declares a model tier in its frontmatter, balancing capability agains
 
 | Tier | Model | When |
 |------|-------|------|
-| **Critical reasoning** | `claude-opus-4-7` | Lead Orchestrator, Software Architect, Plan Architect, Init Architect — decisions where one wrong call cascades |
-| **Standard execution** | `claude-sonnet-4-6` | Data Engineer, Model Builder, Oracle/QA, Code Reviewer, Test Engineer — the workhorses |
-| **Routine tasks** | `claude-haiku-4-5` | Documentation Agent, Infra Engineer, headline summaries — bounded scope, format-following work |
+| **Critical reasoning** | `claude-opus-4-7` | Lead Orchestrator, Software Architect, Plan Architect, Init Architect, decisions where one wrong call cascades |
+| **Standard execution** | `claude-sonnet-4-6` | Data Engineer, Model Builder, Oracle/QA, Code Reviewer, Test Engineer, the workhorses |
+| **Routine tasks** | `claude-haiku-4-5` | Documentation Agent, Infra Engineer, headline summaries, bounded scope, format-following work |
 
 Plan-level overrides are supported: if a project needs Opus for the Model Builder (say, a novel architecture problem), the plan's `**Agent overrides:**` block bumps the tier for that run.
 
-## Project Delivery Team — launch agents
+## Project Delivery Team: launch agents
 
 Active by default on every project:
 
@@ -39,7 +39,7 @@ Active by default on every project:
     Reads the plan, decomposes phases, generates contracts for each agent, gates work between phases, detects plan edits and re-plans. Owns all orchestration entries in `DECISION_LOG.md`. Routes model tiers based on task complexity. **The single agent that holds the whole project in context.**
   </Accordion>
   <Accordion title="Data Engineer (Sonnet)" icon="database">
-    Phase 1: data audit, schema validation, exclusion filters, train/val/test splits, drift baselines. Phase 2 support: feature engineering, input representation. Pipeline principles default to **denylist-first** for DL projects (PR-026) — exclude leakage, include all signals, defer feature selection to the model layer.
+    Phase 1: data audit, schema validation, exclusion filters, train/val/test splits, drift baselines. Phase 2 support: feature engineering, input representation. Pipeline principles default to **denylist-first** for DL projects (PR-026), exclude leakage, include all signals, defer feature selection to the model layer.
   </Accordion>
   <Accordion title="Model Builder (Opus)" icon="microchip">
     Architecture design, loss function design, hyperparameter search, training orchestration, evaluation. In Phase 4 with the autonomous loop, also acts as the auto-proposer: drafts the next `hypothesis.md` from the parent experiment's shortfalls without prompting the human.
@@ -48,38 +48,38 @@ Active by default on every project:
     Executes oracle criteria against deliverables. Reports pass/fail with evidence. Runs tiered evaluation, statistical significance tests, per-class breakdown, error analysis. Writes `result.md` after each Phase 4 iteration so the orchestrator can compute `delta_vs_parent`.
   </Accordion>
   <Accordion title="Code Reviewer (Sonnet)" icon="code-pull-request">
-    Reviews all code produced by other agents. Enforces conventions (PEP8, type hints, Google-style docstrings, files under 500 lines, functions under 50 lines). Catches hardcoded paths, security issues, missing docstrings. Cross-cutting — runs after **any** agent produces code.
+    Reviews all code produced by other agents. Enforces conventions (PEP8, type hints, Google-style docstrings, files under 500 lines, functions under 50 lines). Catches hardcoded paths, security issues, missing docstrings. Cross-cutting, runs after **any** agent produces code.
   </Accordion>
   <Accordion title="Test Engineer (Sonnet)" icon="vial">
     Writes and runs tests for code artifacts. Unit, integration, regression, edge cases. Distinct from Oracle/QA: Oracle validates *model performance*; Test Engineer validates *code correctness*.
   </Accordion>
   <Accordion title="Research Scout (Sonnet)" icon="magnifying-glass">
-    Cross-cutting agent activated on every phase. Surfaces relevant prior art, baselines, open-source implementations. Customer projects rarely have published benchmarks — Research Scout finds analogous problems, typical performance ranges, working implementations.
+    Cross-cutting agent activated on every phase. Surfaces relevant prior art, baselines, open-source implementations. Customer projects rarely have published benchmarks, Research Scout finds analogous problems, typical performance ranges, working implementations.
   </Accordion>
 </AccordionGroup>
 
-## Project Delivery Team — phase-in agents
+## Project Delivery Team: phase-in agents
 
 Activated for specific phases or by plan opt-in:
 
 <AccordionGroup>
   <Accordion title="XAI Agent (Sonnet)" icon="eye">
-    Phase 5 explainability — feature importance, SHAP, GradCAM, attention visualisation. Generic by default; per-project domain context lands via the plan's `**Agent adaptations:**` block.
+    Phase 5 explainability, feature importance, SHAP, GradCAM, attention visualisation. Generic by default; per-project domain context lands via the plan's `**Agent adaptations:**` block.
   </Accordion>
   <Accordion title="Domain Evaluator (Opus)" icon="graduation-cap">
-    Reviews model outputs for business/domain coherence. Flags edge cases, distributional shift, real-world applicability. Owns domain-specific PRIORS updates. Generic shell — domain identity injected at build time via plan adaptations (PR-020).
+    Reviews model outputs for business/domain coherence. Flags edge cases, distributional shift, real-world applicability. Owns domain-specific PRIORS updates. Generic shell, domain identity injected at build time via plan adaptations (PR-020).
   </Accordion>
   <Accordion title="ML Engineer (Sonnet)" icon="server">
     Productionisation, containerisation, inference optimisation, serving setup. Phase 6 packaging.
   </Accordion>
   <Accordion title="Infra Engineer (Haiku)" icon="hard-drive">
-    Compute resource allocation, experiment tracking setup, artifact storage, logging. Format-following work — appropriate for the smaller model.
+    Compute resource allocation, experiment tracking setup, artifact storage, logging. Format-following work, appropriate for the smaller model.
   </Accordion>
 </AccordionGroup>
 
 ## Platform Build Team
 
-Used to build ZO itself — invoked once during initial development and during major platform upgrades. **You don't interact with these unless you're modifying ZO's source.**
+Used to build ZO itself, invoked once during initial development and during major platform upgrades. **You don't interact with these unless you're modifying ZO's source.**
 
 | Agent | Tier | Role |
 |-------|------|------|
@@ -87,7 +87,7 @@ Used to build ZO itself — invoked once during initial development and during m
 | Backend Engineer | Sonnet/Opus | Builds core ZO infrastructure (memory, orchestration, comms, parsers) |
 | Frontend Engineer | Sonnet | Builds the v2 command dashboard (deferred per PRD) |
 | Platform Code Reviewer | Sonnet | Enforces ZO's own coding conventions on platform code |
-| Platform Test Engineer | Sonnet | Tests ZO modules — unit, integration, end-to-end |
+| Platform Test Engineer | Sonnet | Tests ZO modules, unit, integration, end-to-end |
 | Documentation Agent | Haiku | Maintains docstrings, README, API docs, keeps docs in sync with code |
 
 ## Per-project agent customisation
@@ -102,7 +102,7 @@ Beyond the built-in roster, plans support three levers:
     `**Custom agents:**` declares project-specific specialists (e.g. `signal-analyst: Sonnet` for vibration-signal analysis). The orchestrator auto-creates `.claude/agents/custom/{name}.md` from the plan declaration at build start.
   </Step>
   <Step title="Agent adaptations">
-    `**Agent adaptations:**` tunes generic agents per project. The Plan Architect drafts these during `zo draft` based on Research Scout + Data Scout findings. At build time, the Lead Orchestrator appends the adaptation to the agent's spawn prompt — the agent's `.md` file is unchanged, so it stays reusable.
+    `**Agent adaptations:**` tunes generic agents per project. The Plan Architect drafts these during `zo draft` based on Research Scout + Data Scout findings. At build time, the Lead Orchestrator appends the adaptation to the agent's spawn prompt, the agent's `.md` file is unchanged, so it stays reusable.
   </Step>
 </Steps>
 
