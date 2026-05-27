@@ -171,6 +171,7 @@ class Orchestrator:
         gate_mode: GateMode = GateMode.SUPERVISED,
         plan_path: Path | None = None,
         low_token: bool = False,
+        caveman: bool = False,
         max_iterations_override: int | None = None,
     ) -> None:
         self._plan = plan
@@ -182,6 +183,7 @@ class Orchestrator:
         self._gate_mode = gate_mode
         self._plan_path = plan_path
         self._low_token = low_token
+        self._caveman = caveman
         self._max_iterations_override = max_iterations_override
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
@@ -206,6 +208,17 @@ class Orchestrator:
     def low_token(self) -> bool:
         """Whether the low-token preset is active for this orchestrator."""
         return self._low_token
+
+    @property
+    def caveman(self) -> bool:
+        """Whether the caveman terse-output skill is active.
+
+        Only meaningful when ``low_token`` is also True; outside
+        low-token mode the orchestrator does not auto-direct agents to
+        invoke caveman (the skill file is still available at
+        ``.claude/skills/caveman/SKILL.md`` for manual use).
+        """
+        return self._caveman
 
     @property
     def session_state(self) -> SessionState:
@@ -399,13 +412,22 @@ class Orchestrator:
         Without this two-tier routing the savings ceiling is ~30%
         (lead-swap-only); with it, the ceiling moves to ~50-60% per
         ``docs/reference/cost-benchmark.mdx``.
+
+        When ``caveman`` is also active (default with low-token; opt out
+        via ``--no-caveman`` or plan ``caveman: false``), an additional
+        "Token Efficiency: Caveman-Style Prose" subsection is appended
+        containing the caveman rules **inline** (no Claude Code skill
+        auto-loading dependency — that path requires hooks we
+        deliberately don't install). The lead is instructed to pass the
+        same rules into every sub-agent's spawn prompt so the team
+        adopts terse prose end-to-end.
         """
         if not self._low_token:
             return ""
         haiku_list = ", ".join(
             f"`{name}`" for name in sorted(LOW_TOKEN_HAIKU_AGENTS)
         )
-        return dedent(f"""\
+        sections = [dedent(f"""\
             # Low-Token Sub-Agent Model Override
 
             **CRITICAL:** Low-token mode is active. The lead session (you)
@@ -454,7 +476,61 @@ class Orchestrator:
             does not accept a `model` parameter, log a `DECISION_LOG`
             entry noting this and proceed without the override —
             lead-side savings still apply, but sub-agent savings
-            cannot be achieved without an SDK-level fix.""")
+            cannot be achieved without an SDK-level fix.""")]
+        if self._caveman:
+            sections.append(dedent("""\
+                # Token Efficiency: Caveman-Style Prose
+
+                **Adopt terse, caveman-style prose for all chat
+                responses.** Pass this same instruction to every
+                sub-agent you spawn (include the rules below in their
+                spawn prompt — `Agent(..., prompt="...caveman rules...")`).
+                The reference skill is vendored at
+                `.claude/skills/caveman/SKILL.md` for users who install
+                the upstream hooks; we do not assume those hooks are
+                present, so the rules below are authoritative for this
+                session.
+
+                **Rules (intensity: full):**
+                - Drop articles (a/an/the), filler (just/really/basically/
+                  actually/simply), pleasantries (sure/certainly/of course/
+                  happy to), hedging.
+                - Fragments OK. Short synonyms (big not extensive,
+                  fix not "implement a solution for"). Technical terms
+                  exact.
+                - Pattern: `[thing] [action] [reason]. [next step].`
+                - Example bad: "Sure! I'd be happy to help. The issue
+                  is likely caused by your authentication middleware..."
+                - Example good: "Bug in auth middleware. Token expiry
+                  check use `<` not `<=`. Fix:"
+
+                **What stays VERBATIM (do not compress):**
+                - Code blocks — never compressed, every character intact.
+                - Quoted error strings — exact reproduction.
+                - Tool inputs (Write/Edit/Bash args) — we only compress
+                  chat output, not tool calls. So all structured
+                  artifacts the gates require (`metrics.jsonl`,
+                  `result.md`, `training_status.json`, `hypothesis.md`,
+                  agent contracts) are written normally — they go
+                  through Write/Edit, not chat.
+                - Security warnings, irreversible-action confirmations,
+                  multi-step sequences where dropped articles/conjunctions
+                  could create order ambiguity. Drop caveman for these
+                  and resume after the clear part is done.
+
+                **DECISION_LOG entries, gate rationales, and
+                hand-off summaries:** these are persisted artifacts.
+                Apply caveman lightly — terse prose, but still readable
+                by the next session that reads the file cold. Lean
+                toward `lite` intensity for these (no filler/hedging,
+                keep articles + full sentences) over `full` (fragments,
+                drop articles).
+
+                **Opt-out for the user:** they can pass `--no-caveman` at
+                CLI time or set `caveman: false` in plan frontmatter. If
+                they did, this subsection would not be present and you
+                would write normal prose.""" ))
+        return "\n\n".join(sections)
 
     def _prompt_autonomy(self) -> str:
         """Tell the agent how much autonomy it has based on gate mode."""
