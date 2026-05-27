@@ -998,3 +998,36 @@ Recommended sequencing within Tier 2: **architecture-first** (cross-phase backed
 - **Visibility-first sequencing for Tier 2 (VS Code extension before backedge primitive)** — defensible if researcher onboarding is the bigger growth lever; lean is architecture-first because F3 is the architectural differentiator.
 
 **Outcome:** `docs/roadmap.mdx` rewritten with new tier structure + concrete next actions + caveman/VS-code-extension/cross-phase-backedge framing (replaces the prior 3-card "top priorities" page). Plan file at `~/.claude/plans/so-before-i-begin-peaceful-valley.md` holds the full internal detail (effort estimates, file paths, TODO checklists for F3 Phase A/Phase B). Open questions still pending: time horizon (Q3 vs H2), Tier 2 sequencing confirmation, audience weighting. **No new PRIOR added** — this is a strategic-design decision, not a failure-driven self-evolution; design rationale captured in this DECISION_LOG entry is the auditable record. **No PR opened yet** — roadmap doc and memory updates land in this commit; Tier 1 implementation kickoff (caveman ablation, onboarding hardening) deferred to user direction.
+
+---
+
+## Decision: 2026-05-27T00:00:00Z
+**Type:** DOCUMENTATION + LAUNCH-PREP
+**Title:** Launch-prep cascade — contributors rename, origin story, stale token + test-count claims, GitHub repo metadata, Discussions seeded
+
+**Decision:** Ship a single-PR launch-prep cascade fixing three categories of stale/risky public surface area surfaced by external review, plus apply GitHub-side metadata and seed Discussions before the broad launch push.
+
+Cascade scope (file edits, single PR to `main`):
+- **`website/src/pages/index.html:1046`** — footer heading "The people behind it." → "Contributors." per user direction. Simpler, less precious framing.
+- **`website/src/pages/index.html:951`** — origin paragraph rewritten to strip industry detail ("a high-stakes client needed a model to optimise their power plant" → "an eight-week production ML project"). Even anonymised, the prior phrasing brushed against the repo's confidentiality rules; safer to drop the domain context entirely before launch.
+- **`docs/quickstart.mdx:116`, `docs/cli/build.mdx:155`, `docs/COMMANDS.md:28`** — three remaining surfaces still claiming "~70-80% reduction" updated to match the measured-honesty framing already in place at `docs/reference/cost-benchmark.mdx`, `docs/concepts/low-token-mode.mdx`, and the README: "**~30% measured savings** on MNIST ($7.75 vs ~$11); 50-60% targeted via Haiku routing + per-phase trims (pending second bench), 70-80% on the roadmap via SDK refactor". The session-025 honesty cascade missed these three.
+- **`docs/installation.mdx:130`** — example test output `# 675 passed, 7 skipped in 7s` → `# 743 passed, 7 skipped in 5s`. Current `pytest -q` confirms 743 passed + 7 skipped.
+- **`README.md`** — tests badge `735_passing` → `743_passing`; line 508 `735 platform tests` → `743 platform tests`.
+
+GitHub-side changes (applied via `gh`, not in the PR):
+- **Repo description** set: "Autonomous AI research team: write a plan.md, spawn agents, train, verify, and deliver a clean ML repo."
+- **Homepage** set: `https://zerooperators.com`.
+- **9 topics** applied: `ai-agents`, `claude-code`, `machine-learning`, `mlops`, `autonomous-agents`, `agent-orchestration`, `research-engineering`, `pytorch`, `devtools`. Lifts surface area for the relevant GitHub topic indexes pre-launch.
+- **Discussions enabled** via `gh repo edit --enable-discussions=true`.
+- **3 seed threads posted** by SamPlvs via GraphQL `createDiscussion`: #80 "Show us your use case" → Show and tell, #81 "Roadmap: VS Code extension vs cost work" → Ideas (asks community to weigh in on the open Tier 2 sequencing question from session 028), #82 "Help wanted: try the MNIST/CIFAR demos" → General.
+
+**Rationale:** Pre-launch surface area should match the corrective narrative the project has already committed to (PR-005, "enforcement > aspiration"). The session-025 honesty cascade caught the high-traffic surfaces (cost-benchmark, low-token-mode concept page, README's `--low-token` paragraph) but missed three quickstart/CLI/COMMANDS references — they were lower-traffic at the time, but quickstart is the page a new user lands on after the README. Test counts had drifted 8 (735 listed, 743 actual) which is small but visible and erodes trust on close reading. The website origin story's industry detail is the highest-risk item: the public repo's CLAUDE.md treats client/industry naming as a legal-level non-negotiable, and the phrasing was close enough to identify the project even if no name was given. Discussions seeded with substantive prompts (not "hello world" posts) so the first external visitor sees activity worth engaging with, and the roadmap-sequencing thread doubles as a real signal-gathering instrument for session 028's open question.
+
+**Alternatives considered:**
+- **Defer the GitHub metadata + Discussions to a post-launch follow-up** — rejected. The repo currently has empty description/homepage/topics, which means search and discovery surfaces are dead at the moment of launch. Cheap to fix now.
+- **Pin the roadmap discussion thread (#81) at the top of Discussions** — user chose "post all 3 as drafted" over "post but pin Thread 2"; pinning preserved as a follow-up option if external signal warrants it.
+- **Seed Discussions without posting (let community start)** — rejected. Three substantive prompts give external visitors something to react to and lower the activation energy for first replies.
+- **Bundle the launch-prep cascade into the next feature PR (e.g. caveman ablation)** — rejected. Launch is imminent; mixing copy + metadata fixes with a feature change muddles the diff and slows the merge.
+- **Keep the website's industry-detail origin story for "credibility"** — rejected. The eight-week constraint and budget framing carry the credibility without naming a domain; the named industry adds risk without proportionate signal.
+
+**Outcome:** Single conventional commit on a feature branch, PR opened against `main`. validate-docs 9/11 (2 pre-existing warnings, 0 failures — test badge warning re grep vs pytest count is structural, client-blocklist warning is intentional skip). No code or tests touched; no rebench needed. **No new PRIOR added** — this is a maintenance cascade closing out an earlier evolution-driven cleanup (session 025's honesty pass), not a novel failure mode. The generalisation worth recording for future cascades: when a documentation honesty pass ships, sweep all `grep -rn "<the-claim>"` hits across `docs/`, `README.md`, and `website/` in the same PR rather than trusting that the high-traffic surfaces are the only ones that matter. Closed under PR-005's enforcement spirit applied to documentation cleanup.

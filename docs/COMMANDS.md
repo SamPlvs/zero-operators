@@ -25,7 +25,7 @@ zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
 ```
 
 **Cost-saving options:**
-- `--low-token`: activates the cost-saving preset (Sonnet lead, 2 max iterations, full-auto gates, no headlines, earlier auto-compaction). Equivalent to `low_token: true` in plan frontmatter. ~70-80% reduction. See `docs/concepts/low-token-mode.mdx`.
+- `--low-token`: activates the cost-saving preset (Sonnet lead, Haiku for code-reviewer / test-engineer / oracle-qa, 2 max iterations, full-auto gates, no headlines, earlier auto-compaction). Equivalent to `low_token: true` in plan frontmatter. **~30% measured savings** on MNIST ($7.75 vs ~$11 default); 50-60% targeted, 70-80% on the roadmap (prompt caching + Batch API + Files API via SDK refactor). See `docs/concepts/low-token-mode.mdx`.
 - `--lead-model`: override lead orchestrator model. Composes with `--low-token`.
 - `--max-iterations N`: hard cap on Phase-4 experiment iterations. Wins over plan and preset.
 - `--no-headlines`: disable the Haiku headline ticker (saves ~60 small calls/hour).
