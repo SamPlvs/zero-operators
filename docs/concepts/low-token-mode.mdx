@@ -43,7 +43,7 @@ The banner shows a `[low-token]` badge whenever the preset is active so you have
 | Phase-4 `max_iterations` | `10` | `2` | Phase 4 is the dominant cost; iteration count is the multiplier. |
 | Phase-4 `stop_on_tier` | `must_pass` | `could_pass` | Stops at the weakest acceptable oracle tier instead of pushing for the strongest. |
 | Cross-cutting `research-scout` | on every phase | dropped | Saves ~6 spawns and their contracts. |
-| Haiku headline ticker | every 60s | disabled | ~60 small calls/hour. Small individually, cumulative across long runs. |
+| End-of-session Haiku summary | 1 call per run | disabled | ~$0.0002 per run. The previous per-60-second ticker (~60 small calls/hour) was removed unconditionally; only the one-shot wrap-up remains, and `--low-token` skips even that. |
 | Default gate mode | `supervised` | `full-auto` | No human-loop overhead. You can still pass `--gate-mode supervised` to override. |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | unset (Claude Code default ~83%) | `60` | Auto-compacts conversation context earlier, prevents performance degradation near the window limit. |
 
@@ -109,7 +109,7 @@ In each case, run on default settings, validate the result, then switch on `low_
 The features below would help but require a larger architectural change (switching ZO from `claude` CLI launcher to direct Anthropic SDK). They're tracked as future work, not in scope for low-token mode v1:
 
 - **Prompt caching**: Anthropic's 5-minute TTL cache. Would save ~90% on cached input tokens.
-- **Batch API**: 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
+- **Batch API**: 50% discount for async jobs. Applicable to other Haiku/Sonnet calls ZO might add in future (e.g., end-of-phase reports) but incompatible with interactive tmux. The per-60-second Haiku ticker that originally motivated this note has since been removed.
 - **Files API**: upload static artifacts (plans, specs) once, reference by ID.
 - **Extended thinking budget tuning**: cap thinking tokens explicitly.
 
@@ -127,8 +127,7 @@ What changes, end-to-end, between a default run and a low-token run on the same 
 | Phase 4 stop condition | `must_pass` tier | `could_pass` tier | Stops earlier on weakest acceptable result |
 | Cross-cutting `research-scout` | Spawned per phase | Skipped | ~6 spawns × ~1 KB contract |
 | Cross-cutting `code-reviewer` | Spawned per phase | Spawned per phase | (kept, quality safety net) |
-| Haiku headline ticker | Every 60s | Disabled | ~60 small calls/hour |
-| End-of-session Haiku summary | Generated | Skipped | 1 small call per session |
+| End-of-session Haiku summary | Generated | Skipped | 1 small call per session. (The previous per-60-second headline ticker — ~60 small calls/hour — was removed unconditionally.) |
 | Auto-compaction trigger | ~83% of context window | 60% of context window | Earlier compaction → less degraded reasoning at the tail |
 
 ## Worked example: MNIST
@@ -236,7 +235,7 @@ In each case: run on default settings, validate the result, then switch on `low_
     Several Anthropic API features could provide additional savings but require switching ZO from the `claude` CLI launcher to direct Anthropic SDK calls, out of scope for low-token v1:
 
     - **Prompt caching**: 5-minute TTL cache. Would save ~90% on cached input tokens.
-    - **Batch API**: 50% discount for async jobs. Suitable for the Haiku ticker but incompatible with interactive tmux.
+    - **Batch API**: 50% discount for async jobs. Applicable to other Haiku/Sonnet calls ZO might add in future (e.g., end-of-phase reports) but incompatible with interactive tmux. The per-60-second Haiku ticker that originally motivated this note has since been removed.
     - **Files API**: upload static artifacts (plans, specs) once, reference by ID.
     - **Extended thinking budget tuning**: cap thinking tokens explicitly.
 

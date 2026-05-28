@@ -263,7 +263,7 @@ _LOW_TOKEN_PRESET: dict[str, object] = {
     "max_iterations": 2,             # cuts the dominant Phase-4 multiplier
     "stop_on_tier": "could_pass",    # earlier stop on weakest acceptable tier
     "drop_research_scout": True,     # skip cross-cutting literature review
-    "headlines_disabled": True,      # disable Haiku ticker (~60 calls/hr)
+    "headlines_disabled": True,      # skip end-of-session Haiku summary (~1 call/session)
     "gate_mode": "full-auto",        # no human-loop overhead
     "compact_threshold": "60",       # CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
 }
@@ -731,8 +731,11 @@ def _launch_and_monitor(
         extra_env: Extra environment variables passed to the Claude Code
             subprocess. The low-token preset uses this to set
             ``CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60``.
-        headlines_disabled: When True, skips the periodic Haiku headline
-            summaries. Set by ``--low-token`` and ``--no-headlines``.
+        headlines_disabled: When True, skips the end-of-session Haiku
+            bullet summary. Set by ``--low-token`` and ``--no-headlines``.
+            The previous per-60-second headline ticker has been removed
+            unconditionally; this flag now controls only the one-shot
+            session-end summary.
         bypass_permissions: When True, Claude Code tool-call permission
             prompts are auto-approved. Set by ``--bypass-permissions``
             or implied by ``--gate-mode full-auto``.
@@ -773,42 +776,12 @@ def _launch_and_monitor(
     console.print()
 
     _seen_events: set[str] = set()
+    # Buffer of recent agent events. Accumulated in _print_status and
+    # consumed once at session end by _generate_session_summary to print
+    # a 2-3 bullet Haiku-generated wrap-up.  The previous per-60-second
+    # ticker that also consumed this buffer was removed — Haiku
+    # output is now strictly one call per session, not 60/hr.
     _headline_buffer: list[str] = []
-    _last_headline_time: float = 0.0
-    _headline_interval = 60  # seconds between Haiku summaries
-
-    def _maybe_print_headline() -> None:
-        """Send buffered events to Haiku for a 1-line summary."""
-        import time as _time
-
-        nonlocal _last_headline_time
-        if headlines_disabled:
-            return
-        now = _time.monotonic()
-        if not _headline_buffer:
-            return
-        if now - _last_headline_time < _headline_interval:
-            return
-
-        events_text = "\n".join(_headline_buffer[-15:])
-        _headline_buffer.clear()
-        _last_headline_time = now
-
-        try:
-            result = __import__("subprocess").run(
-                ["claude", "-p", "--model", "haiku",
-                 f"Summarise these agent events in ONE short "
-                 f"headline (max 80 chars). No preamble, just "
-                 f"the headline:\n\n{events_text}"],
-                capture_output=True, text=True, timeout=15,
-            )
-            headline = result.stdout.strip().split("\n")[0][:80]
-            if headline:
-                console.print(
-                    f"  [{_AMBER}]▸ {headline}[/]"
-                )
-        except Exception:
-            pass  # Non-critical — skip if Haiku unavailable
 
     def _print_status(team_status, pane_snapshot=""):  # noqa: ANN001
         from datetime import UTC, datetime
@@ -897,7 +870,6 @@ def _launch_and_monitor(
         if not tasks and not header_parts:
             console.print(f"  [{_DIM}][{elapsed}] Waiting for agents...[/]")
 
-        _maybe_print_headline()
         console.print()
 
     process = wrapper.wait_for_completion(
@@ -911,8 +883,10 @@ def _launch_and_monitor(
     else:
         console.print(f"[red bold]Session ended with status:[/] {process.status}")
 
-    # Generate a Haiku summary of the session from buffered events.
-    # Low-token / --no-headlines opts out of this auxiliary call too.
+    # Generate a Haiku-summarised 2-3 bullet wrap-up from buffered
+    # events.  This is the only Haiku call ZO makes during a run
+    # (the per-60-second ticker was removed). ``--low-token`` and
+    # ``--no-headlines`` skip even this one ~$0.0002 call.
     if _headline_buffer and not headlines_disabled:
         _generate_session_summary(_headline_buffer, team_name)
 
@@ -952,7 +926,7 @@ def _launch_and_monitor(
 )
 @click.option(
     "--no-headlines", is_flag=True,
-    help="Disable the Haiku headline ticker (saves ~60 small calls/hour).",
+    help="Skip the end-of-session Haiku bullet summary (~1 call per run).",
 )
 @click.option(
     "--bypass-permissions", is_flag=True,
@@ -1150,7 +1124,7 @@ def build(
 )
 @click.option(
     "--no-headlines", is_flag=True,
-    help="Disable the Haiku headline ticker.",
+    help="Skip the end-of-session Haiku bullet summary.",
 )
 @click.option(
     "--bypass-permissions", is_flag=True,

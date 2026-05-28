@@ -1082,3 +1082,36 @@ The tmux mechanism (settings.local.json overlay) is novel for ZO and the risk su
 - **Single-flag shorthand `--unattended` aliasing both `--gate-mode full-auto` and `--bypass-permissions`** — defer for future polish; the current explicit form is more learnable and the two-flag combo is short enough.
 
 **Outcome:** Single feature commit on branch `claude/bypass-permissions-flag`, PR opened against `main`. validate-docs 10/11 (improved from baseline as the test-count warning resolved). 760 pytest pass / 7 skipped. **No new PRIOR added** — this is a clean feature with no failure trace; the design choices are auditable here. Power-user usage: `zo continue --repo /path/to/prod-001 --gate-mode full-auto` for an unattended overnight tmux run with full agent-team visibility AND no permission prompts.
+
+---
+
+## Decision: 2026-05-28T20:00:00Z
+**Type:** FEATURE-REMOVAL + BEHAVIOR-CHANGE
+**Title:** Remove the per-60-second Haiku headline ticker (keep the end-of-session bullet summary)
+
+**Decision:** Remove the periodic Haiku headline ticker from `zo build` / `zo continue` runs. The ticker spawned `claude -p --model haiku` every 60 seconds throughout a session to summarise the last 15 buffered events into a one-line headline printed in the lead pane. User feedback: nobody uses the headlines. Cost: ~60 subprocess spawns per hour at ~$0.0001-$0.0003 each, totalling ~$0.06-$0.18 per 10-hour overnight run, plus the latency/CPU cost of repeatedly spawning a Claude Code subprocess. Pure waste if the output is going unread.
+
+The companion `_generate_session_summary` call at session end is **kept** — it's a single Haiku call per run (~$0.0002) that prints a 2-3 bullet wrap-up of what the team accomplished. Useful, cheap, one-shot. User explicitly confirmed keeping this piece.
+
+Scope (single PR to `main`):
+- **`src/zo/cli.py`** — `_launch_and_monitor`: deleted `_maybe_print_headline` function (~30 lines), the `_last_headline_time` and `_headline_interval` timer variables, and the `_maybe_print_headline()` call inside `_print_status`. Kept `_headline_buffer` (still consumed by `_generate_session_summary`) and all the `_headline_buffer.append(...)` event-capture calls in `_print_status`. Kept `_generate_session_summary` and its end-of-session invocation. Updated `headlines_disabled` parameter docstring + the auxiliary-call comment to reflect the narrowed meaning. Updated `_LOW_TOKEN_PRESET["headlines_disabled"]` inline comment from "disable Haiku ticker (~60 calls/hr)" to "skip end-of-session Haiku summary (~1 call/session)". Updated `--no-headlines` flag help text on both `build` and `continue` commands.
+- **`docs/cli/build.mdx`** — Step 5 monitoring sentence rewritten ("surfaces Haiku-summarised headlines every 60 seconds" → "prints the live task list and recent agent events"), "Headlines" Live-monitoring `<Card>` removed entirely, options table `--no-headlines` row updated, `--low-token` accordion text updated.
+- **`docs/cli/overview.mdx`** — shared options table `--no-headlines` row updated.
+- **`docs/quickstart.mdx`** — "What you'll see" bullet list rewritten + new end-of-session bullet added, `--low-token` Note text updated.
+- **`docs/COMMANDS.md`** — `--low-token` and `--no-headlines` lines updated.
+- **`docs/concepts/low-token-mode.mdx`** — two preset-comparison tables collapsed the "Haiku headline ticker" row into the existing "End-of-session Haiku summary" row with an explanatory note that the ticker has been removed unconditionally. Updated the Batch-API forward-looking note that referenced the (now-removed) ticker.
+- **`docs/reference/low-token-preset.mdx`** — preset table same collapse, `--no-headlines` override-flag entry updated.
+
+**Rationale:** This is the cheapest large-payoff cleanup left on the cost-reduction roadmap. The ticker output was visible (one line every minute in the lead pane) but redundant — the lead pane already shows the live task list, agent events, and gate decisions in real time. The Haiku summary added decoration, not signal. Removing it cuts ~$0.06-$0.18 per overnight run AND removes 60/hr subprocess churn, with no observed user impact (per user-confirmed "no one is using this feature"). Keeping the end-of-session wrap-up preserves the genuinely useful one-shot summary at session close without re-introducing the per-tick cost.
+
+The `--no-headlines` flag is preserved (not removed) for backwards compatibility. Its meaning narrows from "disable both the ticker and the end-of-session summary" to "disable the end-of-session summary only" — the ticker is gone for everyone now, with or without the flag.
+
+**Alternatives considered:**
+- **Remove the end-of-session summary too** — rejected. User explicitly wanted to keep it. Cost is trivial (~$0.0002/run), and the bullet wrap-up is genuinely useful at session close.
+- **Remove the `--no-headlines` flag entirely** — rejected. Backwards-compatibility concern; the flag still has a meaningful (if narrower) effect. Keeping it is one line with positive UX value.
+- **Move the ticker off Haiku to a non-LLM summariser** — rejected. The redundancy with the live task list pane is the actual problem, not the Haiku call. A non-LLM summary would still be ignored noise.
+- **Make the ticker opt-in via a `--headlines` flag** — rejected. Adds complexity for a feature with zero confirmed users. If demand surfaces later, easy to re-add.
+
+**Outcome:** Single feature-removal commit on branch `claude/remove-haiku-ticker`, PR opened against `main`. After rebase onto main (which now includes PR #92), pytest 760 passed / 7 skipped on both Python 3.11 and 3.12. ruff `src/` clean. validate-docs clean. Full CI-equivalent matrix run locally per PR-039 protocol before push. **No new PRIOR added** — this is a clean feature-removal driven by user feedback, not a failure-trace self-evolution.
+
+**Cross-reference:** PR-039 (pre-push verification must mirror full CI matrix) — this PR's verification followed that protocol end-to-end. Related to session 024's `--low-token` design where `headlines_disabled` was first introduced as a cost-saving preset field; this PR extends that thinking to the unconditional case (everyone gets the cost saving, not just `--low-token` users).

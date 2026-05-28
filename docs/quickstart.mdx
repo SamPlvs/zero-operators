@@ -99,8 +99,9 @@ The **Lead Orchestrator** reads the plan, decomposes it into phases, builds cont
 
 - A tmux pane with the orchestrator's live session
 - Phase progress + gate status streamed to your terminal
-- Haiku-summarised headline events every 60 seconds
+- Live task list + recent agent events from the comms log
 - A live training dashboard (split-pane) once Phase 4 starts
+- At the end of the run, a short Haiku-generated bullet summary of what the team accomplished
 
 <Tip>
   Press <kbd>Ctrl-b n</kbd> to switch into the agent pane and watch the team work in real time. <kbd>Ctrl-b p</kbd> jumps back.
@@ -113,7 +114,7 @@ The **Lead Orchestrator** reads the plan, decomposes it into phases, builds cont
   zo build plans/mnist-demo.md --low-token
   ```
 
-  Sonnet lead instead of Opus, Haiku for code-reviewer / test-engineer / oracle-qa, 2 Phase-4 iterations instead of 10, full-auto gates, no headlines, earlier auto-compaction. **~30% measured savings** on the MNIST bench (\$7.75 vs ~\$11 default); 50-60% targeted with the Haiku routing + per-phase trims (pending second bench), 70-80% on the [roadmap](/roadmap) via SDK refactor (prompt caching, Batch API, Files API). Slight quality trade at the lead step. See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
+  Sonnet lead instead of Opus, Haiku for code-reviewer / test-engineer / oracle-qa, 2 Phase-4 iterations instead of 10, full-auto gates, no end-of-session Haiku summary, earlier auto-compaction. **~30% measured savings** on the MNIST bench (\$7.75 vs ~\$11 default); 50-60% targeted with the Haiku routing + per-phase trims (pending second bench), 70-80% on the [roadmap](/roadmap) via SDK refactor (prompt caching, Batch API, Files API). Slight quality trade at the lead step. See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
 </Note>
 
 ## 6. Verify
