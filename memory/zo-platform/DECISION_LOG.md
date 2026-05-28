@@ -1032,3 +1032,26 @@ GitHub-side changes (applied via `gh`, not in the PR):
 - **Keep the website's industry-detail origin story for "credibility"** — rejected. The eight-week constraint and budget framing carry the credibility without naming a domain; the named industry adds risk without proportionate signal.
 
 **Outcome:** Single conventional commit on a feature branch, PR opened against `main`. validate-docs 9/11 (2 pre-existing warnings, 0 failures — test badge warning re grep vs pytest count is structural, client-blocklist warning is intentional skip). No code or tests touched; no rebench needed. **No new PRIOR added** — this is a maintenance cascade closing out an earlier evolution-driven cleanup (session 025's honesty pass), not a novel failure mode. The generalisation worth recording for future cascades: when a documentation honesty pass ships, sweep all `grep -rn "<the-claim>"` hits across `docs/`, `README.md`, and `website/` in the same PR rather than trusting that the high-traffic surfaces are the only ones that matter. Closed under PR-005's enforcement spirit applied to documentation cleanup.
+
+---
+
+## Decision: 2026-05-28T00:00:00Z
+**Type:** COPY + STYLING
+**Title:** Extend hero byline with secondary collaborator credit (Callum Adamson)
+
+**Decision:** Extend the public website hero eyebrow byline from a single author credit ("by Samyakh (Sam) Tukra") to a two-line author + collaborator credit ("by Samyakh (Sam) Tukra / with Callum Adamson"), with the secondary clause visually downshifted via `display: block` + reduced font size + reduced opacity. Callum's name links to his LinkedIn (the same URL already in the footer Contributors list at `website/src/pages/index.html:1053`).
+
+Scope (single PR to `main`):
+- **`website/src/pages/index.html:84`** — eyebrow `<span>` extended with a nested `<span class="author-secondary">with <a href="...callumadamson/" ...>Callum Adamson</a></span>`. Both author links keep the existing `.author-link` underline + hover-opacity treatment.
+- **`website/public/styles.css:251`** — new `.author-secondary` rule: `display: block` forces the clause onto its own line below the main byline; `font-size: 0.9em` (renders at 9px against the eyebrow's 10px); `opacity: 0.55` (visually downshifts to "side credit"); `margin-top: 2px` for breathing room; `transition: opacity 0.18s var(--ease)`; `:hover { opacity: 0.85 }` so the link is still discoverable on intent.
+
+**Rationale:** Visual hierarchy carries the political signal that the source-code change doesn't need to spell out — Sam owns the byline (full coral, full opacity, 10px), Callum is acknowledged as a collaborator on a faded sub-line beneath it. The "with" framing word is intentional: softer than "and" / "&" (which imply co-equal billing), less obsequious than "with thanks to" (which implies one-off gratitude rather than active collaboration). The two-line layout was chosen after preview verification — an inline same-line credit ("by Sam, with Callum") wraps unpredictably at narrow viewports and strands "with" at the end of line 1, breaking the visual unit of "with Callum Adamson". `display: block` guarantees the clause reads as a single unit on its own line regardless of viewport width. Hover affordance preserved so external visitors can still reach Callum's LinkedIn from the byline (in addition to the footer link already at line 1053).
+
+**Alternatives considered:**
+- **Inline same-line credit with comma separator** ("by Sam, with Callum") — rejected after preview check: wrap behavior strands "with" at end of line 1, "Callum Adamson" alone on line 2, no clear visual hierarchy.
+- **Comma + smaller font without forced line break** — relies on natural text wrap; less predictable across viewports.
+- **Drop Callum from the eyebrow entirely, footer-only credit** — already present in the Contributors list at `website/src/pages/index.html:1053`, but user direction was explicit: add to the *opening* byline with subtle treatment. Honored.
+- **"with thanks to" framing** — too explicit, implies one-off gratitude rather than active collaboration; rejected as politically miscalibrated for an ongoing credit.
+- **Equal-billing treatment** ("by Sam & Callum") — rejected per user direction; Sam is the lead/creator and the visual hierarchy needs to reflect that without making it cringe-y to read.
+
+**Outcome:** Single conventional commit on branch `claude/website-byline-callum`, PR opened against `main`. validate-docs 9/11 (2 pre-existing warnings, 0 failures — identical state to session 029, unchanged by this PR). No code, tests, agents, commands, version, or model tiers touched. **No new PRIOR added** — this is a copy/styling decision, not a failure-driven self-evolution; design rationale captured in this DECISION_LOG entry is the auditable record.

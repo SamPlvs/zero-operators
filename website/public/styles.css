@@ -249,6 +249,15 @@ em, .it {
 .author-link:hover { opacity: 0.7; }
 .author-link em { font-style: normal; }
 
+.author-secondary {
+  display: block;
+  opacity: 0.55;
+  font-size: 0.9em;
+  margin-top: 2px;
+  transition: opacity 0.18s var(--ease);
+}
+.author-secondary:hover { opacity: 0.85; }
+
 .display {
   font-weight: 500;
   font-size: clamp(44px, 5.8vw, 78px);
