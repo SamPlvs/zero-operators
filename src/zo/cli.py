@@ -298,6 +298,35 @@ def _resolve_gate_mode(
     return "supervised"
 
 
+def _resolve_bypass_permissions(
+    *,
+    cli_bypass: bool,
+    gate_mode: str,
+) -> bool:
+    """Resolve whether Claude Code permission prompts should be bypassed.
+
+    Truth table:
+
+    +------------------------------------+--------+
+    | flags                              | bypass |
+    +====================================+========+
+    | --gate-mode supervised (default)   | False  |
+    | --gate-mode supervised --bypass-p* | True   |
+    | --gate-mode auto                   | False  |
+    | --gate-mode auto --bypass-p*       | True   |
+    | --gate-mode full-auto              | True   |
+    | --gate-mode full-auto --bypass-p*  | True   |
+    +------------------------------------+--------+
+
+    The flag is its own opt-in; ``--gate-mode full-auto`` implicitly
+    enables it because "no human in the loop for gates" + "human must
+    click every tool prompt" is a contradiction.
+    """
+    if cli_bypass:
+        return True
+    return gate_mode == "full-auto"
+
+
 def _show_banner(
     project: str = "",
     mode: str = "",
@@ -694,6 +723,7 @@ def _launch_and_monitor(
     add_dirs: list[str] | None = None,
     extra_env: dict[str, str] | None = None,
     headlines_disabled: bool = False,
+    bypass_permissions: bool = False,
 ) -> None:
     """Shared launch → monitor → end-session flow for build and draft.
 
@@ -703,7 +733,20 @@ def _launch_and_monitor(
             ``CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60``.
         headlines_disabled: When True, skips the periodic Haiku headline
             summaries. Set by ``--low-token`` and ``--no-headlines``.
+        bypass_permissions: When True, Claude Code tool-call permission
+            prompts are auto-approved. Set by ``--bypass-permissions``
+            or implied by ``--gate-mode full-auto``.
     """
+    # Clean up any stale settings.local.json overlay left by a crashed
+    # previous run before launching this one.
+    from zo.permissions_overlay import cleanup_stale_overlay
+    cleaned = cleanup_stale_overlay(zo_root / ".claude")
+    if cleaned:
+        console.print(
+            f"[{_DIM}]Restored .claude/settings.local.json from a previous "
+            f"interrupted run.[/]"
+        )
+
     use_tmux = not no_tmux
     console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
     process = wrapper.launch_lead_session(
@@ -711,6 +754,7 @@ def _launch_and_monitor(
         model=model, max_turns=max_turns, use_tmux=use_tmux,
         add_dirs=add_dirs or [],
         extra_env=extra_env or {},
+        bypass_permissions=bypass_permissions,
     )
 
     if process.tmux_pane_id:
@@ -910,6 +954,11 @@ def _launch_and_monitor(
     "--no-headlines", is_flag=True,
     help="Disable the Haiku headline ticker (saves ~60 small calls/hour).",
 )
+@click.option(
+    "--bypass-permissions", is_flag=True,
+    help="Auto-approve Claude Code tool-call permission prompts. Useful when "
+    "you want to walk away from the terminal. Implied by --gate-mode full-auto.",
+)
 def build(
     plan_path: Path,
     gate_mode: str | None,
@@ -918,6 +967,7 @@ def build(
     lead_model: str | None,
     max_iterations: int | None,
     no_headlines: bool,
+    bypass_permissions: bool,
 ) -> None:
     """Launch a project from a plan.md file.
 
@@ -962,6 +1012,9 @@ def build(
     )
     effective_headlines_disabled = (
         no_headlines or effective_low_token
+    )
+    effective_bypass_permissions = _resolve_bypass_permissions(
+        cli_bypass=bypass_permissions, gate_mode=effective_gate_mode,
     )
     extra_env: dict[str, str] = {}
     if effective_low_token:
@@ -1063,6 +1116,7 @@ def build(
         add_dirs=[str(delivery_path)],
         extra_env=extra_env,
         headlines_disabled=effective_headlines_disabled,
+        bypass_permissions=effective_bypass_permissions,
     )
 
 
@@ -1098,6 +1152,11 @@ def build(
     "--no-headlines", is_flag=True,
     help="Disable the Haiku headline ticker.",
 )
+@click.option(
+    "--bypass-permissions", is_flag=True,
+    help="Auto-approve Claude Code tool-call permission prompts. "
+    "Implied by --gate-mode full-auto.",
+)
 def continue_(
     project_name: str | None,
     repo: str | None,
@@ -1107,6 +1166,7 @@ def continue_(
     lead_model: str | None,
     max_iterations: int | None,
     no_headlines: bool,
+    bypass_permissions: bool,
 ) -> None:
     """Resume a paused project or reconnect on a new machine.
 
@@ -1172,6 +1232,7 @@ def continue_(
         lead_model=lead_model,
         max_iterations=max_iterations,
         no_headlines=no_headlines,
+        bypass_permissions=bypass_permissions,
     )
 
 

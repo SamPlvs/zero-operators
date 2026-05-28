@@ -95,7 +95,8 @@ class TestLaunchLeadSession:
     def test_headless_builds_correct_command(
         self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
     ) -> None:
-        """When use_tmux=False, launches headless with --print."""
+        """When use_tmux=False with bypass_permissions=True, launches
+        headless with --print and --dangerously-skip-permissions."""
         mock_popen.return_value.pid = 42
 
         result = wrapper.launch_lead_session(
@@ -105,6 +106,7 @@ class TestLaunchLeadSession:
             model="opus",
             max_turns=100,
             use_tmux=False,
+            bypass_permissions=True,
         )
 
         args = mock_popen.call_args
@@ -128,6 +130,49 @@ class TestLaunchLeadSession:
         assert result.team_name == "alpha"
         assert result.stdout_log is not None
         assert result.tmux_pane_id is None
+
+    @mock.patch("zo.wrapper.subprocess.Popen")
+    def test_headless_omits_skip_flag_when_bypass_false(
+        self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """When bypass_permissions=False, --dangerously-skip-permissions
+        must NOT be in the Claude command. Prompts are expected to fire
+        for each tool call."""
+        mock_popen.return_value.pid = 43
+
+        wrapper.launch_lead_session(
+            "do the thing",
+            cwd="/target",
+            team_name="beta",
+            model="opus",
+            max_turns=50,
+            use_tmux=False,
+            bypass_permissions=False,
+        )
+
+        cmd = mock_popen.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in cmd
+        # Sanity: rest of the command is still well-formed
+        assert "--print" in cmd
+        assert "-p" in cmd
+
+    @mock.patch("zo.wrapper.subprocess.Popen")
+    def test_headless_default_bypass_is_false(
+        self, mock_popen: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """Default (no bypass_permissions arg) is the safe behavior:
+        --dangerously-skip-permissions is NOT included."""
+        mock_popen.return_value.pid = 44
+
+        wrapper.launch_lead_session(
+            "do the thing",
+            cwd="/target",
+            team_name="gamma",
+            use_tmux=False,
+        )
+
+        cmd = mock_popen.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in cmd
 
     @mock.patch("zo.wrapper.subprocess.Popen")
     def test_add_dir_flag_present(
@@ -193,6 +238,72 @@ class TestLaunchLeadSession:
         assert result.pid == 42
         assert result.tmux_pane_id is None
         assert mock_popen.called
+
+    @mock.patch("zo.wrapper.atexit.register")
+    @mock.patch("zo.wrapper.time.sleep")
+    @mock.patch("zo.wrapper.subprocess.run")
+    def test_tmux_with_bypass_applies_overlay(
+        self,
+        mock_run: mock.MagicMock,
+        mock_sleep: mock.MagicMock,
+        mock_atexit: mock.MagicMock,
+        wrapper: LifecycleWrapper,
+        tmp_path: Path,
+    ) -> None:
+        """tmux + bypass_permissions=True writes the settings overlay
+        and registers a restore callback with atexit before launching."""
+        mock_run.return_value = mock.MagicMock(stdout="%9\n", returncode=0)
+
+        with mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux,1,0"}):
+            wrapper.launch_lead_session(
+                "prompt",
+                cwd=str(tmp_path),
+                team_name="overlay-team",
+                use_tmux=True,
+                bypass_permissions=True,
+            )
+
+        # Overlay should be on disk during launch
+        settings = tmp_path / ".claude" / "settings.local.json"
+        assert settings.exists()
+        content = json.loads(settings.read_text())
+        assert content["permissions"]["defaultMode"] == "bypassPermissions"
+
+        # Restore was registered with atexit
+        assert mock_atexit.called
+        # The wrapper holds a reference so an explicit restore is possible
+        assert wrapper._bypass_restore_fn is not None  # noqa: SLF001
+
+    @mock.patch("zo.wrapper.atexit.register")
+    @mock.patch("zo.wrapper.time.sleep")
+    @mock.patch("zo.wrapper.subprocess.run")
+    def test_tmux_without_bypass_skips_overlay(
+        self,
+        mock_run: mock.MagicMock,
+        mock_sleep: mock.MagicMock,
+        mock_atexit: mock.MagicMock,
+        wrapper: LifecycleWrapper,
+        tmp_path: Path,
+    ) -> None:
+        """tmux without bypass_permissions does NOT touch
+        settings.local.json or register any atexit handler."""
+        mock_run.return_value = mock.MagicMock(stdout="%10\n", returncode=0)
+
+        with mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux,1,0"}):
+            wrapper.launch_lead_session(
+                "prompt",
+                cwd=str(tmp_path),
+                team_name="no-overlay",
+                use_tmux=True,
+                bypass_permissions=False,
+            )
+
+        # No overlay was written
+        settings = tmp_path / ".claude" / "settings.local.json"
+        assert not settings.exists()
+        # No atexit handler was registered for an overlay
+        assert not mock_atexit.called
+        assert wrapper._bypass_restore_fn is None  # noqa: SLF001
 
 
 # ------------------------------------------------------------------ #

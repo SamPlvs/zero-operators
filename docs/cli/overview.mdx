@@ -78,6 +78,7 @@ Most project-aware commands also accept:
 | `--lead-model` | Override the lead orchestrator model (`opus`/`sonnet`/`haiku`). Composes with `--low-token`. |
 | `--max-iterations N` | Hard cap on Phase-4 experiment iterations. Wins over plan-level `## Experiment Loop` and the low-token preset. |
 | `--no-headlines` | Disable the Haiku headline ticker. |
+| `--bypass-permissions` | Auto-approve Claude Code tool-call permission prompts. Implied by `--gate-mode full-auto`. Works in both tmux and headless modes. See [build → Permission prompts](/cli/build#permission-prompts-bypass-permissions). |
 
 ## Modes of operation
 
