@@ -25,9 +25,13 @@ restore step is safe to call multiple times.
 """
 from __future__ import annotations
 
+import contextlib
 import json
-from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 __all__ = ["apply_bypass_overlay", "cleanup_stale_overlay"]
 
@@ -104,14 +108,10 @@ def apply_bypass_overlay(claude_dir: Path) -> Callable[[], None]:
         if original_content is not None:
             settings_file.write_text(original_content, encoding="utf-8")
         else:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 settings_file.unlink()
-            except FileNotFoundError:
-                pass
-        try:
+        with contextlib.suppress(FileNotFoundError):
             backup_file.unlink()
-        except FileNotFoundError:
-            pass
 
     return restore
 
@@ -138,16 +138,12 @@ def cleanup_stale_overlay(claude_dir: Path) -> bool:
     content = backup_file.read_text(encoding="utf-8")
 
     if content == _NO_ORIGINAL_MARKER:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             settings_file.unlink()
-        except FileNotFoundError:
-            pass
     else:
         settings_file.write_text(content, encoding="utf-8")
 
-    try:
+    with contextlib.suppress(FileNotFoundError):
         backup_file.unlink()
-    except FileNotFoundError:
-        pass
 
     return True

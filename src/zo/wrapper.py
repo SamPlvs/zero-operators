@@ -82,7 +82,8 @@ class LifecycleWrapper:
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._max_retries = max_retries
         self._base_backoff = base_backoff
-        self._bypass_restore_fn: "object | None" = None  # callable; restores settings.local.json overlay
+        # Restore callable for the settings.local.json overlay (set in _launch_tmux).
+        self._bypass_restore_fn: object | None = None
 
     # --- Launch ---
 
