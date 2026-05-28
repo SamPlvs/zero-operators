@@ -57,8 +57,7 @@ Authoritative locations: [`src/zo/cli.py`](https://github.com/SamPlvs/zero-opera
 | Phase-4 `stop_on_tier` | `must_pass` | `could_pass` | `_LOW_TOKEN_LOOP_CLAMPS` in `experiment_loop.py` |
 | Cross-cutting `research-scout` | enabled | disabled | `_agents_for_phase` in `orchestrator.py` |
 | Cross-cutting `code-reviewer` | enabled | dropped from Phase 1; **on Haiku** elsewhere | `LOW_TOKEN_PHASE_DROPS` + `LOW_TOKEN_HAIKU_AGENTS` |
-| Haiku headline ticker | every 60s | disabled | `_maybe_print_headline` in `cli.py` |
-| End-of-session Haiku summary | generated | skipped | `_generate_session_summary` in `cli.py` |
+| End-of-session Haiku summary | generated | skipped | `_generate_session_summary` in `cli.py`. (The previous per-60-second `_maybe_print_headline` ticker was removed unconditionally; only the one-shot wrap-up call remains, and `--low-token` skips even that.) |
 | Default gate mode | `supervised` | `full-auto` | `_resolve_gate_mode` in `cli.py` |
 | Lead prompt: dedicated adaptations section | included | omitted | `build_lead_prompt` in `orchestrator.py` |
 | Lead prompt: roster | full descriptive | compact comma-list | `_prompt_roster` in `orchestrator.py` |
@@ -72,7 +71,7 @@ These compose with `--low-token` to fine-tune individual knobs:
 |---|---|---|
 | `--lead-model {opus,sonnet,haiku}` | choice | Override the lead model |
 | `--max-iterations N` | int | Hard cap on Phase-4 iterations |
-| `--no-headlines` | bool | Disable the headline ticker (independent of low-token) |
+| `--no-headlines` | bool | Skip the end-of-session Haiku bullet summary (independent of low-token) |
 | `--gate-mode {supervised,auto,full-auto}` | choice | Override the gate mode |
 
 ## Plan-level fields

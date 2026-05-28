@@ -39,7 +39,7 @@ You don't pass a flag for this, `zo build` figures it out.
     Creates a tmux pane (default) or runs headless (`--no-tmux`). Pastes the Lead Orchestrator's prompt. The Lead reads the full plan, creates the team via `TeamCreate`, and drives execution.
   </Step>
   <Step title="Monitor">
-    The Python `LifecycleWrapper` observes via `~/.claude/tasks/` and the tmux pane. Captures lifecycle events, pipes them to JSONL comms log, surfaces Haiku-summarised headlines every 60 seconds in your terminal. Auto-launches the training dashboard split-pane during Phase 4.
+    The Python `LifecycleWrapper` observes via `~/.claude/tasks/` and the tmux pane. Captures lifecycle events, pipes them to JSONL comms log, prints the live task list and recent agent events in your terminal. Auto-launches the training dashboard split-pane during Phase 4.
   </Step>
   <Step title="Gate handling">
     At every phase boundary, checks artifact contracts and oracle thresholds. Automated gates auto-PROCEED. Blocking gates pause; you approve via `/gates:approve` or reject via `/gates:reject`.
@@ -117,9 +117,6 @@ While `zo build` is running, you have several windows into what the team is doin
   <Card title="tmux pane" icon="window-restore">
     `Ctrl-b n` switches to the agent session. Watch the Lead Orchestrator coordinate the team in real time. `Ctrl-b p` returns.
   </Card>
-  <Card title="Headlines" icon="bullhorn">
-    Every 60 seconds, your invoking terminal gets a 1-line Haiku summary of recent agent events. Lightweight live signal.
-  </Card>
   <Card title="Training dashboard" icon="chart-line">
     Auto-launched as a split-pane during Phase 4. Rich Live panel: progress bar, metrics table, sparkline, checkpoints. See `zo watch-training`.
   </Card>
@@ -138,7 +135,7 @@ While `zo build` is running, you have several windows into what the team is doin
 | `--low-token` | (off) | Activate the cost-saving preset. See [low-token mode](/concepts/low-token-mode). |
 | `--lead-model` | `opus` (or `sonnet` if `--low-token`) | Override the lead orchestrator model: `opus` / `sonnet` / `haiku`. |
 | `--max-iterations N` | `10` (or `2` if `--low-token`) | Hard cap on Phase-4 experiment iterations. Wins over plan and preset. |
-| `--no-headlines` | (off) | Disable the Haiku headline ticker (saves ~60 small calls/hour). |
+| `--no-headlines` | (off) | Skip the end-of-session Haiku bullet summary (~1 Haiku call per run, ~$0.0002). |
 | `--bypass-permissions` | (off) | Auto-approve Claude Code tool-call prompts. Implied by `--gate-mode full-auto`. See [Permission prompts](#permission-prompts-bypass-permissions). |
 
 ## Examples
@@ -173,7 +170,7 @@ While `zo build` is running, you have several windows into what the team is doin
     ```bash
     zo build plans/my-project.md --low-token
     ```
-    Sonnet lead, Haiku for code-reviewer / test-engineer / oracle-qa, 2 max iterations, no headlines, full-auto gates, earlier auto-compaction. **~30% measured savings** on MNIST (\$7.75 vs ~\$11 default); 50-60% targeted, 70-80% on the [roadmap](/roadmap). See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
+    Sonnet lead, Haiku for code-reviewer / test-engineer / oracle-qa, 2 max iterations, no end-of-session Haiku summary, full-auto gates, earlier auto-compaction. **~30% measured savings** on MNIST (\$7.75 vs ~\$11 default); 50-60% targeted, 70-80% on the [roadmap](/roadmap). See [low-token mode](/concepts/low-token-mode) for the full preset and trade-offs.
   </Accordion>
   <Accordion title="Low-token mode with override">
     ```bash
