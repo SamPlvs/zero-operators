@@ -1002,6 +1002,44 @@ class TestLowTokenFlags:
             cli_gate_mode=None, low_token=False,
         ) == "supervised"
 
+    def test_resolve_bypass_permissions_truth_table(self) -> None:
+        """The full truth table from the user-facing contract.
+
+        +------------------------------------+--------+
+        | flags                              | bypass |
+        +====================================+========+
+        | --gate-mode supervised             | False  |
+        | --gate-mode supervised --bypass    | True   |
+        | --gate-mode auto                   | False  |
+        | --gate-mode auto --bypass          | True   |
+        | --gate-mode full-auto              | True   |
+        | --gate-mode full-auto --bypass     | True   |
+        +------------------------------------+--------+
+        """
+        from zo.cli import _resolve_bypass_permissions
+
+        # supervised: bypass off by default, on with explicit flag
+        assert _resolve_bypass_permissions(
+            cli_bypass=False, gate_mode="supervised",
+        ) is False
+        assert _resolve_bypass_permissions(
+            cli_bypass=True, gate_mode="supervised",
+        ) is True
+        # auto: same shape
+        assert _resolve_bypass_permissions(
+            cli_bypass=False, gate_mode="auto",
+        ) is False
+        assert _resolve_bypass_permissions(
+            cli_bypass=True, gate_mode="auto",
+        ) is True
+        # full-auto: bypass implied, redundant flag still True
+        assert _resolve_bypass_permissions(
+            cli_bypass=False, gate_mode="full-auto",
+        ) is True
+        assert _resolve_bypass_permissions(
+            cli_bypass=True, gate_mode="full-auto",
+        ) is True
+
     def test_low_token_preset_constant_shape(self) -> None:
         """The preset has the documented keys with documented values."""
         from zo.cli import _LOW_TOKEN_PRESET

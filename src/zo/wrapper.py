@@ -16,6 +16,7 @@ Two launch modes:
 
 from __future__ import annotations
 
+import atexit
 import contextlib
 import json
 import os
@@ -81,6 +82,8 @@ class LifecycleWrapper:
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._max_retries = max_retries
         self._base_backoff = base_backoff
+        # Restore callable for the settings.local.json overlay (set in _launch_tmux).
+        self._bypass_restore_fn: object | None = None
 
     # --- Launch ---
 
@@ -95,6 +98,7 @@ class LifecycleWrapper:
         use_tmux: bool = True,
         add_dirs: list[str] | None = None,
         extra_env: dict[str, str] | None = None,
+        bypass_permissions: bool = False,
     ) -> LeadProcess:
         """Launch one Claude Code session as the Lead Orchestrator.
 
@@ -112,16 +116,27 @@ class LifecycleWrapper:
                 merged into the subprocess ``env``. Used by the
                 low-token preset to set
                 ``CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60``.
+            bypass_permissions: When True, Claude Code's tool-call
+                permission prompts are suppressed.  In headless mode
+                this is achieved via ``--dangerously-skip-permissions``;
+                in tmux mode (where that flag exits Claude Code
+                immediately) it's achieved by overlaying
+                ``permissions.defaultMode: "bypassPermissions"`` onto
+                the project's ``.claude/settings.local.json`` for the
+                duration of the run.  See :mod:`zo.permissions_overlay`
+                for the safe-overlay mechanism.  Default False.
         """
         extra = add_dirs or []
         env = extra_env or {}
         if use_tmux and self._is_in_tmux():
             return self._launch_tmux(prompt, cwd=cwd, team_name=team_name,
                                      model=model, max_turns=max_turns,
-                                     add_dirs=extra, extra_env=env)
+                                     add_dirs=extra, extra_env=env,
+                                     bypass_permissions=bypass_permissions)
         return self._launch_headless(prompt, cwd=cwd, team_name=team_name,
                                      model=model, max_turns=max_turns,
-                                     add_dirs=extra, extra_env=env)
+                                     add_dirs=extra, extra_env=env,
+                                     bypass_permissions=bypass_permissions)
 
     def _launch_tmux(
         self,
@@ -133,6 +148,7 @@ class LifecycleWrapper:
         max_turns: int,
         add_dirs: list[str] | None = None,
         extra_env: dict[str, str] | None = None,
+        bypass_permissions: bool = False,
     ) -> LeadProcess:
         """Launch Claude Code interactively in a visible tmux window.
 
@@ -144,7 +160,20 @@ class LifecycleWrapper:
         2. Wait for the TUI to render
         3. Paste the prompt into the TUI via tmux's paste buffer
         4. Send Enter — Claude processes it with the TUI visible
+
+        If ``bypass_permissions`` is True, a settings-file overlay is
+        applied to ``<cwd>/.claude/settings.local.json`` before launch
+        and restored via an atexit handler.  This is the only way to
+        suppress permission prompts in interactive mode (the CLI flag
+        is rejected by Claude Code in TUI mode).
         """
+        # Apply bypass overlay (if requested) BEFORE Claude reads settings.
+        if bypass_permissions:
+            from zo.permissions_overlay import apply_bypass_overlay
+            restore_fn = apply_bypass_overlay(Path(cwd) / ".claude")
+            atexit.register(restore_fn)
+            self._bypass_restore_fn = restore_fn
+
         prompt_file = self._log_dir / f"{team_name}-prompt.txt"
         prompt_file.write_text(prompt, encoding="utf-8")
 
@@ -365,16 +394,25 @@ class LifecycleWrapper:
         max_turns: int,
         add_dirs: list[str] | None = None,
         extra_env: dict[str, str] | None = None,
+        bypass_permissions: bool = False,
     ) -> LeadProcess:
-        """Launch Claude Code as a headless subprocess (--print mode)."""
+        """Launch Claude Code as a headless subprocess (--print mode).
+
+        When ``bypass_permissions`` is True, ``--dangerously-skip-permissions``
+        is appended to the Claude CLI invocation so tool-call prompts
+        are auto-approved.  When False (default), prompts fire as
+        normal — useful for ``--gate-mode supervised`` runs where the
+        user wants to review each tool call.
+        """
         cmd: list[str] = [
             self._claude_bin, "--print",
             "--output-format", "json",
             "--model", model,
             "--max-turns", str(max_turns),
             "--add-dir", cwd,
-            "--dangerously-skip-permissions",
         ]
+        if bypass_permissions:
+            cmd.append("--dangerously-skip-permissions")
         for d in (add_dirs or []):
             cmd.extend(["--add-dir", d])
         cmd.extend(["-p", prompt])

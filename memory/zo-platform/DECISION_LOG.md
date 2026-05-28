@@ -1055,3 +1055,30 @@ Scope (single PR to `main`):
 - **Equal-billing treatment** ("by Sam & Callum") — rejected per user direction; Sam is the lead/creator and the visual hierarchy needs to reflect that without making it cringe-y to read.
 
 **Outcome:** Single conventional commit on branch `claude/website-byline-callum`, PR opened against `main`. validate-docs 9/11 (2 pre-existing warnings, 0 failures — identical state to session 029, unchanged by this PR). No code, tests, agents, commands, version, or model tiers touched. **No new PRIOR added** — this is a copy/styling decision, not a failure-driven self-evolution; design rationale captured in this DECISION_LOG entry is the auditable record.
+
+---
+
+## Decision: 2026-05-28T18:00:00Z
+**Type:** FEATURE + BEHAVIOR-CHANGE
+**Title:** Add `--bypass-permissions` flag; decouple Claude permission bypass from `--no-tmux` mode
+
+**Decision:** Introduce an explicit `--bypass-permissions` CLI flag on `zo build` and `zo continue` for auto-approving Claude Code's tool-call permission prompts. Effective bypass resolves as `cli_bypass OR gate_mode == "full-auto"` — the latter implicit because no-human-on-gates plus must-click-every-tool is a self-contradicting UX. The flag works identically in tmux and headless modes via two different mechanisms (tmux: settings-file overlay; headless: existing CLI flag, now conditional). Also: previously `--no-tmux` unconditionally bypassed permissions (a baked-in `--dangerously-skip-permissions` at `wrapper.py:376`); that is now conditional on the resolved bypass setting, restoring symmetry between tmux and headless behavior.
+
+Scope:
+- **`src/zo/permissions_overlay.py`** (new, ~140 LOC): `apply_bypass_overlay(claude_dir)` writes the overlay (with safe backup) and returns a `restore_fn` callable; `cleanup_stale_overlay(claude_dir)` detects + restores from a crashed previous run (sentinel-marker pattern for the "no-original-file" case).
+- **`src/zo/wrapper.py`**: `launch_lead_session` / `_launch_tmux` / `_launch_headless` each gain `bypass_permissions: bool = False` param. Tmux path calls `apply_bypass_overlay` + `atexit.register(restore_fn)` when bypass is True. Headless path appends `--dangerously-skip-permissions` to the Claude CLI invocation only when bypass is True.
+- **`src/zo/cli.py`**: new helper `_resolve_bypass_permissions(*, cli_bypass, gate_mode)` (visible truth table in docstring); new `--bypass-permissions` flag on `build` and `continue`; `_launch_and_monitor` accepts and threads `bypass_permissions` through to `launch_lead_session`; calls `cleanup_stale_overlay(zo_root / ".claude")` at every invocation to recover from prior crashes.
+- **Tests:** `tests/unit/test_permissions_overlay.py` (12 cases) covers existing/no/malformed settings, stale-cleanup paths, and the defensive non-dict-permissions case. `tests/unit/test_wrapper.py` gains 3 new cases (headless conditional flag + tmux overlay apply/skip). `tests/unit/test_cli.py` gains the resolver truth-table case. **+17 tests total**; pytest 760 passed (was 743) + 7 skipped, validate-docs 10/11 (0 failures, 1 pre-existing warning).
+- **Docs:** `docs/cli/build.mdx` gains a "Permission prompts: --bypass-permissions" section with the full truth table + behavior-change note. `docs/cli/overview.mdx` adds the flag to the shared options table.
+
+**Rationale:** Two independent concerns were previously coupled in confusing ways. `--gate-mode` controls ZO-level human checkpoints (Phase 2, Phase 4 reviews); Claude Code's permission prompts are a separate layer about *tool-call* approval (each Bash/Edit/Read/Write). The pre-PR behavior bypassed Claude permissions whenever `--no-tmux` was set — which is wrong because (a) `--no-tmux` is a visibility-mode choice, not a safety-mode choice, and (b) users running `zo continue --no-tmux --gate-mode supervised` (e.g., on a CI box but wanting human review of gates via Slack) had no way to keep prompts on. The new design makes the user's intent the source of truth via an explicit, named flag, with the only implicit behavior being a contradiction-avoiding default (`full-auto` ⇒ bypass on).
+
+The tmux mechanism (settings.local.json overlay) is novel for ZO and the risk surface is the restore-on-exit logic. Three layers of safety: (1) `atexit` handler fires on normal exit and Python-level exceptions; (2) sibling `.zo-backup` file is left on disk if the process dies before atexit (crash, kill -9); (3) `cleanup_stale_overlay()` runs at every subsequent `_launch_and_monitor` invocation, detects the orphan backup, and restores. Combined coverage handles every termination path short of filesystem corruption.
+
+**Alternatives considered:**
+- **Single `--full-auto` shorthand** — rejected. Two independent concerns deserve two flags; combining them removes the supervised+bypass-permissions case the user explicitly wanted ("walk away from the terminal but still review gates").
+- **Always inject `--dangerously-skip-permissions` (preserve old `--no-tmux` behavior)** — rejected. The asymmetry between tmux (prompts) and headless (no prompts) is itself the bug. Symmetric behavior with explicit opt-in is the cleaner contract.
+- **Write the overlay to a temp file and point Claude Code at it via env var** — would be cleaner (no mutation of user files) but no Claude Code env var exists for this; settings.local.json mutation with safe-restore is the available path.
+- **Single-flag shorthand `--unattended` aliasing both `--gate-mode full-auto` and `--bypass-permissions`** — defer for future polish; the current explicit form is more learnable and the two-flag combo is short enough.
+
+**Outcome:** Single feature commit on branch `claude/bypass-permissions-flag`, PR opened against `main`. validate-docs 10/11 (improved from baseline as the test-count warning resolved). 760 pytest pass / 7 skipped. **No new PRIOR added** — this is a clean feature with no failure trace; the design choices are auditable here. Power-user usage: `zo continue --repo /path/to/prod-001 --gate-mode full-auto` for an unattended overnight tmux run with full agent-team visibility AND no permission prompts.

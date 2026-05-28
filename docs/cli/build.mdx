@@ -79,6 +79,26 @@ You don't pass a flag for this, `zo build` figures it out.
 
 Toggle mid-session with `zo gates set <mode> -p <project>`.
 
+## Permission prompts: --bypass-permissions
+
+`--gate-mode` controls human involvement at **ZO's phase gates**. Independently, **Claude Code's tool-call permission prompts** can also be auto-approved with `--bypass-permissions`. The two are independent, but `--gate-mode full-auto` implicitly turns bypass on (no-human-on-gates plus must-click-every-tool is a contradiction).
+
+| Flags | Gates | Permission prompts |
+|---|---|---|
+| `--gate-mode supervised` (default) | human approves | human approves each |
+| `--gate-mode supervised --bypass-permissions` | human approves gates | auto-approved (walk away) |
+| `--gate-mode auto` | auto on success, pause on must-pass fail | human approves each |
+| `--gate-mode auto --bypass-permissions` | auto on success, pause on fail | auto-approved |
+| `--gate-mode full-auto` | all auto | auto-approved (implied) |
+| `--gate-mode full-auto --bypass-permissions` | all auto | auto-approved (redundant) |
+
+Works in both **tmux** and **headless** modes:
+
+- **Headless** (`--no-tmux`): passes `--dangerously-skip-permissions` to the Claude Code CLI.
+- **Tmux** (default): temporarily overlays `permissions.defaultMode: "bypassPermissions"` onto your project's `.claude/settings.local.json` for the duration of the run. The original file is backed up to `.claude/settings.local.json.zo-backup` and restored automatically when the run exits (via `atexit`). If ZO crashes mid-run, the next `zo` command auto-detects the stale backup and restores.
+
+**Behavior change note:** previously, `--no-tmux` runs unconditionally bypassed permissions. Now they only bypass when `--bypass-permissions` or `--gate-mode full-auto` is set. If you previously relied on `--no-tmux --gate-mode supervised` for prompt-free runs, add `--bypass-permissions` to keep that behavior.
+
 ## Cross-machine: --repo
 
 When you've moved a project from one machine to another (Mac dev → GPU server), use `--repo` to point at the delivery repo containing the `.zo/` layout:
@@ -119,6 +139,7 @@ While `zo build` is running, you have several windows into what the team is doin
 | `--lead-model` | `opus` (or `sonnet` if `--low-token`) | Override the lead orchestrator model: `opus` / `sonnet` / `haiku`. |
 | `--max-iterations N` | `10` (or `2` if `--low-token`) | Hard cap on Phase-4 experiment iterations. Wins over plan and preset. |
 | `--no-headlines` | (off) | Disable the Haiku headline ticker (saves ~60 small calls/hour). |
+| `--bypass-permissions` | (off) | Auto-approve Claude Code tool-call prompts. Implied by `--gate-mode full-auto`. See [Permission prompts](#permission-prompts-bypass-permissions). |
 
 ## Examples
 
