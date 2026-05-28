@@ -251,11 +251,8 @@ em, .it {
 
 .author-secondary {
   display: block;
-  opacity: 0.55;
   margin-top: 2px;
-  transition: opacity 0.18s var(--ease);
 }
-.author-secondary:hover { opacity: 0.85; }
 
 .display {
   font-weight: 500;
