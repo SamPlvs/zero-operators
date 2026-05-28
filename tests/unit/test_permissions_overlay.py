@@ -9,12 +9,12 @@ Covers four scenarios:
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from zo.permissions_overlay import apply_bypass_overlay, cleanup_stale_overlay
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ------------------------------------------------------------------ #
 # Scenario 1: existing settings.local.json
@@ -36,7 +36,7 @@ class TestExistingSettings:
         }
         settings.write_text(json.dumps(original))
 
-        restore = apply_bypass_overlay(claude_dir)
+        apply_bypass_overlay(claude_dir)
 
         # Overlay merged in defaultMode; existing allow/deny preserved
         new_content = json.loads(settings.read_text())
