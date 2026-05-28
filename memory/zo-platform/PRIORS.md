@@ -1190,3 +1190,63 @@ Test count 743 → 760 + 7 skipped. validate-docs 10/11 (1 pre-existing warning,
 **Secondary lesson (testability):** During implementation, my first cut used a lazy `import atexit` inside `_launch_tmux`. The mock-based test `@mock.patch("zo.wrapper.atexit.register")` failed with `AttributeError: module 'zo.wrapper' has no attribute 'atexit'` because the lazy import never made `atexit` a module-level attribute that `mock.patch` could find. Moving the import to module level fixed both tests. Generic Python testing lesson worth a footnote: any module attribute you intend to mock from outside must be imported at module load time, not lazily inside a function.
 
 **Cross-reference:** Adjacent in design philosophy to PR-035 (aspirational vs. hard contracts) — same family of failures where a value the producer writes isn't honoured the way the consumer interprets it. Ships in PR #92.
+
+---
+
+## PR-039: Pre-Push Verification Must Mirror the Full CI Matrix, Not a Subset
+
+**Failure ref:** PR #92's first push had `pytest -q` and `validate-docs.sh` passing locally but failed CI immediately on the `ruff check src/` step (8 errors in newly-added code). A second push fixed the src/ violations but introduced 5 more in the new test files. A third push was needed to close everything out. The user observed: *"This is unacceptable. You should have caught this the first time."*
+
+The root cause was a partial pre-push checklist. The local protocol I had been following was:
+
+1. `uv run pytest -q`
+2. `bash scripts/validate-docs.sh`
+
+The actual CI surface (`.github/workflows/ci.yml`) is:
+
+1. `uv sync --extra dev`
+2. `uv run ruff check src/` ← **missed**
+3. `uv run pytest -q` (matrix: Python 3.11 AND Python 3.12) ← **only ran default Python**
+4. `./scripts/validate-docs.sh`
+
+Three gaps in the local verification: no ruff at all, no explicit Python 3.11 run, and no scan of the workflow files at the start of the task to discover what gates exist. The consequence was a CI red, a corrective push, and the user re-prompting with frustration.
+
+### Rules
+
+1. **Before claiming a PR ready, read `.github/workflows/*.yml` and execute every step locally.** Workflow files are the contract; the local protocol must mirror them. Treating any locally-known check (pytest, validate-docs) as a proxy for "all CI checks" is a category error — CI has authoritative scope that local memory does not.
+   - **Why:** The CI surface evolves. New checks get added without coordination ("we now lint with mypy too"). A stale mental model of "the usual checks" silently loses coverage. The workflow YAML is the source of truth and reads in 30 seconds.
+   - **How to apply:** First action in any code-change task: `ls .github/workflows/*.yml && cat ...` to enumerate every gate. Build the local check list from the YAML, not from memory. Run every step before pushing. If running a step is genuinely impractical locally (cloud-only steps, secrets-dependent jobs), name them explicitly in the PR body as "verified by CI only, not locally."
+
+2. **Run language/runtime matrices fully, not just the default.** When the CI matrix lists Python 3.11 + 3.12, both must be verified locally (`uv run --python 3.11 pytest -q` and `uv run --python 3.12 pytest -q`). Default-Python-only verification leaves the other matrix entry as a coin flip.
+   - **Why:** Cross-version bugs are common and subtle (f-string syntax, walrus operator, generic syntax, stdlib API changes). The matrix exists because the project's compatibility floor is broader than the developer's daily environment. Trusting one cell of the matrix to represent all is exactly the assumption matrix testing is designed to break.
+   - **How to apply:** `uv python list` to discover what's installed; `uv python install <missing>` if a matrix entry isn't local yet; explicit `--python X.Y` invocation per pytest run; one combined command at the end of the pre-push checklist that runs both. Cheap in wall-clock (seconds per Python version on a small suite) compared to the cost of a failed CI run + corrective push.
+
+3. **Lint scope in CI may differ from optimal lint scope locally. Lint your own additions everywhere, not just where CI gates.** This project's CI runs `ruff check src/` (production code only). My new test files weren't gated by CI, but they had 5 ruff violations, which is sloppy regardless of whether CI catches them. The convention "CI gates production; tests are advisory" is fine as a project policy but a poor one for the author to adopt for their own code — at minimum the author should ensure their additions pass on every scope ruff is configured to consider.
+   - **Why:** Test lint debt accumulates silently (this project had 49 pre-existing ruff errors in `tests/` when I checked). Each contributor leaving their own additions lint-dirty grows the debt. Linting your additions broadly is a one-command discipline; cleaning up someone else's mess after the fact is harder.
+   - **How to apply:** After CI-required checks pass, also run `ruff check tests/unit/<your_new_files>.py` and clean those. If pre-existing violations in other files surface, leave them alone (out of scope) but record an observation so the project owner can decide whether to schedule a cleanup.
+
+### Verified Solution
+
+Local pre-push checklist now codified as the complete CI mirror plus a "your own additions" sweep:
+
+```bash
+# 1. Sync (matches `uv sync --extra dev` in CI)
+uv sync --extra dev
+
+# 2. Lint src/ (matches `uv run ruff check src/` in CI)
+uv run ruff check src/
+
+# 3. Bonus: lint my own test-file additions (not CI-gated, but mine)
+uv run ruff check tests/unit/<new_or_modified_test_files>.py
+
+# 4. pytest on both matrix Python versions (matches CI matrix)
+uv run --python 3.11 pytest -q
+uv run --python 3.12 pytest -q
+
+# 5. Doc validation (matches `./scripts/validate-docs.sh` in validate-docs.yml)
+bash scripts/validate-docs.sh
+```
+
+For PR #92 the corrective sequence was: identify the actual CI gates by reading `.github/workflows/ci.yml`, fix 8 ruff errors in `src/zo/permissions_overlay.py` and `src/zo/wrapper.py`, fix 5 more in `tests/unit/test_permissions_overlay.py`, then run the full checklist locally and watch CI green via `gh pr checks 92 --watch`. All three pushes verified end-to-end after the third corrective commit.
+
+**Cross-reference:** Process-discipline prior, not a code-design prior. Pairs with PR-005 ("enforcement > aspiration") applied to the developer's own pre-push verification: aspirational adherence to "I usually run the checks" produced a real failure; the checklist must be enforced by execution, not by intention.
