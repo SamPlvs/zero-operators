@@ -1150,3 +1150,43 @@ Test count 738 → 743 + 7 skipped. ruff `src/zo/orchestrator.py tests/unit/test
 The fix would have caught the original failure: with ACTIVE handled, the user's `zo continue` on prod-001 with `phase_3: active` would have resumed cleanly into the Phase 3 main wave kickoff. With ACTIVE handled, any session interrupted during the autonomous experiment loop's CONTINUE iteration also recovers correctly — the more important durable benefit.
 
 **Cross-reference:** PR-036 (parse-time status validation, same investigation, same domain). Both ship in PR #64.
+
+---
+
+## PR-038: A CLI Flag Should Map to One Concern — Coupling Visibility-Mode to Safety-Mode Silently Bypasses User Expectations
+
+**Failure ref:** Before PR #92, `zo build --no-tmux` (a visibility flag — "don't render the lead in a tmux pane") unconditionally appended `--dangerously-skip-permissions` to the Claude CLI invocation at `wrapper.py:376`. The original rationale was reasonable in isolation: headless mode is automation-ish, so prompts don't make sense. But the coupling produced a silent UX bug: `zo build --no-tmux --gate-mode supervised` — a perfectly legitimate combination for someone supervising gates via Slack/email while ZO runs on a CI box — bypassed every tool-call permission prompt without the user realising it.
+
+The bug was undetected by tests because the failing combination's expected behaviour was never asserted. The test at the time read `assert "--dangerously-skip-permissions" in cmd` under `use_tmux=False`, locking in the bug rather than catching it.
+
+The deeper failure mode: **two independent concerns sharing one toggle**. `--no-tmux` answers *"where does output go?"*. Permission bypass answers *"what is the agent allowed to do without asking?"*. Coupling them meant a user who only intended to change rendering also (silently) changed safety posture.
+
+The user discovered it organically when pushing back on my recommendation: *"by doing --gate-mode supervised I want gates to be human passes ... but all permissions to be asked to me for approval / denial (like normal)"*. The supervised + prompts combination should be possible. It wasn't.
+
+### Rules
+
+1. **A CLI flag controls one semantic concern; never two.** When you find yourself writing "well, since they passed X they probably also want Y," stop and add Y as its own flag. The user can always combine; they cannot decouple.
+   - **Why:** Silent side-effects are non-debuggable. A user who reads `--no-tmux` in the help text reasonably believes it only changes output rendering. If it also changes safety mode, that's hidden behaviour with high blast radius.
+   - **How to apply:** When adding a flag that does N things, check whether each thing is the same concept. "Where output renders" and "what safety prompts fire" are not the same concept. Split them. Provide a shorthand later if combos are common (e.g., `--gate-mode full-auto` implicitly enables bypass because the supervised-gates-without-tool-prompts variant is genuinely incoherent — but that *one* implication is explicit and documented in the resolver function's docstring).
+
+2. **Safe-by-default is the only sane default for safety modes.** If a flag controls whether a destructive operation needs approval, the default must be "require approval." Skipping prompts is something the user opts into, never something they inherit by accident.
+   - **Why:** "Off by default, on by explicit user request" is the only configuration that scales across user contexts. The previous design meant headless users on a remote server (often the people most in need of audit trails) got the least safety.
+   - **How to apply:** Every safety-bypass flag must default to False. Any implicit coupling to another flag must be one-directional and named explicitly in the resolver (e.g., `full-auto → bypass=True` is a contradiction-avoiding coupling; the inverse `supervised → bypass=False` is genuinely the default, not a side effect).
+
+3. **Behaviour coupling needs a contract test that fails when the coupling is wrong.** Before this PR, there was no test asserting `--no-tmux --gate-mode supervised` should preserve the safety prompts. The test suite tolerated a contract violation because the contract wasn't expressed as a test. The new resolver truth-table test (`test_resolve_bypass_permissions_truth_table` in `tests/unit/test_cli.py`) covers all six (gate_mode × cli_bypass) combinations and would catch any future regression where someone re-introduces the coupling.
+   - **Why:** Coupling regressions are common (a future contributor sees the lazy-default code and thinks "I'll just OR these together for convenience"). A truth-table test makes the right behaviour the *only* behaviour that compiles to green.
+   - **How to apply:** Any resolver function that combines multiple input flags into a single behavioural output must have a test that enumerates every input combination. Six lines of test for six possible flag combinations is cheap insurance against the next contributor accidentally re-introducing a silent coupling.
+
+### Verified Solution
+
+`src/zo/cli.py` adds `_resolve_bypass_permissions(*, cli_bypass: bool, gate_mode: str) -> bool` returning `cli_bypass OR gate_mode == "full-auto"`. The single allowed implicit coupling (`full-auto ⇒ bypass`) is justified inline in the function's docstring: no-human-on-gates with must-click-every-tool is itself a UX contradiction; the coupling avoids that and only that.
+
+`src/zo/wrapper.py`'s `_launch_headless` now appends `--dangerously-skip-permissions` only when `bypass_permissions=True` (parameter threaded through `launch_lead_session` from `cli.py`). The tmux path gains the parallel mechanism via `src/zo/permissions_overlay.py`: writes `permissions.defaultMode: "bypassPermissions"` into `<cwd>/.claude/settings.local.json` for the run, backs up the original to `.zo-backup`, restores via `atexit` on exit. `cleanup_stale_overlay()` runs at every `_launch_and_monitor` invocation to recover from a crashed previous run via the sibling-backup pattern.
+
+`tests/unit/test_cli.py:TestLowTokenFlags::test_resolve_bypass_permissions_truth_table` locks all six combinations as explicit assertions. `tests/unit/test_wrapper.py` gains three cases proving `--dangerously-skip-permissions` is present iff bypass=True (covering bypass=True, bypass=False, and default-arg). `tests/unit/test_permissions_overlay.py` (new, 12 cases) covers existing/no/malformed settings, idempotent restore, and the full stale-cleanup matrix including the no-original sentinel path.
+
+Test count 743 → 760 + 7 skipped. validate-docs 10/11 (1 pre-existing warning, 0 failures).
+
+**Secondary lesson (testability):** During implementation, my first cut used a lazy `import atexit` inside `_launch_tmux`. The mock-based test `@mock.patch("zo.wrapper.atexit.register")` failed with `AttributeError: module 'zo.wrapper' has no attribute 'atexit'` because the lazy import never made `atexit` a module-level attribute that `mock.patch` could find. Moving the import to module level fixed both tests. Generic Python testing lesson worth a footnote: any module attribute you intend to mock from outside must be imported at module load time, not lazily inside a function.
+
+**Cross-reference:** Adjacent in design philosophy to PR-035 (aspirational vs. hard contracts) — same family of failures where a value the producer writes isn't honoured the way the consumer interprets it. Ships in PR #92.
