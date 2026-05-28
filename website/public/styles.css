@@ -252,7 +252,6 @@ em, .it {
 .author-secondary {
   display: block;
   opacity: 0.55;
-  font-size: 0.9em;
   margin-top: 2px;
   transition: opacity 0.18s var(--ease);
 }
