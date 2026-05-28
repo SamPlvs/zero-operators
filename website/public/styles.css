@@ -271,8 +271,23 @@ em, .it {
 
 .ctas {
   display: flex; gap: 12px; align-items: center;
-  margin-bottom: 64px;
+  margin-bottom: 18px;
 }
+
+.hero-aside {
+  margin-bottom: 46px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+.hero-aside a {
+  color: var(--coral);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  transition: opacity 0.18s var(--ease);
+}
+.hero-aside a:hover { opacity: 0.7; }
 
 .hero-meta {
   display: grid;
