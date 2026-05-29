@@ -20,8 +20,9 @@ Launch an agent team to execute a plan. Parses the plan, shows a phase review, a
 
 ```
 zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
-                          [--low-token] [--lead-model opus|sonnet|haiku]
-                          [--max-iterations N] [--no-headlines]
+                          [--bypass-permissions] [--low-token]
+                          [--lead-model opus|sonnet|haiku] [--max-iterations N]
+                          [--no-headlines]
 ```
 
 **Cost-saving options:**
@@ -30,20 +31,24 @@ zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
 - `--max-iterations N`: hard cap on Phase-4 experiment iterations. Wins over plan and preset.
 - `--no-headlines`: skip the end-of-session Haiku bullet summary (~1 Haiku call per run).
 
+**Permission prompts:**
+- `--bypass-permissions`: auto-approve **every** Claude Code tool-call prompt (Bash, Edit, Write, Read, ...) for the run. Independent of `--gate-mode` (which gates ZO's phases, not individual tool calls); implied by `--gate-mode full-auto`. Off by default. Works in tmux (temporary `.claude/settings.local.json` overlay, auto-restored on exit) and headless (`--dangerously-skip-permissions`) modes. See `docs/cli/build.mdx`.
+
 ### zo continue
 
 Resume a paused project. Shorthand for `zo build` with an existing plan -- finds the plan by project name and picks up from the current phase.
 
 ```
 zo continue [project-name] [--repo PATH] [--gate-mode supervised|auto|full-auto]
-                           [--low-token] [--lead-model opus|sonnet|haiku]
-                           [--max-iterations N] [--no-headlines]
+                           [--bypass-permissions] [--low-token]
+                           [--lead-model opus|sonnet|haiku] [--max-iterations N]
+                           [--no-headlines]
 ```
 
 **Options:**
 - `project-name`: optional if cwd contains `.zo/config.yaml` (auto-detected)
 - `--repo PATH`: path to delivery repo (overrides target file lookup)
-- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines`: same semantics as `zo build`
+- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines`, `--bypass-permissions`: same semantics as `zo build`
 
 ### zo draft
 
