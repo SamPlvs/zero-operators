@@ -22,12 +22,14 @@ from zo.experiments import (
     parse_hypothesis_md,
     parse_next_md,
     parse_result_md,
+    render_checklist,
     render_hypothesis_md,
     resolve_active_experiment_dir,
     save_registry,
     update_next_ideas,
     update_result,
     update_status,
+    write_checklist,
 )
 
 # ---------------------------------------------------------------------------
@@ -562,3 +564,101 @@ class TestResolveActiveExperimentDir:
         # No RUNNING and no COMPLETE — return None, don't silently
         # surface a failed/aborted experiment as "active".
         assert resolve_active_experiment_dir(tmp_path) is None
+
+
+# ---------------------------------------------------------------------------
+# render_checklist / write_checklist
+# ---------------------------------------------------------------------------
+
+
+class TestRenderChecklist:
+    def test_empty_registry(self) -> None:
+        out = render_checklist(ExperimentRegistry(project="demo"))
+        assert "No experiments yet" in out
+        assert "demo" in out
+
+    def test_table_row_metric_tier_shortfall(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-001", phase="phase_4", hypothesis="baseline TFT",
+            status=ExperimentStatus.COMPLETE,
+            result=ExperimentResult(
+                oracle_tier="should_pass",
+                primary_metric=PrimaryMetric(name="mae", value=0.31),
+                shortfalls=["overfit after epoch 12"],
+            ),
+        ))
+        out = render_checklist(reg)
+        assert "| exp-001 |" in out
+        assert "mae=0.31" in out
+        assert "should_pass" in out
+        assert "overfit after epoch 12" in out
+
+    def test_delta_sign_rendered(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-002", phase="phase_4", parent_id="exp-001",
+            status=ExperimentStatus.COMPLETE,
+            result=ExperimentResult(
+                oracle_tier="must_pass",
+                primary_metric=PrimaryMetric(
+                    name="mae", value=0.2, delta_vs_parent=-0.11,
+                ),
+            ),
+        ))
+        assert "-0.11" in render_checklist(reg)
+
+    def test_running_experiment_shows_dashes(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-001", phase="phase_4", hypothesis="h",
+            status=ExperimentStatus.RUNNING,
+        ))
+        out = render_checklist(reg)
+        assert "| exp-001 |" in out
+        assert "running" in out
+
+    def test_next_planned_from_latest(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-001", phase="phase_4",
+            next_ideas=["exp-002: add dropout", "exp-003: longer window"],
+        ))
+        out = render_checklist(reg)
+        assert "## Next planned" in out
+        assert "add dropout" in out
+
+    def test_pipe_escaped_in_cells(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-001", phase="phase_4", hypothesis="a | b pipe in text",
+        ))
+        assert "a \\| b" in render_checklist(reg)
+
+
+class TestWriteChecklist:
+    def test_writes_named_file(self, tmp_path: Path) -> None:
+        path = write_checklist(tmp_path, ExperimentRegistry(project="demo"))
+        assert path.name == "CHECKLIST.md"
+        assert path.read_text(encoding="utf-8").startswith(
+            "# Experiment Checklist",
+        )
+
+    def test_loads_from_disk_when_registry_none(self, tmp_path: Path) -> None:
+        mint_experiment(tmp_path, project="demo", phase="phase_4")
+        path = write_checklist(tmp_path)  # registry=None -> load from disk
+        assert "exp-001" in path.read_text(encoding="utf-8")
+
+    def test_mint_refreshes_checklist(self, tmp_path: Path) -> None:
+        mint_experiment(tmp_path, project="demo", phase="phase_4")
+        assert (tmp_path / "CHECKLIST.md").is_file()
+
+    def test_update_result_refreshes_checklist(self, tmp_path: Path) -> None:
+        exp = mint_experiment(tmp_path, project="demo", phase="phase_4")
+        update_result(tmp_path, exp.id, ExperimentResult(
+            oracle_tier="must_pass",
+            primary_metric=PrimaryMetric(name="acc", value=0.99),
+        ))
+        text = (tmp_path / "CHECKLIST.md").read_text(encoding="utf-8")
+        assert "acc=0.99" in text
+        assert "must_pass" in text

@@ -300,7 +300,7 @@ The first project (defined in its own `plan.md`) is the validation vehicle for t
 - [ ] DECISION_LOG provides complete audit trail: every agent action, every oracle result, every human approval logged.
 - [ ] Session recovery works: interrupt mid-project, restore from STATE.md, resume with zero data loss.
 - [ ] Self-evolving mechanism triggered at least once: an error occurred, root cause was identified, a rule in PRIORS.md or a spec was updated, and the updated rule prevented recurrence.
-- [ ] All 11 project delivery agent definitions written to `.claude/agents/` (7 launch + 4 phase-in).
+- [ ] All 12 project delivery agent definitions written to `.claude/agents/` (7 launch + 5 phase-in).
 - [ ] All 6 platform build agent definitions written to `.claude/agents/`.
 - [ ] Plan.md edit during execution succeeds: replan is computed, human approves, execution resumes with new objectives integrated.
 
@@ -355,6 +355,7 @@ zero-operators/
 │   │   ├── domain-evaluator.md
 │   │   ├── ml-engineer.md
 │   │   ├── infra-engineer.md
+│   │   ├── training-checker.md
 │   │   ├── software-architect.md  # Platform build team
 │   │   ├── backend-engineer.md
 │   │   ├── frontend-engineer.md

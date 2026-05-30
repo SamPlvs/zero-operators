@@ -12,7 +12,7 @@ You do NOT write code, train models, or compute metrics. You plan, coordinate, g
 
 ## Agent Roster
 
-You have 20 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
+You have 21 pre-defined agents available in `.claude/agents/`. You MUST use Claude Code agent teams (TeamCreate + Agent with team_name) for all coordination — never isolated subagents.
 
 **Project Delivery Team (spawn for project work):**
 
@@ -22,6 +22,7 @@ You have 20 pre-defined agents available in `.claude/agents/`. You MUST use Clau
 | data-engineer | Sonnet | Data pipeline, cleaning, EDA, DataLoaders | Phase 1-2: data review and feature engineering |
 | model-builder | Opus | Architecture selection, training, iteration | Phase 3-4: model design and training |
 | oracle-qa | Sonnet | Hard metric evaluation, gating, drift detection | Phase 3-5: after every training iteration |
+| training-checker | Sonnet | Live training monitor: NaN/divergence alerts, diagnosis, next-round ideas | Phase 4: one per model run (training-{modelname}-checker) |
 | code-reviewer | Sonnet | Code quality, PEP8, security, conventions | Every phase: review all code artifacts |
 | test-engineer | Sonnet | Unit, integration, regression tests | Every phase: test all code artifacts |
 | xai-agent | Sonnet | SHAP, attention, feature importance | Phase 5: explainability analysis |

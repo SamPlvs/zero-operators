@@ -13,6 +13,7 @@ from zo.training_metrics import (
     ZOTrainingCallback,
     read_metrics_history,
     read_training_status,
+    should_checkpoint,
 )
 
 # ------------------------------------------------------------------ #
@@ -306,3 +307,37 @@ class TestTrainingDisplay:
         assert len(result) == 4
         # First value (highest) should be the tallest bar
         assert result[0] == "\u2588"  # full block
+
+
+# ------------------------------------------------------------------ #
+# should_checkpoint \u2014 disaster-recovery cadence
+# ------------------------------------------------------------------ #
+
+
+class TestShouldCheckpoint:
+    def test_every_n_boundary(self) -> None:
+        assert should_checkpoint(9, 100, every=10) is True
+        assert should_checkpoint(19, 100, every=10) is True
+
+    def test_off_boundary(self) -> None:
+        assert should_checkpoint(8, 100, every=10) is False
+        assert should_checkpoint(5, 100, every=10) is False
+
+    def test_final_epoch_always(self) -> None:
+        assert should_checkpoint(99, 100, every=10) is True
+        # Last epoch even when not on an `every` boundary.
+        assert should_checkpoint(6, 7, every=10) is True
+
+    def test_is_best_always(self) -> None:
+        assert should_checkpoint(3, 100, every=10, is_best=True) is True
+
+    def test_every_one_saves_each_epoch(self) -> None:
+        assert all(should_checkpoint(e, 5, every=1) for e in range(5))
+
+    def test_zero_total_epochs(self) -> None:
+        assert should_checkpoint(0, 0, every=10) is False
+        # is_best still forces a save.
+        assert should_checkpoint(0, 0, every=10, is_best=True) is True
+
+    def test_negative_epoch(self) -> None:
+        assert should_checkpoint(-1, 100, every=10) is False
