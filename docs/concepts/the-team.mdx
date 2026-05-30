@@ -1,9 +1,9 @@
 ---
 title: "The team"
-description: "20 specialised AI personas, each with a defined role, tier, and contract. The team coordinates peer-to-peer through Claude Code's native APIs."
+description: "21 specialised AI personas, each with a defined role, tier, and contract. The team coordinates peer-to-peer through Claude Code's native APIs."
 ---
 
-ZO ships with **20 agent definitions** in `.claude/agents/`. Each is a Markdown file with YAML frontmatter (name, model tier, role, team) plus a structured prompt body covering ownership, off-limits, contracts, coordination protocol, and a self-validation checklist.
+ZO ships with **21 agent definitions** in `.claude/agents/`. Each is a Markdown file with YAML frontmatter (name, model tier, role, team) plus a structured prompt body covering ownership, off-limits, contracts, coordination protocol, and a self-validation checklist.
 
 ## The two teams
 
@@ -11,7 +11,7 @@ ZO uses two distinct team configurations:
 
 <CardGroup cols={2}>
   <Card title="Project Delivery Team" icon="users-rays">
-    Executes the projects defined in `plan.md`. **11 launch + phase-in agents** covering data, model, oracle, code review, testing, XAI, domain evaluation, ML engineering, and infrastructure.
+    Executes the projects defined in `plan.md`. **12 launch + phase-in agents** covering data, model, oracle, code review, testing, XAI, domain evaluation, ML engineering, infrastructure, and live training monitoring.
   </Card>
   <Card title="Platform Build Team" icon="hammer">
     Used to build and maintain ZO itself. **6 specialised agents** including software architect, backend engineer, frontend engineer, platform code reviewer, platform test engineer, and documentation agent.
@@ -74,6 +74,9 @@ Activated for specific phases or by plan opt-in:
   </Accordion>
   <Accordion title="Infra Engineer (Haiku)" icon="hard-drive">
     Compute resource allocation, experiment tracking setup, artifact storage, logging. Format-following work, appropriate for the smaller model.
+  </Accordion>
+  <Accordion title="Training Checker (Sonnet)" icon="heart-pulse">
+    Phase 4 live training monitor — the Lead spawns one per model run as `training-{modelname}-checker`. Tails the active experiment's `metrics.jsonl` / `training_status.json`, alerts on NaN/divergence/gradient-blowup/overfit/stall so a broken run dies early, and writes a mechanistic `diagnosis.md` plus next-round suggestions (pairs with Research Scout's general-AI literature track).
   </Accordion>
 </AccordionGroup>
 

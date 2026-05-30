@@ -6,7 +6,7 @@ generates a plan.md that follows the 8-section schema from specs/plan.md.
 Typical usage::
 
     from zo.draft import PlanDrafter
-    drafter = PlanDrafter(source_dir=Path("docs"), project_name="alpha", zo_root=Path("."))
+    drafter = PlanDrafter(source_paths=[Path("docs")], project_name="alpha", zo_root=Path("."))
     count = drafter.index_documents()
     plan_path = drafter.generate_plan()
     valid = drafter.validate_draft(plan_path)

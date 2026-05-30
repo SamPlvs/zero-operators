@@ -49,6 +49,7 @@ Typical usage::
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from datetime import UTC, datetime
@@ -339,6 +340,20 @@ def write_checklist(
     return path
 
 
+def _safe_refresh_checklist(
+    registry_dir: Path, registry: ExperimentRegistry,
+) -> None:
+    """Best-effort ``CHECKLIST.md`` refresh after a registry mutation.
+
+    The checklist is a derived view; a render/write failure (disk full,
+    permission denied) must never break the registry write that already
+    succeeded. Strict ``write_checklist`` stays available for callers
+    that want the error surfaced (and for tests).
+    """
+    with contextlib.suppress(OSError):
+        write_checklist(registry_dir, registry)
+
+
 def _checklist_cell(text: str, limit: int = 70) -> str:
     """Collapse whitespace, escape pipes, and truncate for a table cell."""
     text = " ".join((text or "").split()).replace("|", "\\|")
@@ -477,7 +492,7 @@ def mint_experiment(
     )
     registry.experiments.append(exp)
     save_registry(registry_dir, registry)
-    write_checklist(registry_dir, registry)
+    _safe_refresh_checklist(registry_dir, registry)
     return exp
 
 
@@ -511,7 +526,7 @@ def update_result(
     exp.result = result
     exp.status = ExperimentStatus.COMPLETE
     save_registry(registry_dir, registry)
-    write_checklist(registry_dir, registry)
+    _safe_refresh_checklist(registry_dir, registry)
     return exp
 
 
@@ -527,7 +542,7 @@ def update_status(
         )
     exp.status = status
     save_registry(registry_dir, registry)
-    write_checklist(registry_dir, registry)
+    _safe_refresh_checklist(registry_dir, registry)
     return exp
 
 
@@ -543,7 +558,7 @@ def update_next_ideas(
         )
     exp.next_ideas = list(next_ideas)
     save_registry(registry_dir, registry)
-    write_checklist(registry_dir, registry)
+    _safe_refresh_checklist(registry_dir, registry)
     return exp
 
 

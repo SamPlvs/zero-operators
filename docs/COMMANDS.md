@@ -182,6 +182,16 @@ zo experiments diff EXP_A EXP_B --project NAME [--repo PATH]
 - **show**: full details for one experiment including the content of every authored markdown artefact.
 - **diff**: side-by-side comparison of two experiments' metrics and shortfalls. Useful for sibling comparisons (two parallel variants) and parent-child comparisons (did the iteration actually improve?).
 
+### zo learnings promote
+
+Promote generic, client-sanitised learnings from a project's `.zo/memory/PRIORS.md` to the platform `memory/zo-platform/PRIORS.md`.
+
+```
+zo learnings promote --project NAME [--repo PATH] [--dry-run]
+```
+
+**Fail-closed by design** (the platform repo is public): only priors in generic categories (`auto-learning`, `evolution`) that clear the client blocklist (`scripts/.client-blocklist`) are promoted. A prior that is plan-seeded / `domain`, or that matches a client identifier, is **blocked** — reported for manual review, never auto-rewritten. With no blocklist file configured, **nothing** is promoted. `--dry-run` screens and reports without writing. Every run prints an auditable promoted / blocked / duplicate report.
+
 ---
 
 ## Slash Commands
