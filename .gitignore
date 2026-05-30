@@ -38,3 +38,10 @@ docs/source-design/
 # Local client-identifier blocklist for validate-docs.sh (NEVER commit).
 # See CONTRIBUTING.md → Confidentiality for the rationale.
 scripts/.client-blocklist
+
+# macOS Finder metadata + local agent-tooling artifacts (not part of ZO)
+.DS_Store
+**/.DS_Store
+.agents/
+.codex/
+AGENTS.md

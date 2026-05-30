@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from zo._memory_models import PriorEntry
 from zo._orchestrator_models import (
     AgentContract,
     GateDecision,
@@ -1470,3 +1471,120 @@ class TestTrainingCheckerWiring:
         phase_1 = next(p for p in decomp.phases if p.phase_id == "phase_1")
         prompt = orch.build_lead_prompt(phase_1)
         assert "training-{modelname}-checker" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# Self-evolution (Batch A): seed / load / write
+# ---------------------------------------------------------------------------
+
+
+def _orch_with_memory(
+    plan: Plan, tmp_path: Path, *, repo: Path | None = None,
+) -> tuple[Orchestrator, MemoryManager]:
+    """Build an Orchestrator and return it with its MemoryManager handle."""
+    memory = MemoryManager(project_dir=tmp_path, project_name="test-project")
+    memory.initialize_project()
+    comms = CommsLogger(
+        log_dir=tmp_path / "logs" / "comms",
+        project="test-project", session_id="s1",
+    )
+    semantic = SemanticIndex(db_path=tmp_path / "index.db")
+    target = _make_target()
+    if repo is not None:
+        target = TargetConfig(
+            project="test-project", target_repo=str(repo),
+            target_branch="main", worktree_base=str(tmp_path / "wt"),
+            git_author_name="ZO Test", git_author_email="zo@test.dev",
+            agent_working_dirs={}, zo_only_paths=[".zo/"],
+            enforce_isolation=False,
+        )
+    orch = Orchestrator(
+        plan=plan, target=target, memory=memory, comms=comms,
+        semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.AUTO,
+    )
+    return orch, memory
+
+
+class TestSelfEvolution:
+    """Batch A — seed plan priors, load priors into prompt, learn on failure."""
+
+    def test_seed_priors_on_first_session(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        plan.domain_priors = "- Bearing vibration is the key signal\n- Watch drift"
+        orch, memory = _orch_with_memory(plan, tmp_path)
+        assert memory.read_priors() == []
+        orch.start_session()
+        statements = [p.statement for p in memory.read_priors()]
+        assert any("Bearing vibration" in s for s in statements)
+
+    def test_seed_is_noop_when_priors_exist(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        plan.domain_priors = "- brand new prior text"
+        orch, memory = _orch_with_memory(plan, tmp_path)
+        memory.append_prior(PriorEntry(
+            category="domain", statement="pre-existing", evidence="x",
+        ))
+        orch.start_session()
+        statements = [p.statement for p in memory.read_priors()]
+        assert "brand new prior text" not in statements
+        assert "pre-existing" in statements
+
+    def test_seed_is_noop_without_domain_priors(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        plan.domain_priors = ""
+        orch, memory = _orch_with_memory(plan, tmp_path)
+        orch.start_session()
+        assert memory.read_priors() == []
+
+    def test_prompt_memory_includes_project_priors(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        orch, memory = _orch_with_memory(plan, tmp_path)
+        memory.append_prior(PriorEntry(
+            category="auto-learning",
+            statement="Diversify the model family earlier",
+            evidence="phase_4 plateau",
+        ))
+        orch.start_session()
+        orch.decompose_plan()
+        phase_1 = next(
+            p for p in orch.workflow.phases if p.phase_id == "phase_1"
+        )
+        prompt = orch.build_lead_prompt(phase_1)
+        assert "accumulated learnings" in prompt
+        assert "Diversify the model family earlier" in prompt
+
+    def test_record_learning_appends_prior(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        orch, memory = _orch_with_memory(plan, tmp_path)
+        orch.start_session()
+        orch._record_learning(  # noqa: SLF001
+            title="phase_4 hit dead_end after 3 experiments",
+            root_cause="hypotheses near-duplicate",
+            rule_gap="Diversify earlier",
+        )
+        priors = memory.read_priors()
+        assert any(p.category == "auto-learning" for p in priors)
+        assert any("Diversify earlier" in p.statement for p in priors)
+
+    def test_generate_test_report_failure_is_swallowed(
+        self, plan: Plan, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Regression guard for the log_error(message=) bug: the failure
+        # branch must use the correct signature and NOT raise.
+        repo = tmp_path / "delivery"
+        (repo / "tests").mkdir(parents=True)
+        orch, _ = _orch_with_memory(plan, tmp_path, repo=repo)
+
+        def _boom(*_a: object, **_k: object) -> object:
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("zo.test_report.generate_test_report", _boom)
+        phase = next(
+            p for p in orch.decompose_plan().phases if p.phase_id == "phase_1"
+        )
+        orch._generate_test_report(phase)  # noqa: SLF001 -- must not raise

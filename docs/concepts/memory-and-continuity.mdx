@@ -17,7 +17,7 @@ Every project gets a `memory/` directory with four canonical files (or `.zo/memo
     Append-only audit trail. Every architectural decision, gate passage, scope change. Each entry has a timestamp, type, title, decision, rationale, alternatives considered, outcome.
   </Card>
   <Card title="PRIORS.md" icon="lightbulb">
-    Domain knowledge accumulated through running ZO. Each prior references the failure that triggered it. After 23 sessions, ZO has 34 documented priors.
+    Domain knowledge accumulated through running ZO. Each prior references the failure that triggered it. ZO has 40+ documented priors, each tracing to a real failure.
   </Card>
   <Card title="sessions/" icon="folder-open">
     Per-session summary files (`session-NNN-YYYY-MM-DD.md`). Written at session end. Captures what was attempted, what shipped, what's next.
@@ -122,7 +122,7 @@ This prevents accumulation of irrelevant reasoning and keeps token costs predict
 
 ## Self-evolution in practice
 
-The 34 priors in [`memory/zo-platform/PRIORS.md`](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) are the cumulative output of this protocol. A few examples:
+The 40+ priors in [`memory/zo-platform/PRIORS.md`](https://github.com/SamPlvs/zero-operators/blob/main/memory/zo-platform/PRIORS.md) are the cumulative output of this protocol. A few examples:
 
 - **PR-001**: `claude --print --dangerously-skip-permissions` exits immediately. Captured after a tmux pane stayed blank during MNIST testing.
 - **PR-005**: Aspirational rules without enforcement are dead letter. Captured after a documentation cascade was repeatedly ignored despite being written in CLAUDE.md.
@@ -130,6 +130,17 @@ The 34 priors in [`memory/zo-platform/PRIORS.md`](https://github.com/SamPlvs/zer
 - **PR-034**: PyTorch MPS tensor extraction returns garbage under pytest. Captured after CIFAR-10 oracle tests failed mysteriously despite the same code working in training.
 
 Each prior was earned by a real failure. The same mistake never happens twice.
+
+## Per-project priors: seed → load → learn → promote
+
+Priors aren't only hand-written. ZO maintains a project's `PRIORS.md` automatically across a run:
+
+- **Seed** — at first session the plan's `## Domain Context and Priors` are written into the project `PRIORS.md`, so the team starts with the human's domain knowledge instead of a blank slate.
+- **Load** — every Lead prompt injects the current project priors ("accumulated learnings — honor these before repeating past mistakes"), so agents see them before acting.
+- **Learn** — when the autonomous Phase-4 loop hits a dead-end or plateau, the orchestrator records the failure and appends a durable `auto-learning` prior, so the next iteration (or a later session) doesn't repeat it.
+- **Promote** — generic learnings can graduate to the platform with `zo learnings promote --project NAME --repo PATH`. It is **fail-closed**: only generic-category priors that clear the client blocklist are promoted; anything project-specific or matching a client identifier is blocked and reported, never auto-rewritten. With no blocklist configured, nothing is promoted.
+
+This is how one project's experience compounds — within the project, and (sanitised) across the platform.
 
 ## Next
 

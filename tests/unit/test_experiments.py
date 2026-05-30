@@ -662,3 +662,49 @@ class TestWriteChecklist:
         text = (tmp_path / "CHECKLIST.md").read_text(encoding="utf-8")
         assert "acc=0.99" in text
         assert "must_pass" in text
+
+
+class TestChecklistHardening:
+    def test_checklist_cell_none_and_empty(self) -> None:
+        from zo.experiments import _checklist_cell
+        assert _checklist_cell(None) == "—"  # type: ignore[arg-type]
+        assert _checklist_cell("") == "—"
+
+    def test_checklist_cell_truncates_and_escapes_pipes(self) -> None:
+        from zo.experiments import _checklist_cell
+        assert _checklist_cell("a | b") == "a \\| b"
+        out = _checklist_cell("x" * 100, limit=10)
+        assert out.endswith("…")
+        assert len(out) <= 10
+
+    def test_checklist_cell_collapses_whitespace(self) -> None:
+        from zo.experiments import _checklist_cell
+        assert _checklist_cell("a\n  b\t c") == "a b c"
+
+    def test_render_no_next_planned_when_all_empty(self) -> None:
+        reg = ExperimentRegistry(project="demo")
+        reg.experiments.append(Experiment(
+            id="exp-001", phase="phase_4", hypothesis="h", next_ideas=[],
+        ))
+        assert "## Next planned" not in render_checklist(reg)
+
+    def test_write_checklist_raises_on_bad_path(self, tmp_path: Path) -> None:
+        bad = tmp_path / "afile"
+        bad.write_text("x", encoding="utf-8")  # a file, not a directory
+        with pytest.raises(OSError):  # noqa: PT011 -- any OSError is fine here
+            write_checklist(bad, ExperimentRegistry(project="demo"))
+
+    def test_refresh_is_best_effort(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # A checklist-write failure must NOT break the registry mutation.
+        def _boom(*_a: object, **_k: object) -> object:
+            raise OSError("disk full")
+
+        monkeypatch.setattr("zo.experiments.write_checklist", _boom)
+        exp = mint_experiment(tmp_path, project="demo", phase="phase_4")
+        result = update_result(tmp_path, exp.id, ExperimentResult(
+            oracle_tier="must_pass",
+            primary_metric=PrimaryMetric(name="acc", value=0.9),
+        ))
+        assert result.status == ExperimentStatus.COMPLETE

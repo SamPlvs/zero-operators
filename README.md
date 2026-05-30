@@ -10,7 +10,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-780_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-812_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-21_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
@@ -356,7 +356,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 │  ├── Agent(name="oracle-qa", team_name="project")           │
 │  └── Agents communicate peer-to-peer via SendMessage        │
 │                                                             │
-│  The Lead knows all 20 agents and creates new ones on the   │
+│  The Lead knows all 21 agents and creates new ones on the   │
 │  fly if the project needs expertise not in the roster.      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -444,7 +444,7 @@ zero-operators/
 │   ├── semantic.py             # fastembed + SQLite semantic search
 │   ├── comms.py                # JSONL event logger (5 event types)
 │   └── evolution.py            # Self-evolving post-mortem protocol
-├── .claude/agents/             # 20 agent definitions
+├── .claude/agents/             # 21 agent definitions
 ├── specs/                      # 8 specification documents
 ├── plans/                      # Project plan files
 ├── memory/                     # Per-project state (STATE.md, DECISION_LOG, PRIORS)
@@ -495,7 +495,7 @@ delivery-repo/
 
 | Phase | What | Status |
 |-------|------|--------|
-| 0 | Agent definitions (20) + Claude Code setup | Done |
+| 0 | Agent definitions (21) + Claude Code setup | Done |
 | 1 | Plan parser, target parser, comms logger, setup | Done |
 | 2 | Memory layer, semantic index | Done |
 | 3 | Orchestration engine + lifecycle wrapper | Done |

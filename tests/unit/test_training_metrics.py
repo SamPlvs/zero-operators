@@ -341,3 +341,22 @@ class TestShouldCheckpoint:
 
     def test_negative_epoch(self) -> None:
         assert should_checkpoint(-1, 100, every=10) is False
+
+    def test_single_epoch_run(self) -> None:
+        # The only epoch is also the final epoch.
+        assert should_checkpoint(0, 1, every=10) is True
+
+    def test_every_zero_clamps_to_one(self) -> None:
+        assert should_checkpoint(0, 5, every=0) is True
+        assert should_checkpoint(3, 5, every=0) is True
+
+    def test_every_negative_clamps_to_one(self) -> None:
+        assert should_checkpoint(2, 5, every=-3) is True
+
+    def test_every_greater_than_total(self) -> None:
+        assert should_checkpoint(5, 10, every=20) is False
+        assert should_checkpoint(9, 10, every=20) is True  # final epoch
+
+    def test_epoch_at_or_beyond_total(self) -> None:
+        assert should_checkpoint(10, 10, every=10) is False
+        assert should_checkpoint(10, 10, every=10, is_best=True) is True

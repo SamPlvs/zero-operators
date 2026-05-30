@@ -23,7 +23,14 @@ from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
-from zo._memory_models import DecisionEntry, OperatingMode, SessionState
+from zo._evolution_models import FailureRecord, FailureSeverity
+from zo._memory_models import (
+    Confidence,
+    DecisionEntry,
+    OperatingMode,
+    PriorEntry,
+    SessionState,
+)
 from zo._orchestrator_models import (
     AgentContract,
     GateDecision,
@@ -40,6 +47,7 @@ from zo._orchestrator_phases import (
     LOW_TOKEN_PHASE_DROPS,
     MODE_PHASE_FACTORY,
 )
+from zo.evolution import EvolutionEngine
 from zo.plan import Plan, WorkflowMode
 
 if TYPE_CHECKING:
@@ -191,6 +199,7 @@ class Orchestrator:
         self._workflow: WorkflowDecomposition | None = None
         self._session_state: SessionState | None = None
         self._plan_hash: str = self._compute_plan_hash()
+        self._evolution = EvolutionEngine(memory, comms, self._zo_root)
 
     @property
     def workflow(self) -> WorkflowDecomposition | None:
@@ -232,6 +241,7 @@ class Orchestrator:
 
         self._session_state = state
         self._memory.write_state(state)
+        self._maybe_seed_priors()
         self._comms.log_decision(
             agent="orchestrator",
             title=f"Session started in {state.mode} mode",
@@ -240,6 +250,28 @@ class Orchestrator:
             confidence="high",
         )
         return state
+
+    def _maybe_seed_priors(self) -> None:
+        """Seed project PRIORS.md from the plan's domain priors on first run.
+
+        Idempotent: only seeds when PRIORS.md has no entries yet, so it
+        runs once at project start and never clobbers accumulated
+        learnings on later sessions.
+        """
+        if not self._plan.domain_priors.strip():
+            return
+        if self._memory.read_priors():
+            return
+        self._memory.seed_priors(self._plan.domain_priors)
+        self._comms.log_decision(
+            agent="orchestrator",
+            title="Seeded project priors from plan domain priors",
+            rationale=(
+                f"{len(self._plan.domain_priors.splitlines())} line(s) seeded "
+                "into PRIORS.md (was empty)"
+            ),
+            outcome="seeded",
+        )
 
     def end_session(self, summary: SessionSummary | None = None) -> None:
         """End the current session, persisting phase states."""
@@ -849,8 +881,8 @@ class Orchestrator:
             self._comms.log_error(
                 agent="orchestrator",
                 error_type="test_report_generation_failed",
-                message=f"Failed to generate test report for {phase.phase_id}: {exc}",
                 severity="warning",
+                description=f"Failed to generate test report for {phase.phase_id}: {exc}",
             )
 
     def _generate_notebook(self, phase: PhaseDefinition) -> None:
@@ -877,8 +909,8 @@ class Orchestrator:
             self._comms.log_error(
                 agent="orchestrator",
                 error_type="notebook_generation_failed",
-                message=f"Failed to generate notebook for {phase.phase_id}: {exc}",
                 severity="warning",
+                description=f"Failed to generate notebook for {phase.phase_id}: {exc}",
             )
 
     # -- Experiment capture layer (Phase 4) ---------------------------------
@@ -1003,8 +1035,8 @@ class Orchestrator:
                 self._comms.log_error(
                     agent="orchestrator",
                     error_type="experiment_result_parse_failed",
-                    message=f"Failed to parse {exp.id}/result.md: {exc}",
                     severity="warning",
+                    description=f"Failed to parse {exp.id}/result.md: {exc}",
                 )
                 missing.append(
                     f".zo/experiments/{exp.id}/result.md (parse failed)",
@@ -1063,6 +1095,21 @@ class Orchestrator:
         ))
 
         if decision.verdict != LoopVerdict.CONTINUE:
+            # Capture a durable learning for the failure-ish verdicts so the
+            # next iteration/session/project doesn't repeat the dead-end.
+            if decision.verdict in (LoopVerdict.DEAD_END, LoopVerdict.PLATEAU):
+                self._record_learning(
+                    title=(
+                        f"{phase.phase_id} hit {decision.verdict} after "
+                        f"{decision.completed_count} experiments"
+                    ),
+                    root_cause=decision.reason,
+                    rule_gap=(
+                        f"Phase 4 stopped at {decision.verdict} (last exp: "
+                        f"{decision.last_exp_id or 'none'}). Diversify the "
+                        "approach earlier instead of iterating near-duplicates."
+                    ),
+                )
             # Stop — caller proceeds with phase completion.
             return None
 
@@ -1075,6 +1122,39 @@ class Orchestrator:
             decision=GateDecision.ITERATE,
             rationale=f"Autonomous iteration: {decision.reason}",
         )
+
+    def _record_learning(
+        self, *, title: str, root_cause: str, rule_gap: str,
+    ) -> None:
+        """Persist a failure-driven learning (self-evolution).
+
+        Documents the failure to DECISION_LOG + comms via the
+        EvolutionEngine and appends a durable prior to the project's
+        PRIORS.md so future iterations/sessions don't repeat it.
+        Best-effort: never raises into the gate path.
+        """
+        try:
+            self._evolution.record_failure(FailureRecord(
+                title=title,
+                detected_by="orchestrator",
+                severity=FailureSeverity.MINOR,
+                phase=self._EXPERIMENT_PHASE,
+                description=root_cause,
+                immediate_impact=rule_gap,
+            ))
+            self._memory.append_prior(PriorEntry(
+                category="auto-learning",
+                statement=rule_gap,
+                evidence=f"{title}: {root_cause}",
+                confidence=Confidence.MEDIUM,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="record_learning_failed",
+                severity="warning",
+                description=f"Failed to record learning '{title}': {exc}",
+            )
 
     def _abort_running_experiments(self, phase_id: str) -> None:
         """Mark all running experiments in a phase as ABORTED.
@@ -1291,8 +1371,8 @@ class Orchestrator:
             self._comms.log_error(
                 agent="orchestrator",
                 error_type="snapshot_generation_failed",
-                message=f"Failed to write snapshot for {phase.phase_id}: {exc}",
                 severity="warning",
+                description=f"Failed to write snapshot for {phase.phase_id}: {exc}",
             )
 
     def _recent_decisions_for_phase(
@@ -1506,6 +1586,17 @@ class Orchestrator:
             f"Mode: {state.mode}", f"Phase: {state.phase}",
             f"Blockers: {state.active_blockers or 'none'}",
         ]
+        priors = [
+            p for p in self._memory.read_priors() if p.superseded_by is None
+        ]
+        if priors:
+            lines.append(
+                "\n**Project priors (accumulated learnings — honor these "
+                "before repeating past mistakes):**"
+            )
+            for p in priors[:8]:
+                evidence = f" — _{p.evidence}_" if p.evidence else ""
+                lines.append(f"- ({p.category}) {p.statement}{evidence}")
         relevant = self._semantic.query(self._plan.objective, top_k=3)
         if relevant:
             lines.append("\n**Relevant past decisions:**")

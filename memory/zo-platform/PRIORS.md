@@ -1274,3 +1274,27 @@ For PR #92 the corrective sequence was: identify the actual CI gates by reading 
 ### Verified Solution
 
 `training-checker` agent (always-fires Phase-4 spawn instruction + `AGENT_PHASE_MAP` entry + role/ownership/off-limits maps); `should_checkpoint` helper + "Checkpointing and Disaster Recovery (REQUIRED)" section in `model-builder.md` (DL every-10-epochs + best + last resumable; ML per-fold + best + HPO-state); `render_checklist` / `write_checklist` baked into `mint_experiment` / `update_result` / `update_status` / `update_next_ideas` so `.zo/experiments/CHECKLIST.md` always tracks the registry; research-scout general-AI track for Phase-4 iteration. +20 tests (760 → 780, both Python 3.11 & 3.12). Ships in the Batch B+C PR (branch `claude/training-intelligence`). **Cross-reference:** PR-005, PR-009, PR-035 — same enforcement-over-aspiration family.
+
+---
+
+## PR-041: Built-But-Unwired Infrastructure Is a Latent Liability — Wiring Dead Code Surfaces Latent Bugs
+
+**Source:** Session 035 (2026-05-30), Batch A — self-evolution wiring
+**Root cause category:** missing_rule (built-not-wired; PR-009 family)
+
+**Failure:** ZO did not learn per project despite shipping a complete, unit-tested self-evolution stack. `EvolutionEngine` (full 5-step post-mortem) and `MemoryManager.seed_priors` were implemented and covered by `test_evolution.py` / `test_memory.py`, but **neither was ever invoked in production** — `EvolutionEngine` had zero imports outside its own module, `seed_priors` had zero callers, and `_prompt_memory` surfaced only decision summaries, not priors. The user kept re-supplying domain knowledge and lessons because the loop meant to seed/load/record them was never connected. Wiring it then surfaced **4 latent `log_error(message=)` bugs** in `orchestrator.py` failure branches: `CommsLogger.log_error` takes `description` (no `message` param), so those calls would `TypeError` the moment their `except` branch fired — never caught because the branches almost never execute and no test forced them.
+
+### Rules
+
+1. **"Implemented + unit-tested" is not "wired."** A module with zero production callers is a liability, not a feature — it rots, drifts from its callers' contracts, and gives false confidence ("we have a self-evolution engine") while delivering nothing. PR-009 ("built modules must be wired"), restated for the evolution engine and the priors loop.
+   - **How to apply:** in the PR that builds a module, grep for its callers; if there are none outside tests, wire it or don't merge it. A green unit test on an uncalled module proves it compiles, not that the platform uses it.
+
+2. **Wiring previously-dead code surfaces latent bugs in the newly-reachable paths — budget for it and regression-test those branches.** The 4 `log_error` bugs sat dormant because the failure branches never executed; making the engine live made them reachable.
+   - **How to apply:** when wiring dead code, treat its now-reachable error/except branches as new surface area — read them, fix what no longer matches current signatures, and add at least one test that forces each newly-reachable failure branch (here: monkeypatch the failing call, assert the branch swallows + logs without raising).
+
+3. **On a public-repo promotion path, fail-closed (block) beats strip-and-hope.** The user chose "auto-strip + promote"; the implementation blocks instead — stripping a client term out of a sentence leaves garbled, misleading text and can miss adjacent project-specific words (a reactor/tag name not in the blocklist). Promoting only already-clean priors (generic category AND blocklist-clear AND a blocklist exists), and reporting the rest for manual rewrite, never emits a half-sanitised statement to the public repo.
+   - **How to apply:** for any automated flow that writes to the public/platform repo, default to refuse-and-report over auto-redact; redaction is lossy and unverifiable against a legal constraint.
+
+### Verified Solution
+
+Seed (`_maybe_seed_priors`), load (`_prompt_memory` injects project priors), write (`_record_learning` on loop DEAD_END/PLATEAU via `EvolutionEngine.record_failure` + `append_prior`), promote (`src/zo/promote.py` fail-closed sanitizer + `zo learnings promote`). 4 `log_error(message=)` → `description=` fixes + a forced-failure-branch regression test. New `tests/unit/test_promote.py` (15 adversarial cases) + seed/load/write/bug-fix tests. +32 tests (780 → 812, both Python 3.11 & 3.12). **Cross-reference:** PR-009 (built ≠ wired), PR-005/PR-035/PR-040 (enforcement over aspiration), PR-024/PR-030 (confidentiality — the promotion sanitizer reuses the validate-docs client blocklist).

@@ -2629,6 +2629,65 @@ def experiments_diff(
         console.print(f"    [{_AMBER}]+ {b.id} only:[/] {s}")
 
 
+@cli.group()
+def learnings() -> None:
+    """Promote generic, client-sanitized learnings to the ZO platform."""
+
+
+@learnings.command("promote")
+@click.option("--project", "-p", required=True, help="Project name")
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+@click.option(
+    "--dry-run", is_flag=True,
+    help="Screen and report without writing to platform PRIORS.",
+)
+def learnings_promote(project: str, repo: str | None, dry_run: bool) -> None:
+    """Promote clean generic priors from a project to platform PRIORS.md.
+
+    Automated and fail-closed: only generic-category priors that clear the
+    client blocklist are promoted. Anything that trips the blocklist, is
+    plan-seeded/domain, or (when no blocklist is configured) gets blocked
+    and reported for manual review — priors are never auto-rewritten.
+    """
+    from zo.promote import promote_learnings
+
+    delivery = Path(repo).resolve() if repo else None
+    pctx = _load_project_context(project, delivery_repo=delivery)
+    target = pctx.make_target()
+    delivery_repo = Path(target.target_repo)
+    if not delivery_repo.is_dir():
+        console.print(
+            f"[red bold]Delivery repo not found:[/] {delivery_repo}\n"
+            f"Pass [bold]--repo PATH[/] to override.",
+        )
+        raise SystemExit(1)
+
+    report = promote_learnings(delivery_repo, _zo_root(), dry_run=dry_run)
+
+    if not report.blocklist_loaded:
+        console.print(
+            f"[{_AMBER}]⚠ No client blocklist at scripts/.client-blocklist[/] — "
+            "nothing promoted (fail-closed). Configure it to enable promotion.",
+        )
+    suffix = " [dim](dry-run)[/]" if dry_run else ""
+    console.print(f"\n[bold]Promotion:[/] {report.summary}{suffix}\n")
+    for p in report.promoted:
+        console.print(f"  [green]✓ promoted[/] ({p.category}) {p.statement}")
+    for p, reason in report.blocked:
+        console.print(f"  [{_AMBER}]✗ blocked[/] ({p.category}) {p.statement}")
+        console.print(f"      [{_DIM}]{reason}[/]")
+    for p in report.skipped_duplicate:
+        console.print(f"  [{_DIM}]= duplicate[/] {p.statement}")
+    if report.written:
+        console.print(
+            f"\n[green]Wrote {len(report.promoted)} prior(s) to "
+            "memory/zo-platform/PRIORS.md[/]",
+        )
+
+
 @cli.command("watch-training")
 @click.option("--project", "-p", required=True, help="Project name")
 @click.option("--interval", "-i", default=2.0, help="Refresh interval in seconds")

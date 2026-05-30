@@ -27,7 +27,7 @@ class TestCliGroup:
     def test_cli_group_has_all_commands(self) -> None:
         expected = {
             "build", "continue", "init", "status", "draft", "preflight",
-            "gates", "watch-training", "migrate", "experiments",
+            "gates", "watch-training", "migrate", "experiments", "learnings",
         }
         actual = set(cli.commands.keys())
         assert expected == actual
@@ -1057,7 +1057,9 @@ class TestLowTokenFlags:
     ) -> None:
         """``_show_banner(low_token=True)`` includes the badge text."""
         from io import StringIO
+
         from rich.console import Console
+
         import zo.cli as cli_module
 
         # Redirect zo.cli.console to a buffer so we can inspect output.
