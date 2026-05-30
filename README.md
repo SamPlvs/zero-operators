@@ -10,8 +10,8 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-743_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Agents](https://img.shields.io/badge/agents-20_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
+[![Tests](https://img.shields.io/badge/tests-780_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Agents](https://img.shields.io/badge/agents-21_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
 ---
@@ -385,7 +385,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 
 ## Agent Teams
 
-**Project Delivery Team** (11 agents that execute ML/research projects):
+**Project Delivery Team** (12 agents that execute ML/research projects):
 
 | Agent | Model | When Active | What They Do |
 |-------|-------|-------------|-------------|
@@ -394,6 +394,7 @@ Adds **Phase 0: Literature Review** (prior art survey, baseline definition). Pha
 | Data Engineer | Sonnet | Phases 1-2 | Data pipeline, cleaning, EDA, DataLoaders |
 | Model Builder | Opus | Phases 3-5 | Architecture selection, training, iteration |
 | Oracle / QA | Sonnet | Phases 3-5 | Hard metric evaluation, pass/fail gating |
+| Training Checker | Sonnet | Phase 4 | Live training monitor — NaN/divergence alerts, diagnosis, next-round suggestions |
 | Code Reviewer | Sonnet | All phases | Code quality, PEP8, security, conventions |
 | Test Engineer | Sonnet | All phases | Unit, integration, regression tests |
 | XAI Agent | Sonnet | Phase 5 | SHAP, feature importance, explainability |
@@ -505,7 +506,7 @@ delivery-repo/
 | 1.0.2 | Platform-aware Docker scaffold + reference-project end-to-end demos | Done |
 | 1.0.2-post | `--low-token` cost-saving preset (two-tier model routing, per-phase trims) + `ZOTrainingCallback` hard gate enforcement | Done |
 
-743 platform tests. ruff clean (`src/zo/`). 20 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
+780 platform tests. ruff clean (`src/zo/`). 21 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
 
 ---
 

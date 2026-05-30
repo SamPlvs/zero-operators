@@ -56,6 +56,7 @@ __all__ = [
     "TrainingStatus",
     "read_training_status",
     "read_metrics_history",
+    "should_checkpoint",
 ]
 
 # ---------------------------------------------------------------------------
@@ -386,3 +387,44 @@ def read_metrics_history(log_dir: Path) -> list[TrainingMetricsEntry]:
 def _now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
     return datetime.now(UTC).isoformat()
+
+
+def should_checkpoint(
+    epoch: int,
+    total_epochs: int,
+    *,
+    every: int = 10,
+    is_best: bool = False,
+) -> bool:
+    """Return ``True`` when a checkpoint should be written at this epoch.
+
+    Disaster-recovery cadence for deep-learning training loops:
+
+    * **every ``every`` epochs** — periodic resumable checkpoint
+      (default every 10). ``epoch`` is 0-indexed, so with ``every=10``
+      this fires at epochs 9, 19, 29, ... (the 10th, 20th, ...).
+    * **the final epoch** (``epoch == total_epochs - 1``) — always.
+    * **a new best** (``is_best=True``) — always, so the best model is
+      never lost to a later regression.
+
+    Pair with a "keep best + keep last" retention policy: save
+    ``best.pt`` whenever ``is_best`` and ``last.pt`` on every call, each
+    with fully resumable state (model, optimizer, scheduler, AMP scaler,
+    epoch, RNG state) so an interrupted run resumes without re-training.
+
+    Args:
+        epoch: Current epoch, 0-indexed.
+        total_epochs: Total planned epochs (for the final-epoch check).
+        every: Periodic cadence in epochs. Clamped to ``>= 1``.
+        is_best: Whether this epoch produced a new best validation metric.
+
+    Returns:
+        ``True`` if a checkpoint should be saved now.
+    """
+    if is_best:
+        return True
+    if total_epochs <= 0 or epoch < 0:
+        return False
+    if epoch == total_epochs - 1:
+        return True
+    return (epoch + 1) % max(1, every) == 0

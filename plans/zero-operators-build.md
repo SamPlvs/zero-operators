@@ -13,7 +13,7 @@ owner: "Sam"
 
 Build the Zero Operators (ZO) platform itself — the orchestration engine, memory layer, communication system, plan parser, target file enforcer, agent definitions, setup tooling, and CLI that together form an autonomous AI research and engineering team system. The platform reads a `plan.md`, spawns a coordinated agent team via Claude Code's native agent teams, executes work against delivery repositories, and enforces oracle-driven validation at every gate.
 
-Deliverables: a working ZO platform deployed as a Python package in the `zero-operators/` repository, with all 20 agent definition files in `.claude/agents/`, a functional memory layer, hybrid orchestration engine (native Claude Code teams + Python lifecycle wrapper), JSONL comms logger, plan.md validator, target file parser with isolation enforcement, semantic search index (full decision entries with summary prefix), a `zo` CLI with build/continue/draft subcommands, `setup.sh` bootstrapper, `zo init` project scaffolder, and a comprehensive test suite proving the system can execute a real project end-to-end.
+Deliverables: a working ZO platform deployed as a Python package in the `zero-operators/` repository, with all 21 agent definition files in `.claude/agents/`, a functional memory layer, hybrid orchestration engine (native Claude Code teams + Python lifecycle wrapper), JSONL comms logger, plan.md validator, target file parser with isolation enforcement, semantic search index (full decision entries with summary prefix), a `zo` CLI with build/continue/draft subcommands, `setup.sh` bootstrapper, `zo init` project scaffolder, and a comprehensive test suite proving the system can execute a real project end-to-end.
 
 ## Oracle
 

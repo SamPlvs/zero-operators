@@ -34,6 +34,7 @@ AGENT_PHASE_MAP: dict[str, list[str]] = {
     "xai-agent": ["phase_5"],
     "domain-evaluator": ["phase_1", "phase_5"],
     "ml-engineer": ["phase_4", "phase_5", "phase_6"],
+    "training-checker": ["phase_4"],
     "infra-engineer": ["phase_1", "phase_6"],
     "lead-orchestrator": [],
 }

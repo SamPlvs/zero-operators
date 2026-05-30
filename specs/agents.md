@@ -6,8 +6,8 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 
 ## Team Philosophy
 
-- **Four teams** (20 agents total):
-  - **Project delivery (11 agents)**: 7 launch agents (research + core loop + code quality) + 4 phase-in agents (validation, optimisation, infrastructure)
+- **Four teams** (21 agents total):
+  - **Project delivery (12 agents)**: 7 launch agents (research + core loop + code quality) + 5 phase-in agents (validation, optimisation, infrastructure, live training monitoring)
   - **Platform build (6 agents)**: building ZO as software (architect, backend, frontend, test, review, docs)
   - **Draft scouts (2 agents)**: `plan-architect` (Opus) + `data-scout` (Sonnet) — spawned by `zo draft` for conversational plan drafting with data + research intelligence
   - **Init (1 agent)**: `init-architect` (Opus) — spawned by `zo init` to interview the human, inspect the target repo, and route writes through the headless CLI
@@ -352,6 +352,23 @@ ZO operates two distinct team configurations: a **Project Delivery Team** that e
 **Off-limits**:
 - Model code and data transformations
 - Metric computation
+
+---
+
+### 12. Training Checker
+
+**Model tier**: Sonnet  
+**Role**: Live training monitor — tails experiment metrics during Phase 4, alerts on NaN/divergence/overfit, writes diagnosis and next-round suggestions. Spawned one per model run as `training-{modelname}-checker`.
+
+**Ownership**:
+- `.zo/experiments/<exp_id>/diagnosis.md` (mechanistic failure-mode analysis)
+- Next-round suggestions fed into `<exp_id>/next.md`
+- Live anomaly alerts to Model Builder + Lead (SendMessage)
+
+**Off-limits**:
+- Model architecture and training logic (Model Builder)
+- Evaluation and metric computation (Oracle/QA)
+- Data pipeline
 
 ---
 

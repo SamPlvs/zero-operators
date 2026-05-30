@@ -182,7 +182,7 @@ with zero extra wiring. Your spawn prompt receives the active
 `exp_id` — use it verbatim.
 
 ```python
-from zo.training_metrics import ZOTrainingCallback
+from zo.training_metrics import ZOTrainingCallback, should_checkpoint
 
 # exp_id comes from the lead's spawn prompt — see the
 # "Experiment Capture Layer" section of the prompt.
@@ -195,6 +195,7 @@ cb.on_training_start(
     config={"lr": 3e-4, "architecture": "ResNet-18"},
 )
 
+best_val_loss = float("inf")
 for epoch in range(total_epochs):
     train_loss = train_one_epoch(model, train_loader, optimizer, criterion)
     val_metrics = validate(model, val_loader, criterion)
@@ -208,11 +209,16 @@ for epoch in range(total_epochs):
         },
         learning_rate=optimizer.param_groups[0]["lr"],
     )
-    if should_checkpoint(epoch, val_metrics):
-        path = f"models/checkpoints/model_v1/epoch_{epoch}.pt"
-        torch.save(checkpoint, path)
+    # Disaster-recovery cadence: every 10 epochs + always the new best
+    # + always the last. Save FULLY RESUMABLE state (see section below).
+    is_best = val_metrics["loss"] < best_val_loss
+    best_val_loss = min(best_val_loss, val_metrics["loss"])
+    if should_checkpoint(epoch, total_epochs, every=10, is_best=is_best):
+        torch.save(checkpoint, "models/checkpoints/model_v1/last.pt")
+        if is_best:
+            torch.save(checkpoint, "models/checkpoints/model_v1/best.pt")
         cb.on_checkpoint_saved(
-            path=path,
+            path="models/checkpoints/model_v1/last.pt",
             epoch=epoch,
             metrics={"val_acc": val_metrics["accuracy"]},
         )
@@ -232,10 +238,53 @@ The capture layer is the single source of truth. Anything written
 elsewhere is invisible to `zo watch-training`, `zo experiments`, and
 the autonomous iteration loop.
 
+## Checkpointing and Disaster Recovery (REQUIRED)
+
+Long runs must survive interruption (OOM, preemption, SSH drop, crash)
+**without re-training from scratch**. Use `should_checkpoint` from
+`zo.training_metrics` with a **keep-best + keep-last** retention policy.
+
+**Deep learning — checkpoint every 10 epochs + best + last.** Each
+checkpoint is FULLY RESUMABLE — not just weights:
+
+```python
+checkpoint = {
+    "epoch": epoch,
+    "model_state_dict": model.state_dict(),
+    "optimizer_state_dict": optimizer.state_dict(),
+    "scheduler_state_dict": scheduler.state_dict(),   # if used
+    "scaler_state_dict": scaler.state_dict(),         # if AMP / mixed precision
+    "rng_state": torch.get_rng_state(),               # + numpy / python seeds
+    "best_val_loss": best_val_loss,
+    "hyperparams": {...},
+}
+```
+
+Write `best.pt` on every new best and `last.pt` on every checkpoint, under
+`models/checkpoints/<model_name>/`. **On startup, if `last.pt` exists,
+RESUME from it** (restore epoch, optimizer, scheduler, scaler, RNG) instead
+of restarting. `should_checkpoint(epoch, total_epochs, every=10,
+is_best=...)` encodes the cadence (every 10th epoch + the final epoch +
+every new best).
+
+**Classical ML — checkpoint per fold + best + persist search state.**
+- Cross-validation: persist the fitted model after each fold; keep the
+  best-by-CV model.
+- Boosting (XGBoost/LightGBM/CatBoost): enable early stopping (keeps the
+  best iteration); for long runs save every ~100 rounds.
+- Hyperparameter search (Optuna / sklearn search): persist the study /
+  search state after every trial (Optuna RDB storage or `joblib.dump`) so
+  an interrupted search resumes WITHOUT losing completed trials.
+- Long single fits: a wall-clock fallback (e.g. every ~N minutes).
+
+**Retention:** keep `best` + `last` (+ optionally last-K periodic) — don't
+accumulate every epoch. Write atomically (temp path, then rename) into the
+experiment so checkpoints are recoverable.
+
 ## Coordination Rules
 
 - **Before training**: Verify DataLoader contract by loading one batch and checking shape, dtype, and value ranges. If contract violated, message Data Engineer and Orchestrator.
-- **During training**: Log all hyperparameters and architecture choices. Use `ZOTrainingCallback` for per-epoch metrics. If training produces NaN loss, stop immediately and log the failure with full context.
+- **During training**: Log all hyperparameters and architecture choices. Use `ZOTrainingCallback` for per-epoch metrics. If training produces NaN loss, stop immediately and log the failure with full context. A `training-{modelname}-checker` teammate monitors your run live — act on its NaN/divergence/overfit alerts immediately (kill and re-mint a broken run rather than burning the budget), and use its `diagnosis.md` to ground your next `hypothesis.md`.
 - **After training**: Submit checkpoint to Oracle for evaluation. Do not self-evaluate on test data — that is Oracle's exclusive responsibility.
 - **On Oracle feedback**: Act on per-sample failure analysis. Prioritize failure modes by frequency and severity. Log iteration rationale.
 - **Iteration plateau**: If val loss does not improve for 2 consecutive iterations with different approaches, escalate to Orchestrator with a summary of all attempts.
@@ -248,6 +297,7 @@ Before reporting done, verify:
 
 - [ ] Model trains without NaN loss across all epochs
 - [ ] Checkpoint saved at `models/checkpoints/` with full metadata (architecture, date, hyperparams, data split hash, final metrics)
+- [ ] Checkpoint cadence honored via `should_checkpoint`: `best.pt` + `last.pt` written with fully-resumable state (DL: every 10 epochs; ML: per fold / search-state persisted)
 - [ ] `ZOTrainingCallback.for_experiment(...)` was used; `metrics.jsonl` and `training_status.json` exist in `.zo/experiments/<exp_id>/` (Phase 4 gate fails otherwise)
 - [ ] `hypothesis.md`, `config.yaml`, and (post-result) `next.md` are written into the same `.zo/experiments/<exp_id>/` directory
 - [ ] Inference latency measured and documented (or explicitly flagged as not yet benchmarked)

@@ -87,7 +87,7 @@ fi
 echo -e "${DIM}Checking agent definitions...${RESET}"
 EXPECTED_AGENTS=(
     lead-orchestrator research-scout data-engineer model-builder oracle-qa
-    code-reviewer test-engineer xai-agent domain-evaluator
+    code-reviewer test-engineer training-checker xai-agent domain-evaluator
     ml-engineer infra-engineer software-architect backend-engineer
     frontend-engineer platform-test-engineer platform-code-reviewer
     documentation-agent plan-architect data-scout init-architect
@@ -102,10 +102,10 @@ for agent in "${EXPECTED_AGENTS[@]}"; do
     fi
 done
 
-if [[ $AGENT_COUNT -eq 20 ]]; then
-    pass "All 20 agent definitions present"
+if [[ $AGENT_COUNT -eq 21 ]]; then
+    pass "All 21 agent definitions present"
 else
-    fail "$AGENT_COUNT/20 agent definitions found"
+    fail "$AGENT_COUNT/21 agent definitions found"
     for missing in "${MISSING_AGENTS[@]}"; do
         echo -e "      ${RED}missing:${RESET} .claude/agents/${missing}.md"
     done

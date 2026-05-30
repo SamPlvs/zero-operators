@@ -116,6 +116,9 @@ _ROLE_MAP: dict[str, str] = {
     "xai-agent": "Explainability analysis, SHAP, attention",
     "domain-evaluator": "Domain validation, plausibility checks",
     "ml-engineer": "Inference optimisation, GPU, experiment tracking",
+    "training-checker": (
+        "Live training monitor — anomaly alerts, diagnosis, next-round ideas"
+    ),
     "infra-engineer": "Environment setup, dependencies, deployment",
 }
 
@@ -128,6 +131,7 @@ _OWNERSHIP_MAP: dict[str, list[str]] = {
     "xai-agent": ["xai/"],
     "domain-evaluator": ["domain_validation/"],
     "ml-engineer": ["infra/gpu/", "infra/tracking/"],
+    "training-checker": [],
     "infra-engineer": ["env/", "scripts/"],
 }
 
@@ -140,6 +144,7 @@ _OFF_LIMITS_MAP: dict[str, list[str]] = {
     "xai-agent": ["models/", "data/raw/"],
     "domain-evaluator": ["models/", "data/raw/"],
     "ml-engineer": ["models/", "data/raw/"],
+    "training-checker": ["models/", "data/raw/", "oracle/"],
     "infra-engineer": ["models/", "oracle/"],
 }
 
@@ -1145,8 +1150,23 @@ class Orchestrator:
               body has `## Shortfalls` bullets.
             - `{exp.id}/next.md` — Model Builder writes AFTER result. One
               `## exp-NNN` section per proposed follow-up experiment.
-            - `{exp.id}/diagnosis.md` (optional) — XAI or Domain Evaluator
-              writes when a failure-mode breakdown is needed.
+            - `{exp.id}/diagnosis.md` (optional) — XAI, Domain Evaluator, or
+              the Training Checker writes a failure-mode breakdown.
+
+            **Live training monitor (spawn one per model run):**
+            For every model you train this phase, spawn a teammate named
+            `training-{{modelname}}-checker` (Sonnet) from the
+            `training-checker` contract in `.claude/agents/`, in THIS team
+            (peer-to-peer via SendMessage). It tails `{exp.id}/metrics.jsonl`
+            and `{exp.id}/training_status.json` at epoch/fold boundaries and:
+            - ALERTS you + Model Builder the instant a run shows NaN/Inf loss,
+              divergence, gradient blow-up, val-loss climbing while train-loss
+              falls (overfit), a dead LR, or a stall — so a broken run is
+              killed early instead of burning the whole budget.
+            - At run end writes `{exp.id}/diagnosis.md` (mechanistic *why*) and
+              feeds concrete ideas into `{exp.id}/next.md`, working with
+              Research Scout's general-AI-research findings to shape the next
+              iteration.
 
             **Gate requirement:** the phase advances only when `result.md`
             exists in the active experiment's directory. The orchestrator

@@ -1403,3 +1403,70 @@ class TestLowTokenOrchestrator:
         prompt = orch.build_lead_prompt(decomp.phases[0])
         assert "Tier 1 — Haiku" not in prompt
         assert "claude-haiku-4-5" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# Training Checker wiring (Batch B+C)
+# ---------------------------------------------------------------------------
+
+
+def _make_orchestrator_with_repo(
+    plan: Plan, tmp_path: Path, delivery: Path,
+) -> Orchestrator:
+    """Orchestrator whose delivery repo exists, so phase_4 mints experiments."""
+    (delivery / ".zo" / "experiments").mkdir(parents=True, exist_ok=True)
+    target = TargetConfig(
+        project="test-project",
+        target_repo=str(delivery),
+        target_branch="main",
+        worktree_base=str(tmp_path / "worktrees"),
+        git_author_name="ZO Test",
+        git_author_email="zo@test.dev",
+        agent_working_dirs={},
+        zo_only_paths=[".zo/"],
+        enforce_isolation=False,
+    )
+    memory = MemoryManager(project_dir=tmp_path, project_name="test-project")
+    memory.initialize_project()
+    comms = CommsLogger(
+        log_dir=tmp_path / "logs" / "comms",
+        project="test-project",
+        session_id="test-session-001",
+    )
+    semantic = SemanticIndex(db_path=tmp_path / "index.db")
+    return Orchestrator(
+        plan=plan, target=target, memory=memory, comms=comms,
+        semantic=semantic, zo_root=REPO_ROOT, gate_mode=GateMode.AUTO,
+    )
+
+
+class TestTrainingCheckerWiring:
+    """Batch B+C — training-checker agent + Phase-4 monitor instruction."""
+
+    def test_training_checker_mapped_to_phase_4(self) -> None:
+        from zo._orchestrator_phases import AGENT_PHASE_MAP
+        assert AGENT_PHASE_MAP["training-checker"] == ["phase_4"]
+
+    def test_phase4_prompt_spawns_per_run_checker(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        orch = _make_orchestrator_with_repo(
+            plan, tmp_path, tmp_path / "delivery",
+        )
+        decomp = orch.decompose_plan()
+        phase_4 = next(p for p in decomp.phases if p.phase_id == "phase_4")
+        prompt = orch.build_lead_prompt(phase_4)
+        assert "training-{modelname}-checker" in prompt
+        assert "metrics.jsonl" in prompt
+        assert "NaN" in prompt
+
+    def test_non_training_phase_omits_monitor(
+        self, plan: Plan, tmp_path: Path,
+    ) -> None:
+        orch = _make_orchestrator_with_repo(
+            plan, tmp_path, tmp_path / "delivery",
+        )
+        decomp = orch.decompose_plan()
+        phase_1 = next(p for p in decomp.phases if p.phase_id == "phase_1")
+        prompt = orch.build_lead_prompt(phase_1)
+        assert "training-{modelname}-checker" not in prompt
