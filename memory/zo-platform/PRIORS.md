@@ -1322,3 +1322,34 @@ Seed (`_maybe_seed_priors`), load (`_prompt_memory` injects project priors), wri
 ### Verified Solution
 
 `_wait_tmux` rewritten with `_STARTUP_GRACE_POLLS=2` (ignore negatives for ~first 20s at the 10s default interval), `_DEAD_CONFIRM_POLLS=2` (consecutive negatives required), and `_DEAD_RECHECK_INTERVAL=2.0` (fast re-poll while confirming). The old test that asserted complete-on-first-negative was updated to expect confirmed-exit-on-4th-poll; added `test_tmux_wait_ignores_negative_during_startup_grace` (regression for the 15ms teardown) and `test_tmux_wait_debounces_transient_negative`. 53 wrapper tests pass, ruff clean. **Cross-reference:** PR-040/PR-041 family is about wiring/enforcement; this one is about *robustness of the monitoring loop itself* — the watcher must not be more fragile than the thing it watches.
+
+---
+
+## PR-043: --bypass-permissions Triggers Claude's Startup Consent Dialog Which the tmux Launcher Dismisses as "No, exit" — Persist the Acceptance Flag
+
+**Source:** Session 036 (2026-06-01), prod project continue run (root cause of the PR-042 symptom)
+**Root cause category:** novel_case (CLI dialog interaction) + incomplete_rule (PR-042 treated the symptom)
+
+**Failure:** `zo continue --repo . --bypass-permissions` launched the lead session and it died seconds later with no usable Claude window — repeatedly. PR-042 (startup grace + debounce in `_wait_tmux`) only *delayed* the death from ~15ms to ~22s; it never addressed why Claude was leaving. The lead Claude's own session transcript (`~/.claude/projects/-home-sam-zero-operators/<id>.jsonl`) was the key evidence: Claude read the plan, ran a Bash tool call, then the transcript **stopped mid-work** — it was *killed*, not crashed. Instrumenting the real launch path (overlay applied, real prompt, both `--add-dir`s) showed `pane_current_command='bash'` at t~0s and a captured pane containing:
+```
+WARNING: Claude Code running in Bypass Permissions mode
+  ❯ 1. No, exit
+    2. Yes, I accept
+  Enter to confirm · Esc to cancel
+```
+**Mechanism:** `apply_bypass_overlay` writes `permissions.defaultMode: "bypassPermissions"`. On startup in that mode Claude Code 2.1.159 shows a one-time interactive consent dialog whose default-highlighted option is **"1. No, exit"**. `_wait_for_tui_ready` mistakes the dialog for the ready TUI (it is ~1231 chars and stable — the exact "1231 chars" seen in the field logs), so the launcher pastes the 24KB lead prompt and presses Enter → confirms the default → **Claude quits on startup** → pane falls back to `bash` → `_wait_tmux` correctly sees "not claude" and tears down. Intermittent because Claude remembers acceptance once given (`bypassPermissionsModeAccepted` in `~/.claude.json`); the field machine had never accepted it. The misleading "Session summary: I don't see a prior agent session… fresh start" was a *separate* red herring — `_generate_session_summary` runs `claude -p --model haiku` over the buffered comms events, and with the session killed before emitting any, Haiku summarized an empty buffer.
+
+### Rules
+
+1. **When you drive an interactive CLI by pasting into its TTY, any startup dialog you didn't anticipate will silently eat your input — and the default action is often the destructive one ("exit").** A "ready" heuristic based on "screen has stabilized with N chars" cannot tell a consent dialog from an input prompt. Suppress known dialogs at the source rather than relying on the paste landing in the right place.
+   - **Why:** `_wait_for_tui_ready` keys off pane content length/stability; a modal dialog satisfies it. The pasted prompt + Enter then drives whatever modal is focused.
+   - **How to apply:** for every mode/flag ZO passes to Claude, enumerate the startup dialogs it can trigger (trust, bypass-consent) and pre-satisfy them via config (`hasTrustDialogAccepted`, `bypassPermissionsModeAccepted` in `~/.claude.json`) before launch. Passing `--bypass-permissions` IS the user's consent, so persisting it is faithful to intent, not a security bypass.
+
+2. **A fix that makes a failure slower is not a fix — confirm the mechanism, don't just stop the bleeding.** PR-042's grace+debounce looked plausible and shipped green, but the session still died (just later). The mechanism was only found by reading Claude's *own* session transcript and instrumenting the real launch path (not a synthetic one) — synthetic repros missed it because they lacked the bypass overlay, so no dialog appeared.
+   - **How to apply:** when a fix doesn't resolve a user-reported failure, treat the new symptom timing as a clue and reproduce the *exact* production path (same flags, same overlay, same prompt). Read the subprocess's own logs/transcripts. PR-042 keeps its value as defense-in-depth, but the root cause was elsewhere.
+
+3. **Read-modify-write of a shared user config must preserve all keys and refuse to clobber a corrupt file.** `ensure_bypass_disclaimer_accepted` loads `~/.claude.json`, sets only the one flag, rewrites preserving everything, is idempotent, and bails (no write) if the JSON is unreadable rather than destroying a 700-startup user profile.
+
+### Verified Solution
+
+`ensure_bypass_disclaimer_accepted(config_path=None)` in `permissions_overlay.py` sets `bypassPermissionsModeAccepted: true` in `~/.claude.json` (idempotent, preserves all keys, refuses to overwrite corrupt JSON). Called from `_launch_tmux` (logs a checkpoint when newly set) and `_launch_headless` whenever `bypass_permissions` is True. **End-to-end verified:** with the flag removed to simulate a fresh machine, a full wrapper launch re-set it and Claude stayed alive 16/16 polls (32s, past the old 22s death). +4 overlay tests (69 overlay+wrapper tests pass), ruff clean. Ships in PR #97 alongside PR-042. **Cross-reference:** PR-001 (Claude CLI interactive-mode constraints — same family: the TUI has launch-time interaction quirks the wrapper must handle), PR-042 (the grace/debounce defense-in-depth this supersedes as root cause).

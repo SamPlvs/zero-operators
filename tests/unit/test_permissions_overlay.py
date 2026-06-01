@@ -259,3 +259,60 @@ class TestPermissionsBlockNotDict:
             new_content["permissions"]["defaultMode"]
             == "bypassPermissions"
         )
+
+
+# ------------------------------------------------------------------ #
+# Scenario 5: bypass-disclaimer acceptance flag (~/.claude.json)
+# ------------------------------------------------------------------ #
+
+
+class TestEnsureBypassDisclaimerAccepted:
+    """Regression for the bypass-mode startup consent dialog.
+
+    Without ``bypassPermissionsModeAccepted`` set, Claude shows an
+    interactive "1. No, exit / 2. Yes, I accept" dialog whose default is
+    exit; the launcher then pastes the lead prompt + Enter into it,
+    quitting Claude on startup. Persisting the flag suppresses the dialog.
+    """
+
+    def test_sets_flag_when_file_absent(self, tmp_path: Path) -> None:
+        from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
+
+        cfg = tmp_path / ".claude.json"
+        assert ensure_bypass_disclaimer_accepted(cfg) is True
+        data = json.loads(cfg.read_text())
+        assert data["bypassPermissionsModeAccepted"] is True
+
+    def test_preserves_existing_keys(self, tmp_path: Path) -> None:
+        from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
+
+        cfg = tmp_path / ".claude.json"
+        cfg.write_text(json.dumps({
+            "userID": "abc123",
+            "projects": {"/x": {"hasTrustDialogAccepted": True}},
+            "numStartups": 700,
+        }))
+        assert ensure_bypass_disclaimer_accepted(cfg) is True
+        data = json.loads(cfg.read_text())
+        assert data["bypassPermissionsModeAccepted"] is True
+        # Everything else is untouched.
+        assert data["userID"] == "abc123"
+        assert data["projects"]["/x"]["hasTrustDialogAccepted"] is True
+        assert data["numStartups"] == 700
+
+    def test_idempotent_when_already_accepted(self, tmp_path: Path) -> None:
+        from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
+
+        cfg = tmp_path / ".claude.json"
+        cfg.write_text(json.dumps({"bypassPermissionsModeAccepted": True}))
+        # Already accepted -> reports no change.
+        assert ensure_bypass_disclaimer_accepted(cfg) is False
+
+    def test_does_not_clobber_unreadable_config(self, tmp_path: Path) -> None:
+        from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
+
+        cfg = tmp_path / ".claude.json"
+        cfg.write_text("{ not valid json ")
+        # Refuses to overwrite a corrupt file rather than destroying it.
+        assert ensure_bypass_disclaimer_accepted(cfg) is False
+        assert cfg.read_text() == "{ not valid json "

@@ -1183,3 +1183,13 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 **Rationale:** `zo continue` in tmux mode launched the lead session correctly, then logged "Lead session completed, agent window closed" ~15ms later and killed the window — the first liveness poll fired before Claude's TUI claimed the pane (and while a one-time workspace-trust dialog could be up), and a single negative reading was treated as a real `/exit`. The launch path already polls carefully for *readiness*; the completion path must be equally skeptical about "it died."
 **Alternatives considered:** (1) Pre-trust `--add-dir` directories to suppress the trust dialog — fixes one trigger, not the class (any transient still tears down). (2) Time-based grace only — breaks under mocked time in tests; chose poll-count-based grace + debounce.
 **Outcome:** 53 wrapper tests pass (old complete-on-first-negative test updated + 2 regressions added), ruff clean, validate-docs 0 failures. PR-042 in PRIORS.md. Branch `claude/tmux-liveness-grace`, PR opened.
+
+---
+
+## Decision: 2026-06-01T12:30:00Z
+**Type:** BUGFIX
+**Title:** Persist bypass-permissions disclaimer acceptance to suppress Claude's startup consent dialog (root cause of the dying-session report)
+**Decision:** Add `ensure_bypass_disclaimer_accepted()` to `permissions_overlay.py` (sets `bypassPermissionsModeAccepted: true` in `~/.claude.json`, idempotent, key-preserving, refuses to overwrite corrupt JSON) and call it from `_launch_tmux` and `_launch_headless` whenever `bypass_permissions` is True.
+**Rationale:** `--bypass-permissions` makes Claude 2.1.159 show a one-time interactive consent dialog (default "No, exit"). The tmux launcher mistakes the dialog for the ready TUI (`_wait_for_tui_ready`), pastes the lead prompt + Enter, selects the default, and Claude quits on startup — the session dies before any work. The lead Claude's session transcript (killed mid-Bash-call) and live instrumentation of the real launch path confirmed the mechanism; PR-042's grace/debounce had only delayed the symptom (15ms → 22s). Passing the flag IS the user's consent, so persisting it is faithful to intent.
+**Alternatives considered:** (1) Screen-scrape the dialog and send "2"+Enter to accept — works but is fragile to menu-layout changes across Claude versions. (2) Rely on PR-042 grace/debounce alone — rejected: it never stops Claude from exiting, only delays detection. (3) Use `--dangerously-skip-permissions` CLI flag in tmux — historically exits immediately in interactive mode.
+**Outcome:** End-to-end verified (flag removed → wrapper re-set it → Claude alive 32s, past the old 22s death). 53 wrapper + 16 overlay tests pass, ruff clean, validate-docs 0 failures. PR-043 added. Stacked on PR-042 in PR #97.

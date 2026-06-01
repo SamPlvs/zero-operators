@@ -182,7 +182,22 @@ class LifecycleWrapper:
         """
         # Apply bypass overlay (if requested) BEFORE Claude reads settings.
         if bypass_permissions:
-            from zo.permissions_overlay import apply_bypass_overlay
+            from zo.permissions_overlay import (
+                apply_bypass_overlay,
+                ensure_bypass_disclaimer_accepted,
+            )
+            # Persist the user's --bypass-permissions consent so Claude's
+            # startup consent dialog never appears. Without this, the dialog
+            # renders, _wait_for_tui_ready mistakes it for the ready TUI, and
+            # the pasted lead prompt + Enter selects its default ("No, exit")
+            # — Claude quits on startup and the session dies before any work.
+            if ensure_bypass_disclaimer_accepted():
+                self._comms.log_checkpoint(
+                    agent="wrapper", phase="launch",
+                    subtask="bypass-disclaimer",
+                    progress="Recorded bypass-permissions consent in "
+                             "~/.claude.json (suppresses startup dialog)",
+                )
             restore_fn = apply_bypass_overlay(Path(cwd) / ".claude")
             atexit.register(restore_fn)
             self._bypass_restore_fn = restore_fn
@@ -425,6 +440,10 @@ class LifecycleWrapper:
             "--add-dir", cwd,
         ]
         if bypass_permissions:
+            from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
+            # --dangerously-skip-permissions / bypass mode refuses to start
+            # until the disclaimer is accepted; persist the user's consent.
+            ensure_bypass_disclaimer_accepted()
             cmd.append("--dangerously-skip-permissions")
         for d in (add_dirs or []):
             cmd.extend(["--add-dir", d])

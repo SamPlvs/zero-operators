@@ -27,16 +27,74 @@ from __future__ import annotations
 
 import contextlib
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
-__all__ = ["apply_bypass_overlay", "cleanup_stale_overlay"]
+__all__ = [
+    "apply_bypass_overlay",
+    "cleanup_stale_overlay",
+    "ensure_bypass_disclaimer_accepted",
+]
 
 _BACKUP_SUFFIX = ".zo-backup"
 _NO_ORIGINAL_MARKER = "__ZO_NO_ORIGINAL_FILE__"
+
+# Key Claude Code records in ``~/.claude.json`` once the user has accepted the
+# bypass-permissions disclaimer. Until it is true, launching with
+# ``permissions.defaultMode: "bypassPermissions"`` triggers an interactive
+# consent dialog ("WARNING: … 1. No, exit / 2. Yes, I accept", default = exit).
+# In tmux mode the launcher pastes the lead prompt + Enter into that dialog,
+# which selects the default ("No, exit") and Claude quits on startup — the
+# session dies before doing any work. Setting this flag suppresses the dialog.
+_BYPASS_ACCEPTED_KEY = "bypassPermissionsModeAccepted"
+
+
+def _global_claude_config() -> Path:
+    """Path to Claude Code's per-user config (``~/.claude.json``)."""
+    return Path.home() / ".claude.json"
+
+
+def ensure_bypass_disclaimer_accepted(config_path: Path | None = None) -> bool:
+    """Mark the bypass-permissions disclaimer as accepted in ``~/.claude.json``.
+
+    Passing ``--bypass-permissions`` (or ``--gate-mode full-auto``) is the
+    user's consent, so we persist that consent the way Claude Code's own
+    interactive dialog would — otherwise the dialog blocks startup and the
+    pasted lead prompt dismisses it as "No, exit", killing the session.
+
+    Idempotent and non-destructive: reads the existing config, sets only
+    :data:`_BYPASS_ACCEPTED_KEY`, and rewrites it preserving every other key.
+    A missing or unreadable config is treated as empty and (re)created.
+
+    Args:
+        config_path: Override for the config location (testing). Defaults to
+            ``~/.claude.json``.
+
+    Returns:
+        True if the flag was newly set, False if it was already accepted.
+    """
+    path = config_path or _global_claude_config()
+    data: dict = {}
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                data = loaded
+        except (json.JSONDecodeError, OSError):
+            # Corrupt/unreadable — fall back to empty rather than clobbering
+            # blindly is risky, so do NOT overwrite an unreadable file.
+            return False
+
+    if data.get(_BYPASS_ACCEPTED_KEY) is True:
+        return False
+
+    data[_BYPASS_ACCEPTED_KEY] = True
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
 
 
 def _settings_path(claude_dir: Path) -> Path:
