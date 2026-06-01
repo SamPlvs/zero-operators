@@ -1298,3 +1298,27 @@ For PR #92 the corrective sequence was: identify the actual CI gates by reading 
 ### Verified Solution
 
 Seed (`_maybe_seed_priors`), load (`_prompt_memory` injects project priors), write (`_record_learning` on loop DEAD_END/PLATEAU via `EvolutionEngine.record_failure` + `append_prior`), promote (`src/zo/promote.py` fail-closed sanitizer + `zo learnings promote`). 4 `log_error(message=)` → `description=` fixes + a forced-failure-branch regression test. New `tests/unit/test_promote.py` (15 adversarial cases) + seed/load/write/bug-fix tests. +32 tests (780 → 812, both Python 3.11 & 3.12). **Cross-reference:** PR-009 (built ≠ wired), PR-005/PR-035/PR-040 (enforcement over aspiration), PR-024/PR-030 (confidentiality — the promotion sanitizer reuses the validate-docs client blocklist).
+
+---
+
+## PR-042: tmux Session-Liveness Detection Must Have a Startup Grace + Confirmation Debounce — A Single Instant Reading Must Not Tear Down a Healthy Session
+
+**Source:** Session 036 (2026-06-01), prod project continue run
+**Root cause category:** incomplete_rule (fragile liveness detection)
+
+**Failure:** `zo continue --repo . --bypass-permissions` launched the lead session in tmux ("TUI ready after 5s", "Launched lead session in tmux pane=…") and then logged "Lead session completed, agent window closed" **~15ms later**, closing immediately with no visible Claude window. An earlier same-day run with the same binary had run for 4+ hours, so it was not a version/config issue. Root cause: `LifecycleWrapper._wait_tmux` polled liveness with **zero grace period and zero debounce** — its first poll fired milliseconds after launch (before Claude's TUI had fully claimed the pane, and while a one-time workspace-trust dialog for the newly `--add-dir`'d delivery repo could still be up), and a *single* negative reading (`not pane_exists or not claude_running`) immediately concluded the session ended and killed the window. Any transient — startup race, trust dialog, momentary `tmux display-message` hiccup, brief foreground flip — looked identical to a real `/exit`.
+
+### Rules
+
+1. **Liveness/teardown decisions driven by polling an external async process need a startup grace window — the first poll often fires before the thing being watched has finished starting.** The launch path already polled carefully for *readiness* (`_wait_for_tui_ready` requires stable content) but the *completion* path trusted an instantaneous first reading. Asymmetric care is the bug: be at least as skeptical about "it died" as about "it's ready."
+   - **Why:** `_wait_tmux`'s first iteration runs ~15ms after `_launch_tmux` returns; `pane_current_command` and pane existence are not reliably settled that early, and a trust dialog can transiently alter what tmux reports.
+   - **How to apply:** ignore negative readings for the first `_STARTUP_GRACE_POLLS` polls; never conclude "exited" inside the grace window.
+
+2. **Never tear down on a single negative sample — require consecutive confirmations (debounce).** A momentary subprocess-query failure or a one-frame foreground flip is not an exit. Demand `_DEAD_CONFIRM_POLLS` consecutive negatives, and re-check on a short interval (`_DEAD_RECHECK_INTERVAL`) so a genuine exit is still detected promptly.
+   - **How to apply:** maintain a `consecutive_dead` counter that resets on any positive reading; only conclude when it reaches the threshold. Keep responsiveness by shortening the sleep while a suspected exit is being confirmed.
+
+3. **Treat a tmux/subprocess query failure as "unknown," not "dead."** The debounce already absorbs this, but it is the explicit reasoning: `tmux` returning non-zero / timing out means "I couldn't tell," which must not be coerced into a teardown.
+
+### Verified Solution
+
+`_wait_tmux` rewritten with `_STARTUP_GRACE_POLLS=2` (ignore negatives for ~first 20s at the 10s default interval), `_DEAD_CONFIRM_POLLS=2` (consecutive negatives required), and `_DEAD_RECHECK_INTERVAL=2.0` (fast re-poll while confirming). The old test that asserted complete-on-first-negative was updated to expect confirmed-exit-on-4th-poll; added `test_tmux_wait_ignores_negative_during_startup_grace` (regression for the 15ms teardown) and `test_tmux_wait_debounces_transient_negative`. 53 wrapper tests pass, ruff clean. **Cross-reference:** PR-040/PR-041 family is about wiring/enforcement; this one is about *robustness of the monitoring loop itself* — the watcher must not be more fragile than the thing it watches.

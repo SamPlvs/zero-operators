@@ -1173,3 +1173,13 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 - Category-allowlist-only (skip blocklist) — rejected; defence-in-depth wants generic-category AND blocklist-clear AND no-blocklist-refusal.
 
 **Outcome:** modified `src/zo/{orchestrator,experiments,cli,draft}.py`; new `src/zo/promote.py`; docs (`the-team`, `memory-and-continuity`, `overview`, `introduction`, `installation`, `demo.html`, `COMMANDS.md`, `README.md`); `.gitignore`; new `tests/unit/test_promote.py` (15) + additions to test_orchestrator/test_experiments/test_training_metrics/test_cli. **+32 tests (780 → 812 + 7 skipped), green on Python 3.11 AND 3.12, ruff `src/` clean, validate-docs 0 failures.** PR-041 added. **Deferred (audit #13/#15/#16/#17):** semantic reindex at session-end, agent failure-reporting protocol, `end_session` DECISION_LOG/PRIORS integration, `zo retrospective` CLI. Branch `claude/self-evolution`, stacked on #95.
+
+---
+
+## Decision: 2026-06-01T11:30:00Z
+**Type:** BUGFIX
+**Title:** Add startup grace + confirmation debounce to tmux session-liveness detection
+**Decision:** Rewrite `LifecycleWrapper._wait_tmux` to (1) ignore negative liveness readings for the first `_STARTUP_GRACE_POLLS=2` polls and (2) require `_DEAD_CONFIRM_POLLS=2` consecutive negatives (re-checked every `_DEAD_RECHECK_INTERVAL=2.0`s) before concluding the session ended.
+**Rationale:** `zo continue` in tmux mode launched the lead session correctly, then logged "Lead session completed, agent window closed" ~15ms later and killed the window — the first liveness poll fired before Claude's TUI claimed the pane (and while a one-time workspace-trust dialog could be up), and a single negative reading was treated as a real `/exit`. The launch path already polls carefully for *readiness*; the completion path must be equally skeptical about "it died."
+**Alternatives considered:** (1) Pre-trust `--add-dir` directories to suppress the trust dialog — fixes one trigger, not the class (any transient still tears down). (2) Time-based grace only — breaks under mocked time in tests; chose poll-count-based grace + debounce.
+**Outcome:** 53 wrapper tests pass (old complete-on-first-negative test updated + 2 regressions added), ruff clean, validate-docs 0 failures. PR-042 in PRIORS.md. Branch `claude/tmux-liveness-grace`, PR opened.

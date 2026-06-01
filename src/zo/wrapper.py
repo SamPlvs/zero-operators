@@ -67,6 +67,19 @@ class LifecycleWrapper:
         base_backoff: Base backoff in seconds for rate-limit waits.
     """
 
+    # tmux liveness-detection guards (see ``_wait_tmux``).
+    # Number of initial polls during which negative liveness readings are
+    # ignored — covers Claude's TUI startup and any one-time workspace-trust
+    # dialog. With the default 10s poll interval this is ~20s of grace.
+    _STARTUP_GRACE_POLLS = 2
+    # Consecutive negative readings required (after grace) to conclude the
+    # session ended — debounces transient tmux query failures / foreground
+    # flips so a single blip can't tear down a healthy session.
+    _DEAD_CONFIRM_POLLS = 2
+    # Shorter sleep used while confirming a suspected exit, so a genuine exit
+    # is still detected promptly instead of after a full poll interval.
+    _DEAD_RECHECK_INTERVAL = 2.0
+
     def __init__(
         self,
         comms: CommsLogger,
@@ -648,10 +661,31 @@ class LifecycleWrapper:
         1. Pane disappeared entirely (user killed the window) → done.
         2. Pane alive but Claude is no longer the foreground process
            (user typed /exit, Claude exited) → kill the window → done.
+
+        Two guards prevent a transient reading from tearing down a
+        healthy session (see ``_STARTUP_GRACE_POLLS`` /
+        ``_DEAD_CONFIRM_POLLS``):
+
+        * **Startup grace** — the first poll fires within milliseconds
+          of launch, before Claude's TUI has fully claimed the pane and
+          while a one-time workspace-trust dialog may still be up.  We
+          ignore negative readings for the first few polls so startup
+          races never look like an immediate exit.
+        * **Confirmation debounce** — a single negative reading (a
+          momentary tmux query hiccup, or a brief foreground flip) is
+          not enough.  We require several *consecutive* negatives before
+          concluding the session ended.
+
+        Without these, an instantaneous first poll could log
+        "Session completed" ~15ms after launch and kill a session that
+        was in fact starting normally.
         """
         start_time = time.monotonic()
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
         pane_id = process.tmux_pane_id or ""
+
+        poll_count = 0
+        consecutive_dead = 0
 
         while True:
             self._check_gate_mode_change()
@@ -659,20 +693,39 @@ class LifecycleWrapper:
 
             pane_exists = self._tmux_pane_alive(pane_id)
             claude_running = pane_exists and self._tmux_claude_running(pane_id)
+            in_startup_grace = poll_count < self._STARTUP_GRACE_POLLS
+            poll_count += 1
 
             if not pane_exists or not claude_running:
-                # Claude exited — clean up the leftover shell window.
-                if pane_exists:
-                    self._kill_tmux_window(pane_id)
-                process = process.model_copy(update={
-                    "exit_code": 0, "completed_at": datetime.now(UTC),
-                    "status": AgentStatus.COMPLETED,
-                })
-                self._comms.log_checkpoint(
-                    agent="wrapper", phase="lifecycle", subtask="completion",
-                    progress="Lead session completed, agent window closed",
-                )
-                return process
+                # During startup grace, ignore negatives entirely — Claude
+                # may still be claiming the pane or showing a trust dialog.
+                if in_startup_grace:
+                    consecutive_dead = 0
+                else:
+                    consecutive_dead += 1
+                    if consecutive_dead >= self._DEAD_CONFIRM_POLLS:
+                        # Confirmed: Claude exited — clean up the shell window.
+                        if pane_exists:
+                            self._kill_tmux_window(pane_id)
+                        process = process.model_copy(update={
+                            "exit_code": 0, "completed_at": datetime.now(UTC),
+                            "status": AgentStatus.COMPLETED,
+                        })
+                        self._comms.log_checkpoint(
+                            agent="wrapper", phase="lifecycle",
+                            subtask="completion",
+                            progress="Lead session completed, agent window closed",
+                        )
+                        return process
+                    # Suspected exit but not yet confirmed — re-check soon
+                    # rather than waiting a full poll interval.
+                    if on_status:
+                        team_status = self.monitor_team(process.team_name)
+                        on_status(team_status, "")
+                    time.sleep(min(poll_interval, self._DEAD_RECHECK_INTERVAL))
+                    continue
+            else:
+                consecutive_dead = 0
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
