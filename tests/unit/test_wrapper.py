@@ -544,16 +544,23 @@ class TestWaitForCompletion:
     def test_tmux_wait_completes_when_pane_closes(
         self, mock_sleep: mock.MagicMock, wrapper: LifecycleWrapper
     ) -> None:
-        """tmux mode: session completes when pane disappears."""
+        """tmux mode: session completes once exit is *confirmed*.
+
+        With ``_STARTUP_GRACE_POLLS=2`` and ``_DEAD_CONFIRM_POLLS=2``,
+        a pane that is dead from the start is ignored for the grace
+        polls, then needs the confirmation polls before we conclude —
+        so completion lands on the 4th poll, not the 1st.
+        """
         lead = LeadProcess(
             tmux_pane_id="%5", team_name="alpha",
             status=AgentStatus.SPAWNING,
         )
 
-        with mock.patch.object(
-            LifecycleWrapper, "_tmux_pane_alive",
-            side_effect=[True, True, False],
-        ), mock.patch.object(
+        alive = mock.patch.object(
+            LifecycleWrapper, "_tmux_pane_alive", return_value=False,
+        )
+        kill = mock.patch.object(LifecycleWrapper, "_kill_tmux_window")
+        with alive as alive_mock, kill, mock.patch.object(
             wrapper, "monitor_team",
             return_value=TeamStatus(team_name="alpha"),
         ):
@@ -563,6 +570,74 @@ class TestWaitForCompletion:
 
         assert result.status == AgentStatus.COMPLETED
         assert result.exit_code == 0
+        # 2 grace polls (ignored) + 2 confirmation polls = 4 polls.
+        assert alive_mock.call_count == 4
+
+    @mock.patch("zo.wrapper.time.sleep")
+    def test_tmux_wait_ignores_negative_during_startup_grace(
+        self, mock_sleep: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """A negative reading on the very first poll must NOT complete.
+
+        Regression for the ~15ms teardown: the first liveness poll fires
+        immediately after launch, before Claude's TUI has claimed the
+        pane.  The startup grace must absorb that.
+        """
+        lead = LeadProcess(
+            tmux_pane_id="%5", team_name="alpha",
+            status=AgentStatus.SPAWNING,
+        )
+
+        # Dead on poll 0 (grace, ignored), then alive and running forever —
+        # the only way the loop terminates is via the timeout path, which
+        # proves the early negative did NOT complete the session.
+        with mock.patch.object(
+            LifecycleWrapper, "_tmux_pane_alive",
+            side_effect=[False] + [True] * 50,
+        ), mock.patch.object(
+            LifecycleWrapper, "_tmux_claude_running", return_value=True,
+        ), mock.patch.object(
+            wrapper, "monitor_team",
+            return_value=TeamStatus(team_name="alpha"),
+        ):
+            result = wrapper.wait_for_completion(
+                lead, poll_interval=0.01, timeout=-1,
+                on_status=lambda *_: None,
+            )
+
+        # Hit the timeout branch rather than completing on the first negative.
+        assert result.status == AgentStatus.TIMED_OUT
+
+    @mock.patch("zo.wrapper.time.sleep")
+    def test_tmux_wait_debounces_transient_negative(
+        self, mock_sleep: mock.MagicMock, wrapper: LifecycleWrapper
+    ) -> None:
+        """A single post-grace negative, then alive again, must NOT complete."""
+        lead = LeadProcess(
+            tmux_pane_id="%5", team_name="alpha",
+            status=AgentStatus.SPAWNING,
+        )
+
+        # polls: grace,grace, dead(1), alive(reset), dead(1), dead(2)->complete
+        running_seq = [True, True, False, True, False, False]
+        with mock.patch.object(
+            LifecycleWrapper, "_tmux_pane_alive", return_value=True,
+        ), mock.patch.object(
+            LifecycleWrapper, "_tmux_claude_running",
+            side_effect=running_seq,
+        ), mock.patch.object(
+            LifecycleWrapper, "_kill_tmux_window",
+        ), mock.patch.object(
+            wrapper, "monitor_team",
+            return_value=TeamStatus(team_name="alpha"),
+        ) as _mt, mock.patch.object(
+            LifecycleWrapper, "_capture_tmux_pane", return_value="",
+        ):
+            result = wrapper.wait_for_completion(
+                lead, poll_interval=0.01, on_status=lambda *_: None
+            )
+
+        assert result.status == AgentStatus.COMPLETED
 
 
 # ------------------------------------------------------------------ #
