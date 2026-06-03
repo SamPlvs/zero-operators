@@ -1193,3 +1193,13 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 **Rationale:** `--bypass-permissions` makes Claude 2.1.159 show a one-time interactive consent dialog (default "No, exit"). The tmux launcher mistakes the dialog for the ready TUI (`_wait_for_tui_ready`), pastes the lead prompt + Enter, selects the default, and Claude quits on startup — the session dies before any work. The lead Claude's session transcript (killed mid-Bash-call) and live instrumentation of the real launch path confirmed the mechanism; PR-042's grace/debounce had only delayed the symptom (15ms → 22s). Passing the flag IS the user's consent, so persisting it is faithful to intent.
 **Alternatives considered:** (1) Screen-scrape the dialog and send "2"+Enter to accept — works but is fragile to menu-layout changes across Claude versions. (2) Rely on PR-042 grace/debounce alone — rejected: it never stops Claude from exiting, only delays detection. (3) Use `--dangerously-skip-permissions` CLI flag in tmux — historically exits immediately in interactive mode.
 **Outcome:** End-to-end verified (flag removed → wrapper re-set it → Claude alive 32s, past the old 22s death). 53 wrapper + 16 overlay tests pass, ruff clean, validate-docs 0 failures. PR-043 added. Stacked on PR-042 in PR #97.
+
+---
+
+## Decision: 2026-06-03T10:30:00Z
+**Type:** CONTENT
+**Title:** Add two contributors (Bryce Bartmann, James Friesen) to the public website
+**Decision:** Insert two `<li>` entries into the footer Contributors list in `website/src/pages/index.html`, preserving the existing alphabetical-by-surname ordering — Bartmann between Agrawal and Chatfield, Friesen between Davies and Imrie — each linking to the person's LinkedIn in the established `<a target="_blank" rel="noopener">` pattern.
+**Rationale:** User request. The list is ordered by *last* name, not first (Agrawal, Chatfield, Dai, Davies, Imrie, Podatelev), so placement follows surname. Confirmed the surname spelling "Bartmann" (user typed "Bartmaan") from the LinkedIn slug `bryce-bartmann`; user approved.
+**Alternatives considered:** First-name ordering — rejected; the existing list is demonstrably surname-ordered. Committing the `package-lock.json` that `npm install` generated during verification — rejected; the repo tracks no lockfile, so it was removed to keep the diff to the intended change.
+**Outcome:** Single-file content diff + memory. Verified via a real Astro build (exit 0); rendered `dist/index.html` order correct. validate-docs 0 failures. PR-044 added (website preview/verification gotcha). Branch `claude/website-contributors`.

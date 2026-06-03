@@ -1353,3 +1353,26 @@ WARNING: Claude Code running in Bypass Permissions mode
 ### Verified Solution
 
 `ensure_bypass_disclaimer_accepted(config_path=None)` in `permissions_overlay.py` sets `bypassPermissionsModeAccepted: true` in `~/.claude.json` (idempotent, preserves all keys, refuses to overwrite corrupt JSON). Called from `_launch_tmux` (logs a checkpoint when newly set) and `_launch_headless` whenever `bypass_permissions` is True. **End-to-end verified:** with the flag removed to simulate a fresh machine, a full wrapper launch re-set it and Claude stayed alive 16/16 polls (32s, past the old 22s death). +4 overlay tests (69 overlay+wrapper tests pass), ruff clean. Ships in PR #97 alongside PR-042. **Cross-reference:** PR-001 (Claude CLI interactive-mode constraints — same family: the TUI has launch-time interaction quirks the wrapper must handle), PR-042 (the grace/debounce defense-in-depth this supersedes as root cause).
+
+---
+
+## PR-044: Previewing the website needs `npm install` first (npx floats Astro to a mismatched major)
+**Source:** Session 037 (2026-06-03), verifying a `website/` content change
+**Root cause category:** novel_case
+**Failure:** Starting the Astro dev server to verify a website change failed — the `npx astro dev` process died on first launch and the page never loaded (`chrome-error://`, HTTP 000 on :4321).
+
+### Rules
+
+1. **`website/` has no committed lockfile and a fresh working copy often has no `node_modules`.** Running `npx astro dev`/`build` in that state makes npx fetch the *latest* Astro (observed: 6.4.3) while `package.json` pins `astro: ^5.0.0` — a major-version mismatch, and the transient install/process proved unstable under the preview supervisor.
+   - **Why:** `preview_logs` showed `npm warn exec The following package was not found and will be installed: astro@6.4.3`, then the managed server vanished ("Server not found").
+   - **How to apply:** to preview or verify the site, run `npm install` in `website/` first (installs the pinned Astro 5), *then* `npx astro build`/`astro dev`.
+2. **For a static-content change, a one-shot `astro build` + grep of `dist/index.html` is the most reliable verification** — it runs to completion and exits, instead of depending on a long-lived dev server that can race the browser navigation on first compile.
+3. **`npm install` creates `website/package-lock.json`, which the repo does not track.** Remove it after verifying (or deliberately decide to commit a lockfile) so content diffs stay scoped. `node_modules/` and `dist/` are already gitignored.
+
+### Verified Solution
+
+```
+cd website && npm install && npx astro build      # pinned Astro 5, runs to completion
+grep -oE '<a href="[^"]*">[^<]*</a>' dist/index.html   # confirm rendered output / ordering
+rm -f package-lock.json                            # keep the diff to the intended change
+```
