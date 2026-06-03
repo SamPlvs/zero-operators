@@ -1039,7 +1039,9 @@ def build(
     # 6. Create Orchestrator
     gm = _gate_mode_from_str(effective_gate_mode)
     memory.write_gate_mode(gm.value)
-    orchestrator = Orchestrator(
+    from zo.extensions import get_orchestrator_class
+    orchestrator_cls = get_orchestrator_class() or Orchestrator
+    orchestrator = orchestrator_cls(
         plan=plan, target=target, memory=memory, comms=comms,
         semantic=semantic, zo_root=zo_root, gate_mode=gm,
         plan_path=plan_path,
@@ -3167,3 +3169,15 @@ TODO: Define constraints (compute, time, compliance).
 
 TODO: Define milestones.
 """
+
+
+# ---------------------------------------------------------------------------
+# Extension plugins (downstream builds add commands without editing core)
+# ---------------------------------------------------------------------------
+# Applied at import, after all core commands are defined, so a plugin may also
+# augment existing commands. No-op in the public build (nothing registered).
+# Discovers the "zo.commands" entry-point group; a broken plugin is logged and
+# skipped, never breaking the core CLI.
+from zo.extensions import load_cli_plugins as _load_cli_plugins  # noqa: E402
+
+_load_cli_plugins(cli)

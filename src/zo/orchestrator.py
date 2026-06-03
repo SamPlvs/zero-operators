@@ -300,18 +300,29 @@ class Orchestrator:
 
     # -- Workflow decomposition -----------------------------------------------
 
-    def decompose_plan(self) -> WorkflowDecomposition:
-        """Decompose the plan into phases and agent contracts."""
-        self._ensure_custom_agents()
+    def _resolve_phases(self) -> tuple[WorkflowMode, list[PhaseDefinition]]:
+        """Resolve the workflow mode and its phase definitions for this plan.
 
+        Extension point: subclasses may override this to supply phases from an
+        alternative source (e.g. a custom workflow definition), falling back to
+        ``super()._resolve_phases()`` for the built-in ML modes. The default
+        returns the built-in phase factory for the plan's ``WorkflowMode``
+        (``classical_ml`` when unset) — identical to the previous inline logic.
+        """
+        from zo._orchestrator_phases import classical_ml_phases
         mode = (
             self._plan.workflow.mode
             if self._plan.workflow
             else WorkflowMode.CLASSICAL_ML
         )
-        from zo._orchestrator_phases import classical_ml_phases
         factory = MODE_PHASE_FACTORY.get(mode, classical_ml_phases)
-        phases = factory()
+        return mode, factory()
+
+    def decompose_plan(self) -> WorkflowDecomposition:
+        """Decompose the plan into phases and agent contracts."""
+        self._ensure_custom_agents()
+
+        mode, phases = self._resolve_phases()
 
         active = self._plan.agents.active_agents if self._plan.agents else []
         # Include custom agents from the plan in the active list
