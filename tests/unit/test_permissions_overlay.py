@@ -262,6 +262,42 @@ class TestPermissionsBlockNotDict:
 
 
 # ------------------------------------------------------------------ #
+# Scenario 6: inherit an already-active bypass overlay (concurrent sessions)
+# ------------------------------------------------------------------ #
+
+
+class TestInheritExistingBypass:
+    """A second concurrent bypass session must inherit, not clobber.
+
+    Regression for the lingering-bypass bug: if a report session applied its
+    own overlay while a model session already held one, the model exiting first
+    would leave the repo stuck in bypassPermissions mode after both exit.
+    """
+
+    def test_apply_is_noop_when_bypass_already_active(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        settings = claude_dir / "settings.local.json"
+        settings.write_text(
+            json.dumps(
+                {"permissions": {"allow": ["X"], "defaultMode": "bypassPermissions"}},
+            )
+            + "\n",
+        )
+        before = settings.read_text()
+
+        restore = apply_bypass_overlay(claude_dir)
+
+        # Inherited: file untouched, no backup created.
+        assert settings.read_text() == before
+        assert not (claude_dir / "settings.local.json.zo-backup").exists()
+
+        # Restore is a no-op — it must NOT remove the owner's live overlay.
+        restore()
+        assert settings.read_text() == before
+
+
+# ------------------------------------------------------------------ #
 # Scenario 5: bypass-disclaimer acceptance flag (~/.claude.json)
 # ------------------------------------------------------------------ #
 

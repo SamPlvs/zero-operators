@@ -128,6 +128,21 @@ def apply_bypass_overlay(claude_dir: Path) -> Callable[[], None]:
     settings_file = _settings_path(claude_dir)
     backup_file = _backup_path(claude_dir)
 
+    # 0. If a bypass overlay is already active (e.g. a concurrent orchestrator
+    #    session set it), INHERIT it: do not back up, rewrite, or restore.
+    #    Re-applying would clobber the owner's backup, and restoring our captured
+    #    copy on exit could leave the repo in bypass mode after the owner has
+    #    already restored the true original. A no-op is the only safe behaviour
+    #    for a second concurrent bypass session.
+    if settings_file.exists():
+        try:
+            _current = json.loads(settings_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            _current = None
+        _perms = _current.get("permissions") if isinstance(_current, dict) else None
+        if isinstance(_perms, dict) and _perms.get("defaultMode") == "bypassPermissions":
+            return lambda: None
+
     # 1. Capture original (or mark its absence).
     if settings_file.exists():
         original_content = settings_file.read_text(encoding="utf-8")
