@@ -192,6 +192,28 @@ zo learnings promote --project NAME [--repo PATH] [--dry-run]
 
 **Fail-closed by design** (the platform repo is public): only priors in generic categories (`auto-learning`, `evolution`) that clear the client blocklist (`scripts/.client-blocklist`) are promoted. A prior that is plan-seeded / `domain`, or that matches a client identifier, is **blocked** — reported for manual review, never auto-rewritten. With no blocklist file configured, **nothing** is promoted. `--dry-run` screens and reports without writing. Every run prints an auditable promoted / blocked / duplicate report.
 
+### zo report
+
+Launch a conversational report session that runs **safely concurrent** with a primary `zo continue` model session on the same project (a *surrogate* session).
+
+```
+zo report [project-name] [--repo PATH] [--objective TEXT] [--resume SURROGATE_ID] [--no-tmux] [--bypass-permissions] [--no-consolidate]
+```
+
+An Opus "report lead" runs in an isolated git worktree on a `report/<id>` branch. It reads canonical `.zo/memory` as a snapshot and the live `.zo/experiments/` results from disk, spawns `oracle-qa` (verify results) and `data-engineer` (verify data), and writes the LaTeX report itself (Opus — never Haiku for prose; spawn `documentation-agent` with `model="opus"` for a dedicated writer pane). Its decisions / priors / summary go to an isolated surrogate store at `.zo/surrogates/<id>/`; its artifacts stay on the report branch. Nothing it does touches canonical STATE, the phase machine, or the experiment registry. `--resume` reopens an existing surrogate by id.
+
+Isolation is structural: a per-PID lock file lets the platform detect concurrent sessions, avoid disturbing a live peer's permission overlay, and auto-consolidate when the last session exits. A report session never *cleans* the shared permission overlay (only orchestrator sessions do), and `--bypass-permissions` *inherits* an already-active bypass overlay instead of clobbering it — so a report can't disrupt a running `zo continue` or leave the repo stuck in bypass mode. If a model session was started *before* this feature shipped it isn't in the registry, so auto-merge can't detect it — pass `--no-consolidate` to that report run, then merge later with `zo consolidate` once the model session has ended.
+
+### zo consolidate
+
+Merge finished report surrogate(s) back into the canonical project.
+
+```
+zo consolidate [project-name] [--repo PATH] [--dry-run]
+```
+
+Folds surrogate memory (decisions appended, priors de-duplicated, session summaries copied) into `.zo/memory` and — when no other session is live — commits any pending worktree artifacts, merges the `report/<id>` branch, and removes the worktree. Runs automatically when the last live session exits; run it manually to land a finished report sooner. The memory fold is flock-guarded and safe even while the model session is live (the branch merge defers until it is safe). `--dry-run` reports without writing.
+
 ---
 
 ## Slash Commands

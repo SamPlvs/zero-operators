@@ -71,6 +71,25 @@ zo continue --repo $(pwd)
 
 The CLI auto-detects the `.zo/` layout, loads project context, and resumes from the recorded phase. Machine-specific paths (data location, GPU details) are re-detected via `zo.environment.detect_environment()` and written to `.zo/local.yaml` (gitignored).
 
+## Concurrent sessions: `zo report`
+
+You can run a second ZO session on the **same project** while a model run is going, without racing on shared state. `zo report` launches an Opus report-lead in an isolated git **worktree** (on a `report/<id>` branch) that:
+
+- reads canonical `.zo/memory` as a **snapshot** and `.zo/experiments` **live** from disk,
+- verifies results (`oracle-qa`) and data (`data-engineer`), and writes the LaTeX report into its worktree,
+- records its own decisions / priors / summary to a **delta store** at `.zo/surrogates/<id>/` — never touching canonical `STATE.md` or the experiment registry.
+
+This is the **surrogate** model: isolation is structural, so the report session cannot disrupt the running model session. When the last session exits (or you run `zo consolidate`), the surrogate's memory is folded back into `.zo/memory` (decisions appended, priors de-duplicated, summaries copied) and its branch is merged — but only when no other session is live. The memory fold is `flock`-guarded, and `--bypass-permissions` inherits an already-active overlay instead of clobbering it.
+
+```bash
+# Alongside a running `zo continue` model session:
+zo report --repo . --no-consolidate     # park work; don't merge while the model runs
+# ... converse with the report lead, write LaTeX ...
+zo consolidate --repo .                  # after the model session ends
+```
+
+`--no-consolidate` covers the one transitional case where the model session started *before* this feature (it isn't in the per-PID liveness registry, so auto-merge can't see it). Future model sessions register themselves and consolidation is automatic on last-session-close.
+
 ## Semantic search
 
 `DECISION_LOG.md` accumulates rapidly, a long-running project might have 200+ decision entries. The semantic index lets agents query in natural language:

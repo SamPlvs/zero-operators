@@ -28,6 +28,7 @@ class TestCliGroup:
         expected = {
             "build", "continue", "init", "status", "draft", "preflight",
             "gates", "watch-training", "migrate", "experiments", "learnings",
+            "report", "consolidate",
         }
         actual = set(cli.commands.keys())
         assert expected == actual

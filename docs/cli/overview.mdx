@@ -3,7 +3,7 @@ title: "CLI overview"
 description: "Every zo command, organised by when you'd reach for it."
 ---
 
-ZO ships ten user-facing CLI commands, plus 24 [slash commands](https://github.com/SamPlvs/zero-operators/blob/main/docs/COMMANDS.md) for use inside Claude Code sessions.
+ZO ships twelve user-facing CLI commands, plus 24 [slash commands](https://github.com/SamPlvs/zero-operators/blob/main/docs/COMMANDS.md) for use inside Claude Code sessions.
 
 ## The canonical pipeline
 
@@ -49,6 +49,12 @@ This is the ordering ZO assumes. Each command is designed for a specific point i
   </Card>
   <Card title="zo watch-training" icon="chart-line">
     Live training-metrics dashboard. Rich Live panel with progress bar, metrics table, sparkline. Auto-launched during Phase 4.
+  </Card>
+  <Card title="zo report" icon="file-pen">
+    Run an Opus report-lead in an isolated worktree, *concurrent* with a live model session. Verifies results, writes the LaTeX report; consolidates back safely. See [concurrent sessions](/concepts/memory-and-continuity#concurrent-sessions-zo-report).
+  </Card>
+  <Card title="zo consolidate" icon="code-merge">
+    Fold a finished report session's memory + artifacts back into the project. Runs automatically on last-session-close; use it to merge sooner.
   </Card>
 </CardGroup>
 

@@ -10,7 +10,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-812_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-854_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-21_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
@@ -111,6 +111,26 @@ zo continue                              # auto-detect if cwd has .zo/config.yam
 ```
 
 Finds `plans/{project}.md` and runs `zo build` on it. Shorthand for when you don't want to type the plan path. With `--repo`, reads project config from the delivery repo's `.zo/` directory. If cwd contains `.zo/config.yaml`, the project name is auto-detected.
+
+### `zo report`: Concurrent report session (surrogate)
+
+```bash
+zo report my-project                                  # alongside a running model session
+zo report --repo /path/to/delivery
+zo report my-project --resume report-20260604-141233  # reopen an existing report
+zo report --repo /path/to/delivery --no-consolidate   # if the model session predates this feature
+```
+
+Runs a conversational **Opus report lead** in an isolated git worktree, *safely concurrent* with a running `zo continue` model session on the same project. It reads canonical memory as a snapshot and live experiment results from disk, spawns `oracle-qa` + `data-engineer` to verify results and data, and writes the LaTeX report on its own `report/<id>` branch. Its decisions, priors, and artifacts live in an isolated surrogate store and are **consolidated back automatically when the last session closes** (or via `zo consolidate`). The model session is never disturbed, and the report writing stays on Opus.
+
+### `zo consolidate`: Merge a report back early
+
+```bash
+zo consolidate my-project
+zo consolidate --repo /path/to/delivery --dry-run
+```
+
+Folds a finished report surrogate's memory into `.zo/memory` and merges its branch artifacts. Runs automatically on last-session-close; use this to land a finished report sooner. The memory fold is safe even while the model session is live; the branch merge waits until no session is live.
 
 ### `zo draft`: Draft a plan with scout team
 
