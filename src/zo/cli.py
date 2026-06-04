@@ -724,6 +724,10 @@ def _launch_and_monitor(
     extra_env: dict[str, str] | None = None,
     headlines_disabled: bool = False,
     bypass_permissions: bool = False,
+    session_role: str = "model",
+    surrogate_id: str | None = None,
+    surrogate_worktree: Path | None = None,
+    consolidate_on_exit: bool = True,
 ) -> None:
     """Shared launch → monitor → end-session flow for build and draft.
 
@@ -740,15 +744,56 @@ def _launch_and_monitor(
             prompts are auto-approved. Set by ``--bypass-permissions``
             or implied by ``--gate-mode full-auto``.
     """
-    # Clean up any stale settings.local.json overlay left by a crashed
-    # previous run before launching this one.
+    # Surrogate liveness registry: detect concurrent sessions on this project so
+    # we neither disturb a live peer's permission overlay nor consolidate
+    # prematurely, and so the last session to exit can auto-consolidate report
+    # surrogates. Bookkeeping only — wrapped so it can never break a run.
+    import os as _os
+
+    _surro_repo = (
+        delivery_repo
+        if (delivery_repo is not None and (delivery_repo / ".zo").is_dir())
+        else None
+    )
+    _peers_live = False
+    if _surro_repo is not None:
+        try:
+            from zo import surrogate as _sg
+
+            _peers_live = bool(_sg.live_sessions(_surro_repo, exclude_pid=_os.getpid()))
+        except Exception:  # noqa: BLE001 - bookkeeping must never break a run
+            _peers_live = False
+
+    # Clean a stale settings.local.json overlay only for orchestrator (model)
+    # sessions, and only when no peer is live. The overlay is owned by the
+    # orchestrator lifecycle (build/continue); a surrogate (report) session must
+    # NEVER touch it — a model session already running (even one that predates
+    # the liveness registry, so `_peers_live` can't see it) may hold a live
+    # overlay, and reclaiming it would break that session (PR-038/PR-043).
     from zo.permissions_overlay import cleanup_stale_overlay
-    cleaned = cleanup_stale_overlay(zo_root / ".claude")
-    if cleaned:
+
+    if (
+        session_role == "model"
+        and not _peers_live
+        and cleanup_stale_overlay(zo_root / ".claude")
+    ):
         console.print(
             f"[{_DIM}]Restored .claude/settings.local.json from a previous "
             f"interrupted run.[/]"
         )
+
+    if _surro_repo is not None:
+        try:
+            from zo import surrogate as _sg
+
+            _sg.register_session(
+                _surro_repo,
+                role=session_role,
+                surrogate_id=surrogate_id,
+                worktree=surrogate_worktree,
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     use_tmux = not no_tmux
     console.print(f"\n[{_AMBER}]Launching lead session:[/] team={team_name}")
@@ -897,6 +942,22 @@ def _launch_and_monitor(
         orchestrator.end_session()
     if semantic:
         semantic.close()
+
+    # Surrogate teardown + auto-consolidation. Deregister this session; if its
+    # own surrogate (and any others) are no longer live, consolidate them back
+    # into canonical memory. Best-effort — never blocks shutdown.
+    if _surro_repo is not None:
+        try:
+            from zo import surrogate as _sg
+
+            _sg.deregister_session(_surro_repo)
+            if consolidate_on_exit:
+                from zo.consolidate import consolidate_all
+
+                for r in consolidate_all(_surro_repo):
+                    console.print(f"[{_AMBER}]Consolidated[/] {r.summary}")
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"[{_DIM}]Consolidation skipped: {exc}[/]")
 
 
 @cli.command()
@@ -3178,6 +3239,166 @@ TODO: Define milestones.
 # augment existing commands. No-op in the public build (nothing registered).
 # Discovers the "zo.commands" entry-point group; a broken plugin is logged and
 # skipped, never breaking the core CLI.
+@cli.command("report")
+@click.argument("project_name", required=False, default=None)
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to the delivery repo with a .zo/ directory.",
+)
+@click.option(
+    "--objective", default=None,
+    help="What this report session should focus on (default: verify + write).",
+)
+@click.option(
+    "--resume", default=None, metavar="SURROGATE_ID",
+    help="Resume an existing report surrogate by id instead of creating one.",
+)
+@click.option("--no-tmux", is_flag=True, help="Disable tmux agent visibility.")
+@click.option(
+    "--bypass-permissions", is_flag=True,
+    help="Auto-approve Claude Code tool-call prompts for this report session.",
+)
+@click.option(
+    "--no-consolidate", is_flag=True,
+    help="Don't auto-consolidate on exit; run `zo consolidate` manually later. "
+    "Use this when a model session started BEFORE this feature is still running "
+    "(it isn't in the liveness registry, so auto-merge can't detect it).",
+)
+def report(
+    project_name: str | None,
+    repo: str | None,
+    objective: str | None,
+    resume: str | None,
+    no_tmux: bool,
+    bypass_permissions: bool,
+    no_consolidate: bool,
+) -> None:
+    """Run a conversational report session alongside a running model session.
+
+    Launches an Opus 'report lead' in an isolated git worktree that verifies the
+    project's data/work/results and writes the LaTeX report. It reads canonical
+    memory as a snapshot and live experiment results from disk, records its own
+    delta memory, and consolidates back automatically when sessions close (or
+    via `zo consolidate`). Safe to run while `zo continue` drives the model.
+    """
+    from zo.comms import CommsLogger
+    from zo.project_config import has_zo_dir, load_project_config
+    from zo.report import build_report_prompt, report_add_dirs
+    from zo.surrogate import create_surrogate, load_surrogate
+    from zo.wrapper import LifecycleWrapper
+
+    zo_root = _zo_root()
+    delivery = Path(repo).resolve() if repo else None
+
+    if project_name is None:
+        detect_path = delivery or Path.cwd()
+        if has_zo_dir(detect_path):
+            project_name = load_project_config(detect_path).project_name
+            delivery = delivery or detect_path
+        else:
+            console.print("[red bold]No project name given and no .zo/ in cwd.[/]")
+            console.print(
+                "Usage: [bold]zo report PROJECT[/] or [bold]zo report --repo /path[/]"
+            )
+            raise SystemExit(1)
+
+    pctx = _load_project_context(project_name, delivery_repo=delivery)
+    if pctx.layout != "zo-dir":
+        console.print("[red bold]zo report requires a .zo/ (portable) delivery repo.[/]")
+        raise SystemExit(1)
+    main_delivery = pctx.delivery_repo
+
+    if resume:
+        existing = load_surrogate(main_delivery, resume)
+        if existing is None:
+            console.print(f"[red bold]No report surrogate {resume!r} found.[/]")
+            raise SystemExit(1)
+        surrogate = create_surrogate(
+            main_delivery, role=existing.role, surrogate_id=existing.surrogate_id,
+        )
+    else:
+        surrogate = create_surrogate(main_delivery, role="report")
+
+    _show_banner(project=project_name, mode="report")
+    console.print(
+        f"[{_DIM}]Worktree: {surrogate.worktree}  |  branch: {surrogate.branch}[/]"
+    )
+
+    session_id = f"r-{uuid.uuid4().hex[:8]}"
+    comms = CommsLogger(
+        log_dir=zo_root / "logs" / "comms",
+        project=f"{project_name}-report", session_id=session_id,
+    )
+    wrapper = LifecycleWrapper(comms=comms, log_dir=zo_root / "logs" / "wrapper")
+    _launch_and_monitor(
+        wrapper=wrapper,
+        prompt=build_report_prompt(
+            project_name=project_name,
+            surrogate=surrogate,
+            canonical_memory=pctx.make_memory(),
+            main_delivery=main_delivery,
+            objective=objective,
+        ),
+        team_name=f"zo-{project_name}-report",
+        zo_root=zo_root,
+        no_tmux=no_tmux,
+        model="opus",
+        project_name=project_name,
+        delivery_repo=main_delivery,
+        add_dirs=report_add_dirs(surrogate, main_delivery),
+        bypass_permissions=bypass_permissions,
+        session_role="report",
+        surrogate_id=surrogate.surrogate_id,
+        surrogate_worktree=surrogate.worktree,
+        consolidate_on_exit=not no_consolidate,
+    )
+
+
+@cli.command("consolidate")
+@click.argument("project_name", required=False, default=None)
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to the delivery repo with a .zo/ directory.",
+)
+@click.option(
+    "--dry-run", is_flag=True,
+    help="Show what would be consolidated without writing anything.",
+)
+def consolidate(project_name: str | None, repo: str | None, dry_run: bool) -> None:
+    """Merge finished report surrogate(s) back into the canonical project.
+
+    Folds surrogate memory (decisions, priors, summaries) into .zo/memory and,
+    when no other session is live, merges each report branch's artifacts and
+    removes its worktree. Runs automatically when the last session closes; use
+    it to merge a finished report sooner — memory folds even while the model
+    session is live, and the branch merge waits until it's safe.
+    """
+    from zo.consolidate import consolidate_all
+    from zo.project_config import has_zo_dir, load_project_config
+
+    delivery = Path(repo).resolve() if repo else None
+    if project_name is None:
+        detect_path = delivery or Path.cwd()
+        if not has_zo_dir(detect_path):
+            console.print(
+                "[red bold]No .zo/ delivery repo found (pass PROJECT or --repo).[/]"
+            )
+            raise SystemExit(1)
+        project_name = load_project_config(detect_path).project_name
+        delivery = delivery or detect_path
+    delivery = _load_project_context(project_name, delivery_repo=delivery).delivery_repo
+
+    reports = consolidate_all(delivery, dry_run=dry_run)
+    if not reports:
+        console.print(f"[{_DIM}]No pending report surrogates to consolidate.[/]")
+        return
+    label = "Would consolidate" if dry_run else "Consolidated"
+    for r in reports:
+        console.print(f"[{_AMBER}]{label}[/] {r.summary}")
+        for note in r.notes:
+            console.print(f"    [{_DIM}]{note}[/]")
+
+
 from zo.extensions import load_cli_plugins as _load_cli_plugins  # noqa: E402
 
 _load_cli_plugins(cli)

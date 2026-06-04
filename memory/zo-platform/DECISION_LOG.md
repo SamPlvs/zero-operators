@@ -1203,3 +1203,19 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 **Rationale:** User request. The list is ordered by *last* name, not first (Agrawal, Chatfield, Dai, Davies, Imrie, Podatelev), so placement follows surname. Confirmed the surname spelling "Bartmann" (user typed "Bartmaan") from the LinkedIn slug `bryce-bartmann`; user approved.
 **Alternatives considered:** First-name ordering — rejected; the existing list is demonstrably surname-ordered. Committing the `package-lock.json` that `npm install` generated during verification — rejected; the repo tracks no lockfile, so it was removed to keep the diff to the intended change.
 **Outcome:** Single-file content diff + memory. Verified via a real Astro build (exit 0); rendered `dist/index.html` order correct. validate-docs 0 failures. PR-044 added (website preview/verification gotcha). Branch `claude/website-contributors`.
+
+---
+
+## Decision: 2026-06-04T00:00:00Z
+**Type:** FEATURE + ARCHITECTURE
+**Title:** Concurrent report sessions (surrogate model) — `zo report` / `zo consolidate`
+
+**Decision:** Add a *surrogate session* capability so a second ZO session can run on the same project as the primary model session without racing on shared state. `zo report` launches an Opus report-lead (interactive, same `_launch_and_monitor` path as build/continue) in a git worktree on a `report/<id>` branch; it reads canonical `.zo/memory` as a snapshot + `.zo/experiments` live, verifies via `oracle-qa` + `data-engineer`, writes LaTeX to the worktree, and records DECISION_LOG/PRIORS/session-summary deltas to an isolated store at `.zo/surrogates/<id>/`. `zo consolidate` (also auto on last-session-close) folds those deltas into canonical memory (append decisions, dedup priors, copy summaries — **never** STATE), then commits + merges the report branch when no other session is live. Modules: `surrogate.py`, `consolidate.py`, `report.py`; `flock` added to `memory.append_decision/append_prior`; `_launch_and_monitor` gains per-PID liveness registration + auto-consolidation + role-gated overlay cleanup.
+
+**Rationale:** Users want a focused report/verification session alongside a long-running model session without overloading one context window or corrupting shared state. Isolation is structural (worktree + delta store + per-PID locks), not lock-bound, so collisions are impossible by construction; the only cross-session write (canonical memory fold + branch merge) is flock-guarded and deferred until safe. Honours the user's choices: 1 model + 1 report, surrogate-write + consolidate, auto-on-last-close + manual `zo consolidate`, artifacts-live/memory-snapshot, worktree-branch artifacts, Opus report writing (never Haiku).
+
+**Alternatives considered:** (1) Live-shared memory with file locks only — rejected; surrogate isolation removes the race rather than managing it. (2) Two concurrent orchestrators — rejected; STATE.md is last-writer-wins and there is no session lock (PR-037), so two phase-drivers corrupt each other. (3) Report writing on Sonnet/Haiku (reuse `documentation-agent` as-is) — rejected by the user; report synthesis needs Opus. (4) Cross-machine support — deferred; the design assumes a shared filesystem (same machine).
+
+**Safety hardenings (PRIORS PR-045):** a report session NEVER touches the shared permission overlay (cleanup gated to orchestrator-role), so it cannot disrupt a running `zo continue` even when that session predates the liveness registry; `--no-consolidate` suppresses exit-merge for that predates-the-registry case.
+
+**Outcome:** +27 tests (826 → 853), green on Python 3.11 AND 3.12, ruff clean, validate-docs 0 failures; 12-check real-`uv run zo` smoke passed. Docs: `docs/COMMANDS.md` + `README.md` gain `zo report` / `zo consolidate`. Branch `claude/zo-report-surrogate`, PR pending. PRIORS PR-045 added.

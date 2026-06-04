@@ -1376,3 +1376,26 @@ cd website && npm install && npx astro build      # pinned Astro 5, runs to comp
 grep -oE '<a href="[^"]*">[^<]*</a>' dist/index.html   # confirm rendered output / ordering
 rm -f package-lock.json                            # keep the diff to the intended change
 ```
+
+---
+
+## PR-045: A New Liveness/Coordination Mechanism Cannot See Sessions That Predate It — Make the New Side Safe Without Requiring the Old One to Participate
+
+**Source:** Session 038 (2026-06-04), concurrent report sessions (surrogate model)
+**Root cause category:** novel_case (proactive — caught in design/review, before any failure shipped)
+
+**Failure (averted):** The surrogate mechanism added a per-PID liveness registry so a report session can detect a live model session and (a) not reclaim its permission overlay and (b) defer the branch merge that mutates the shared working tree. But a model session **already running** when the feature ships has no lock file — it is invisible to `live_sessions()`. Relying on the registry alone, the report session would have concluded "no peer live," reclaimed the overlay, and merged into the working tree the model session was actively using — corrupting the very session the registry was meant to protect.
+
+### Rules
+
+1. **When you introduce a coordination mechanism (lock / registry / handshake), assume an in-flight participant that predates it and is therefore invisible.** The safe design must not depend on the old participant registering. Make the *new* side intrinsically non-disruptive to shared resources, and provide an explicit opt-out for the one irreversible cross-session action.
+   - **Why:** Deployments are not atomic. The first run after shipping the mechanism is exactly the run where the other side is still "old." A mechanism that is only safe once *both* sides are upgraded is unsafe at the moment it ships.
+   - **How to apply:** (a) Gate mutation of a shared resource to the role that *owns* it — here, only orchestrator (build/continue) sessions clean the permission overlay; a surrogate (report) session never touches it, so it cannot disrupt a running orchestrator regardless of registration. (b) For the irreversible cross-session action (the working-tree branch merge), provide an explicit flag (`--no-consolidate`) so the operator can suppress it for the one transitional run and merge later once the old session has ended.
+
+2. **Separate the always-safe part from the conditionally-safe part, and let the safe part proceed unconditionally.** The surrogate's isolated work (its own worktree + delta-memory store) touches nothing shared and runs freely; only consolidation (canonical memory fold + branch merge) is conditional. Splitting them means the feature delivers value immediately even when consolidation must wait.
+
+3. **`flock` is advisory — it protects only writers that both take the lock.** Adding flock to canonical memory appends protects future sessions (all on the new code) but not an old session appending without it; for that transition, prefer *not writing the shared file while the old session is live* (defer the fold) over trusting a lock the old process doesn't hold. Mitigated here by `--no-consolidate` plus O_APPEND atomicity for typical-sized entries.
+
+### Verified Solution
+
+`_launch_and_monitor` gates `cleanup_stale_overlay` on `session_role == "model"` (report sessions never touch the overlay) and threads a `consolidate_on_exit` flag; `zo report --no-consolidate` sets it False. Tests: `test_report_session_never_cleans_overlay` (report never cleans even with no peer registered), `test_launch_and_monitor_no_consolidate_skips_merge`, plus the concurrency / conflict / resume / STATE-untouched suite (`test_surrogate_edge.py`). **Cross-reference:** PR-037 (no session lock — single-session-by-design; this is the multi-session follow-on), PR-038 / PR-043 (permission-overlay lifecycle), PR-009 / PR-041 (built-must-be-wired — here, wired *and* made robust to the unupgraded peer).

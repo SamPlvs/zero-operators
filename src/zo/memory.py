@@ -26,6 +26,11 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-Unix fallback
+    fcntl = None  # type: ignore[assignment]
+
 # Re-export models so callers can ``from zo.memory import SessionState`` etc.
 from zo._memory_formats import (
     parse_decisions,
@@ -64,6 +69,27 @@ _render_decision = render_decision
 _parse_priors = parse_priors
 _render_prior = render_prior
 _render_session_summary = render_session_summary
+
+
+def _append_locked(path: Path, rendered: str) -> None:
+    """Append rendered markdown to a memory file under an exclusive file lock.
+
+    The lock lets a manual ``zo consolidate`` fold a surrogate's deltas into
+    canonical memory while the primary session may also be appending, without
+    interleaving entries. A leading blank line separates entries when the file
+    is non-empty. The size check happens under the lock to avoid a TOCTOU.
+    """
+    with open(path, "a", encoding="utf-8") as fh:
+        if fcntl is not None:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        try:
+            if path.stat().st_size > 0:
+                fh.write("\n")
+            fh.write(rendered)
+            fh.flush()
+        finally:
+            if fcntl is not None:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 
 
 class MemoryManager:
@@ -145,14 +171,9 @@ class MemoryManager:
         return parse_decisions(text)
 
     def append_decision(self, entry: DecisionEntry) -> None:
-        """Append a single decision entry to DECISION_LOG.md."""
+        """Append a single decision entry to DECISION_LOG.md (flock-guarded)."""
         self._memory_root.mkdir(parents=True, exist_ok=True)
-        path = self._memory_root / "DECISION_LOG.md"
-        rendered = render_decision(entry)
-        with open(path, "a", encoding="utf-8") as fh:
-            if path.stat().st_size > 0:
-                fh.write("\n")
-            fh.write(rendered)
+        _append_locked(self._memory_root / "DECISION_LOG.md", render_decision(entry))
 
     # -- PRIORS.md ----------------------------------------------------------
 
@@ -167,14 +188,9 @@ class MemoryManager:
         return parse_priors(text)
 
     def append_prior(self, entry: PriorEntry) -> None:
-        """Append a single prior entry to PRIORS.md."""
+        """Append a single prior entry to PRIORS.md (flock-guarded)."""
         self._memory_root.mkdir(parents=True, exist_ok=True)
-        path = self._memory_root / "PRIORS.md"
-        rendered = render_prior(entry)
-        with open(path, "a", encoding="utf-8") as fh:
-            if path.stat().st_size > 0:
-                fh.write("\n")
-            fh.write(rendered)
+        _append_locked(self._memory_root / "PRIORS.md", render_prior(entry))
 
     def seed_priors(self, plan_priors: str) -> None:
         """Seed PRIORS.md from a plan.md domain priors section.
