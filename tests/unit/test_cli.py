@@ -31,7 +31,11 @@ class TestCliGroup:
             "report", "consolidate",
         }
         actual = set(cli.commands.keys())
-        assert expected == actual
+        # Subset, not equality: CLI plugins (zo.extensions' `zo.commands`
+        # entry-point group, PR #99) legitimately add commands when a
+        # downstream build is installed in the same environment. Equality
+        # would make the core suite fail in any env with a plugin present.
+        assert expected <= actual
 
     def test_version_option(self, runner: click.testing.CliRunner) -> None:
         result = runner.invoke(cli, ["--version"])
