@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Comms Feed</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ── Feed shell ─────────────────────────────────────────── */
+.feed {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--editor);
+}
+.feed-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.chip {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+  background: var(--editor);
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  padding: 5px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s var(--ease);
+}
+.chip:hover { border-color: var(--text-3); }
+.chip .car { color: var(--text-4); font-size: 9px; }
+.chip.chip-active {
+  color: var(--coral);
+  border-color: var(--coral-dim);
+  background: var(--coral-soft);
+}
+.chip.chip-active .car { color: var(--coral-dim); }
+.feed-search {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 11px;
+  max-width: 240px;
+  margin-left: auto;
+}
+.pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  padding: 6px 11px;
+  cursor: pointer;
+  flex: none;
+  transition: all 0.15s var(--ease);
+}
+.pin:hover { border-color: var(--text-3); }
+.pin.pinned {
+  color: var(--coral);
+  border-color: var(--coral-dim);
+  background: var(--coral-soft);
+}
+
+/* ── Timeline ───────────────────────────────────────────── */
+.feed-body { position: relative; flex: 1; background: var(--editor); }
+.feed-timeline { position: relative; padding: 18px 20px 30px 0; }
+.feed-timeline::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  bottom: 20px;
+  left: 109.5px;
+  width: 1px;
+  background: var(--line);
+}
+.ev { display: flex; align-items: flex-start; padding: 6px 0; }
+.ev-time {
+  flex: none;
+  width: 86px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-4);
+  padding-top: 4px;
+  letter-spacing: 0.04em;
+}
+.ev-rail { flex: none; width: 48px; display: flex; justify-content: center; padding-top: 5px; }
+.ev-node {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-4);
+  position: relative; z-index: 1;
+  flex: none;
+}
+.ev-node.n-check { width: 5px; height: 5px; margin-top: 1px; }
+.ev-node.n-msg { background: var(--editor); border: 1.5px solid var(--text-3); }
+.ev-node.n-decision { background: var(--dusk); }
+.ev-node.n-gate-pass { background: var(--moss); }
+.ev-node.n-gate-eval { background: var(--editor); border: 1.5px solid var(--moss); }
+.ev-node.n-error { background: var(--coral); }
+.ev-main { flex: 1; min-width: 0; max-width: 680px; padding-right: 20px; }
+
+/* checkpoint — single dim compact row */
+.ev-checkpoint .ev-main {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  padding-top: 3px;
+  letter-spacing: 0.02em;
+}
+.ev-checkpoint .sep { color: var(--text-4); padding: 0 3px; }
+
+/* message — two-line row */
+.msg-head { display: flex; align-items: center; gap: 9px; padding-top: 1px; }
+.msg-route { font-family: var(--mono); font-size: 11px; color: var(--text); }
+.msg-route .arr { color: var(--text-4); padding: 0 3px; }
+.msg-route .to { color: var(--text-2); }
+.ev .badge { font-size: 9px; padding: 2px 7px; letter-spacing: 0.12em; }
+.msg-body {
+  font-size: 12.5px;
+  font-weight: 300;
+  color: var(--text-3);
+  line-height: 1.5;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msg-body code, .card-line code, .card-detail code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+/* cards — decision / gate / error */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 11px 14px 12px;
+  margin: 1px 0 4px;
+}
+.card-head { display: flex; align-items: center; gap: 10px; }
+.card-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  flex: none;
+}
+.card-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.card-agent { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--text-4); white-space: nowrap; }
+.card-line { font-size: 12.5px; font-weight: 300; color: var(--text-3); line-height: 1.55; margin-top: 5px; }
+
+.card-decision { border-left: 2px solid var(--dusk); }
+.card-decision .card-tag { color: var(--dusk); }
+.expand {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--dusk);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.expand:hover { text-decoration: underline; text-underline-offset: 3px; }
+.card-detail { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }
+.card-detail p { font-size: 12.5px; font-weight: 300; color: var(--text-2); line-height: 1.6; }
+.card-detail.hide { display: none; }
+.alt-line { margin-top: 8px; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); line-height: 1.6; }
+.alt-line .alt-k { color: var(--dusk); letter-spacing: 0.1em; text-transform: uppercase; font-size: 9px; padding-right: 6px; }
+
+.card-gate-pass { border-left: 2px solid var(--moss); }
+.card-gate-pass .card-tag { color: var(--moss); }
+.card-gate-eval { border-left: 2px solid var(--line-2); }
+.card-gate-eval .card-tag { color: var(--text-3); }
+.card-gate-eval .gate-route { color: var(--text-2); }
+.gate-route { font-family: var(--mono); font-size: 11.5px; color: var(--text); }
+.gate-route .arr { color: var(--text-4); padding: 0 3px; }
+.gate-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.gate-metric .gm-val { color: var(--text); font-weight: 500; }
+.gate-metric .gm-ok { color: var(--moss); }
+.tiers {
+  display: flex;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-4);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.tiers .tier-hit { color: var(--moss); }
+.gate-meta { font-family: var(--mono); font-size: 10px; color: var(--text-4); margin-top: 7px; letter-spacing: 0.02em; }
+.gate-meta code { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+
+.card-error { border-left: 2px solid var(--coral); }
+.card-error .card-tag { color: var(--coral); }
+.card-error .card-line { color: var(--text-2); }
+.resolved {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--moss);
+  letter-spacing: 0.02em;
+}
+.resolved svg { flex: none; }
+
+/* new-events pill (reuses .btn-primary for its on-coral ink) */
+.new-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 7px 16px;
+  gap: 7px;
+}
+.new-pill:hover { transform: translateX(-50%) translateY(-1px); }
+.new-pill.hide { display: none; }
+
+/* ── ZO sidebar (context, compact) ──────────────────────── */
+.zo-side { overflow: auto; font-size: 12px; }
+.side-h {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  padding: 16px 16px 7px;
+}
+.side-proj { padding: 2px 16px 14px; border-bottom: 1px solid var(--line); }
+.proj-name { font-family: var(--mono); font-size: 12px; color: var(--text); margin-bottom: 5px; }
+.proj-meta { font-family: var(--mono); font-size: 10px; color: var(--text-4); line-height: 1.7; }
+.side-block { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ph-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3.5px 16px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.ph-n { width: 10px; color: var(--text-4); flex: none; }
+.ph-name { flex: 1; color: var(--text-3); }
+.ph-row.done .ph-name { color: var(--text-2); }
+.ph-row.active .ph-name { color: var(--text); }
+.ph-check { color: var(--moss); display: flex; }
+.ph-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.ph-dot.live { background: var(--coral); }
+.ph-dot.todo { background: transparent; border: 1px solid var(--line-2); }
+.ag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3.5px 16px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+.ag-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.ag-dot.busy { background: var(--coral); }
+.ag-dot.watch { background: var(--dusk); }
+.ag-dot.idle { background: var(--text-4); }
+.ag-model { color: var(--text-4); font-size: 9.5px; }
+.ag-status { margin-left: auto; color: var(--text-4); font-size: 9.5px; }
+.ag-done { padding: 6px 16px 2px; font-family: var(--mono); font-size: 9.5px; color: var(--text-4); line-height: 1.7; }
+
+/* status bar dots */
+.sb-dot-moss { background: var(--moss); }
+.sb-dot-coral { background: var(--coral); }
+.tab-dot-coral { background: var(--coral); }
+
+/* standalone (filtered) feed frame */
+.feed-standalone { border-radius: 0; }
+.feed-standalone .feed-timeline { padding-bottom: 22px; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Every decision, <em>on the record</em>.</h1>
+      <p class="deck">The comms feed replays the team's JSONL audit trail as a live timeline — checkpoints, messages, decisions, gates and errors, filterable by agent, type and phase, pinned to the tail while the team works.</p>
+    </header>
+
+    <!-- ══════════ MAIN FEED ══════════ -->
+    <div class="mock-section">
+      <h2>Phase three to four, <em>as it happened</em></h2>
+      <p class="lede">One morning of mnist-digit-classifier: the session resumes into training at 09:14, the model-design gate clears at 09:15, exp-003 launches with rotation aug, and the phase_4 gate begins evaluating at 09:43. Five event types, five distinct treatments.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>COMMS FEED — EDITOR WEBVIEW</span><span>LIVE TAIL · UNPINNED</span></div>
+        <div class="vsc-window">
+
+          <div class="vsc-titlebar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <div class="title">mnist-digit-classifier — Zero Operators — Visual Studio Code</div>
+          </div>
+
+          <div class="vsc-body">
+
+            <div class="vsc-activitybar">
+              <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 2.5h6l3 3v12h-9z"/><path d="M11.5 2.5v3h3"/></svg></div>
+              <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="5.5"/><line x1="13.2" y1="13.2" x2="17" y2="17"/></svg></div>
+              <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="15" r="2.2"/><circle cx="14" cy="8" r="2.2"/><path d="M6 7.2v5.6"/><path d="M14 10.2c0 2.6-3.2 2.8-5.6 3"/></svg></div>
+              <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="5.5" height="5.5"/><rect x="3" y="11" width="5.5" height="5.5"/><rect x="10" y="11" width="5.5" height="5.5"/><rect x="11.5" y="2.5" width="5.5" height="5.5"/></svg></div>
+              <div class="ab-item active"><svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg></div>
+              <div class="ab-spacer"></div>
+              <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="7" r="3"/><path d="M4 17c1.5-3 4-4 6-4s4.5 1 6 4"/></svg></div>
+            </div>
+
+            <div class="vsc-sidebar">
+              <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span>COMMS</span></div>
+              <div class="zo-side">
+                <div class="side-proj">
+                  <div class="proj-name">mnist-digit-classifier</div>
+                  <div class="proj-meta">
+                    plan &nbsp;.zo/plans/mnist-digit-classifier.md<br>
+                    workflow deep_learning · gates supervised<br>
+                    lead opus · team zo-mnist-digit-classifier
+                  </div>
+                </div>
+                <div class="side-block">
+                  <div class="side-h">Phases</div>
+                  <div class="ph-row done"><span class="ph-n">1</span><span class="ph-name">Data Review</span><span class="ph-check"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5 6.5 12 13 4.5"/></svg></span></div>
+                  <div class="ph-row done"><span class="ph-n">2</span><span class="ph-name">Input Representation</span><span class="ph-check"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5 6.5 12 13 4.5"/></svg></span></div>
+                  <div class="ph-row done"><span class="ph-n">3</span><span class="ph-name">Model Design</span><span class="ph-check"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5 6.5 12 13 4.5"/></svg></span></div>
+                  <div class="ph-row active"><span class="ph-n">4</span><span class="ph-name">Training &amp; Iteration</span><span class="ph-dot live pulse"></span></div>
+                  <div class="ph-row"><span class="ph-n">5</span><span class="ph-name">Analysis &amp; Validation</span><span class="ph-dot todo"></span></div>
+                  <div class="ph-row"><span class="ph-n">6</span><span class="ph-name">Packaging</span><span class="ph-dot todo"></span></div>
+                </div>
+                <div class="side-block">
+                  <div class="side-h">Agents</div>
+                  <div class="ag-row"><span class="ag-dot busy pulse"></span>lead-orchestrator <span class="ag-model">opus</span><span class="ag-status">working</span></div>
+                  <div class="ag-row"><span class="ag-dot busy pulse"></span>model-builder <span class="ag-model">sonnet</span><span class="ag-status">training</span></div>
+                  <div class="ag-row"><span class="ag-dot watch"></span>training-mnist-cnn-checker <span class="ag-model">sonnet</span><span class="ag-status">watching</span></div>
+                  <div class="ag-row"><span class="ag-dot idle"></span>oracle-qa <span class="ag-model">sonnet</span><span class="ag-status">idle</span></div>
+                  <div class="ag-done">completed earlier — research-scout ·<br>code-reviewer · test-engineer</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vsc-main">
+              <div class="vsc-tabs">
+                <div class="vsc-tab active"><span class="tab-dot tab-dot-coral"></span>ZO · Comms Feed</div>
+                <div class="vsc-tab">STATE.md</div>
+                <div class="vsc-tab">exp-003 · metrics.jsonl</div>
+              </div>
+
+              <div class="feed" id="mainFeed">
+                <div class="feed-filters">
+                  <span class="chip">All agents <span class="car">▾</span></span>
+                  <span class="chip">All types <span class="car">▾</span></span>
+                  <span class="chip">phase_4 <span class="car">▾</span></span>
+                  <input class="inp feed-search" placeholder="search agents, subtasks, text…">
+                  <button class="pin" data-pin>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2h4M7 2v4l-2.5 2v1.5h7V8L9 6V2"/><line x1="8" y1="9.5" x2="8" y2="14"/></svg>
+                    auto-scroll
+                  </button>
+                </div>
+
+                <div class="feed-body">
+                  <div class="feed-timeline">
+
+                    <!-- checkpoint -->
+                    <div class="ev ev-checkpoint">
+                      <div class="ev-time">09:14</div>
+                      <div class="ev-rail"><span class="ev-node n-check"></span></div>
+                      <div class="ev-main">session resumed<span class="sep">·</span>zo-mnist-20260712-091412<span class="sep">·</span>phase_4 training_iteration<span class="sep">·</span>STATE.md loaded</div>
+                    </div>
+
+                    <!-- gate · PASS -->
+                    <div class="ev">
+                      <div class="ev-time">09:15</div>
+                      <div class="ev-rail"><span class="ev-node n-gate-pass"></span></div>
+                      <div class="ev-main">
+                        <div class="card card-gate-pass">
+                          <div class="card-head">
+                            <span class="card-tag">gate</span>
+                            <span class="gate-route">phase_3<span class="arr">→</span>phase_4</span>
+                            <span class="card-agent" style="margin-left:0">model design review</span>
+                            <span class="badge badge-moss" style="margin-left:auto">pass</span>
+                          </div>
+                          <div class="gate-metric"><span>reviewed</span><span class="gm-val">3-block CNN spec · exp-001/002 design runs · param budget 1.2M</span><span class="gm-ok">✓</span></div>
+                          <div class="gate-meta">human gate · approved via <code>/gates:approve</code> · 09:15</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- decision · expanded -->
+                    <div class="ev">
+                      <div class="ev-time">09:16</div>
+                      <div class="ev-rail"><span class="ev-node n-decision"></span></div>
+                      <div class="ev-main">
+                        <div class="card card-decision">
+                          <div class="card-head">
+                            <span class="card-tag">decision</span>
+                            <span class="card-title">Branch exp-003 from exp-002: keep the wider conv, add rotation aug ±12°</span>
+                            <span class="card-agent">lead-orchestrator</span>
+                          </div>
+                          <div class="card-line">exp-002 stalled at 0.9841; its error grid is rotation-shaped — 7/1 and 4/9 confusions — not capacity-shaped.</div>
+                          <div class="card-detail">
+                            <p>exp-002's wider conv (32→64) already closed the underfit gap; the residual errors cluster where digits rotate into each other. Rotation aug ±12° attacks exactly that failure mode at zero parameter cost, leaving the 1.2M budget untouched. 8 epochs on mps; metrics stream to <code>.zo/experiments/exp-003/metrics.jsonl</code>.</p>
+                            <div class="alt-line"><span class="alt-k">alternatives</span>deeper 4-block stack (rejected: param budget) · lr warmup sweep (deferred to exp-004) · elastic distortions (rejected: cpu-bound on mps)</div>
+                          </div>
+                          <button class="expand">collapse ▴</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- error · resolved -->
+                    <div class="ev">
+                      <div class="ev-time">09:17</div>
+                      <div class="ev-rail"><span class="ev-node n-error"></span></div>
+                      <div class="ev-main">
+                        <div class="card card-error">
+                          <div class="card-head">
+                            <span class="card-tag">error</span>
+                            <span class="badge badge-coral">blocking</span>
+                            <span class="card-agent">model-builder</span>
+                          </div>
+                          <div class="card-line">MPS fallback: pin_memory unsupported — retried on cpu loader</div>
+                          <div class="resolved"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5 6.5 12 13 4.5"/></svg>resolved 09:17 · retried with pin_memory=false · prior appended to PRIORS.md</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- message · routine -->
+                    <div class="ev ev-msg">
+                      <div class="ev-time">09:18</div>
+                      <div class="ev-rail"><span class="ev-node n-msg"></span></div>
+                      <div class="ev-main">
+                        <div class="msg-head"><span class="msg-route">model-builder<span class="arr">→</span><span class="to">lead-orchestrator</span></span><span class="badge badge-dim">routine</span></div>
+                        <div class="msg-body">exp-003 launched (parent exp-002): wider conv + rotation aug, 8 epochs on mps. Status in <code>training_status.json</code>.</div>
+                      </div>
+                    </div>
+
+                    <!-- message · routine -->
+                    <div class="ev ev-msg">
+                      <div class="ev-time">09:24</div>
+                      <div class="ev-rail"><span class="ev-node n-msg"></span></div>
+                      <div class="ev-main">
+                        <div class="msg-head"><span class="msg-route">code-reviewer<span class="arr">→</span><span class="to">model-builder</span></span><span class="badge badge-dim">routine</span></div>
+                        <div class="msg-body">augment.py review clean — two nits fixed inline (rotation-bounds constant, transform seeding). No blocking findings.</div>
+                      </div>
+                    </div>
+
+                    <!-- checkpoint -->
+                    <div class="ev ev-checkpoint">
+                      <div class="ev-time">09:26</div>
+                      <div class="ev-rail"><span class="ev-node n-check"></span></div>
+                      <div class="ev-main">phase_4<span class="sep">·</span>training_iteration<span class="sep">·</span>exp-003 epoch 3/8<span class="sep">·</span>val_acc 0.9803</div>
+                    </div>
+
+                    <!-- checkpoint -->
+                    <div class="ev ev-checkpoint">
+                      <div class="ev-time">09:38</div>
+                      <div class="ev-rail"><span class="ev-node n-check"></span></div>
+                      <div class="ev-main">phase_4<span class="sep">·</span>training_iteration<span class="sep">·</span>exp-003 epoch 5/8<span class="sep">·</span>val_acc 0.9883<span class="sep">·</span>new best, checkpointed</div>
+                    </div>
+
+                    <!-- message · high -->
+                    <div class="ev ev-msg">
+                      <div class="ev-time">09:41</div>
+                      <div class="ev-rail"><span class="ev-node n-msg"></span></div>
+                      <div class="ev-main">
+                        <div class="msg-head"><span class="msg-route">training-mnist-cnn-checker<span class="arr">→</span><span class="to">lead-orchestrator</span></span><span class="badge badge-coral">high</span></div>
+                        <div class="msg-body">best val_acc 0.9883 at epoch 5; epoch 6 reads 0.9871 — plateau watch on. Recommend holding the gate until epoch 8 confirms.</div>
+                      </div>
+                    </div>
+
+                    <!-- checkpoint -->
+                    <div class="ev ev-checkpoint">
+                      <div class="ev-time">09:42</div>
+                      <div class="ev-rail"><span class="ev-node n-check"></span></div>
+                      <div class="ev-main">phase_4<span class="sep">·</span>training_iteration<span class="sep">·</span>exp-003 epoch 6/8<span class="sep">·</span>train_loss 0.0341<span class="sep">·</span>val_acc 0.9871</div>
+                    </div>
+
+                    <!-- decision · collapsed -->
+                    <div class="ev">
+                      <div class="ev-time">09:42</div>
+                      <div class="ev-rail"><span class="ev-node n-decision"></span></div>
+                      <div class="ev-main">
+                        <div class="card card-decision">
+                          <div class="card-head">
+                            <span class="card-tag">decision</span>
+                            <span class="card-title">Hold exp-004 until the oracle re-runs the held-out set</span>
+                            <span class="card-agent">lead-orchestrator</span>
+                          </div>
+                          <div class="card-line">exp-003's epoch-5 best is going to the oracle for the gate packet; branching now would race the evaluation.</div>
+                          <button class="expand" id="expandBtn">expand ▾</button>
+                          <div class="card-detail hide" id="decisionDetail">
+                            <p>Launching exp-004 (the lr-warmup sweep) while the oracle scores the phase_4 → phase_5 gate would fork the checkpoint lineage mid-evaluation and contend for mps. If the gate returns iterate, exp-004 starts from exp-003's <code>best.pt</code> with the warmup grid; if it approves, exp-004 never needs to run. Logged to DECISION_LOG.</p>
+                            <div class="alt-line"><span class="alt-k">alternatives</span>run exp-004 in parallel (rejected: mps contention, lineage fork) · early-stop exp-003 at epoch 7 (rejected: epoch 8 confirms the plateau)</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- gate · evaluating -->
+                    <div class="ev">
+                      <div class="ev-time">09:43</div>
+                      <div class="ev-rail"><span class="ev-node n-gate-eval pulse"></span></div>
+                      <div class="ev-main">
+                        <div class="card card-gate-eval">
+                          <div class="card-head">
+                            <span class="card-tag">gate</span>
+                            <span class="gate-route">phase_4<span class="arr">→</span>phase_5</span>
+                            <span class="badge badge-dim" style="margin-left:auto"><span class="badge-dot pulse"></span>evaluating…</span>
+                          </div>
+                          <div class="gate-metric"><span>test_accuracy</span><span class="gm-val">0.9912</span><span>≥ 0.95</span><span class="gm-ok">✓</span><span class="badge badge-moss">tier: could_pass</span></div>
+                          <div class="tiers"><span class="tier-hit">must_pass ≥ 0.95 ✓</span><span class="tier-hit">should_pass ≥ 0.98 ✓</span><span class="tier-hit">could_pass ≥ 0.99 ✓</span></div>
+                          <div class="gate-meta">oracle scored best checkpoint (epoch 5) · exp-003 finishing · then <code>/gates:approve</code> or <code>/gates:reject</code></div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <button class="btn btn-primary new-pill" data-pill>3 new events<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v9M4 8.5 8 12.5 12 8.5"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vsc-statusbar">
+            <span class="sb-item"><span class="sb-dot sb-dot-coral pulse"></span>zo: phase_4 · training</span>
+            <span class="sb-item">exp-003 · epoch 6/8 · val 0.9871</span>
+            <span class="sb-item">zo-mnist-20260712-091412</span>
+            <span class="sb-spacer"></span>
+            <span class="sb-item accent">comms: tailing 2026-07-12.jsonl</span>
+            <span class="sb-item">mps</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ FILTERED: GATES ONLY ══════════ -->
+    <div class="mock-section">
+      <h2>One chip, <em>gates only</em></h2>
+      <p class="lede">The type filter collapses the morning to its gate events — the approval trail a reviewer actually audits. Pinned state shown: the auto-scroll toggle holds coral and the new-events pill never appears.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>COMMS FEED — TYPE FILTER</span><span>GATES ONLY · PINNED</span></div>
+        <div class="feed feed-standalone">
+          <div class="feed-filters">
+            <span class="chip">All agents <span class="car">▾</span></span>
+            <span class="chip chip-active">gates <span class="car">▾</span></span>
+            <span class="chip">All phases <span class="car">▾</span></span>
+            <input class="inp feed-search" placeholder="search agents, subtasks, text…">
+            <button class="pin pinned" data-pin>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2h4M7 2v4l-2.5 2v1.5h7V8L9 6V2"/><line x1="8" y1="9.5" x2="8" y2="14"/></svg>
+              auto-scroll
+            </button>
+          </div>
+          <div class="feed-body">
+            <div class="feed-timeline">
+
+              <div class="ev">
+                <div class="ev-time">09:15</div>
+                <div class="ev-rail"><span class="ev-node n-gate-pass"></span></div>
+                <div class="ev-main">
+                  <div class="card card-gate-pass">
+                    <div class="card-head">
+                      <span class="card-tag">gate</span>
+                      <span class="gate-route">phase_3<span class="arr">→</span>phase_4</span>
+                      <span class="card-agent" style="margin-left:0">model design review</span>
+                      <span class="badge badge-moss" style="margin-left:auto">pass</span>
+                    </div>
+                    <div class="gate-metric"><span>reviewed</span><span class="gm-val">3-block CNN spec · exp-001/002 design runs · param budget 1.2M</span><span class="gm-ok">✓</span></div>
+                    <div class="gate-meta">human gate · approved via <code>/gates:approve</code> · 09:15</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ev">
+                <div class="ev-time">09:43</div>
+                <div class="ev-rail"><span class="ev-node n-gate-eval pulse"></span></div>
+                <div class="ev-main">
+                  <div class="card card-gate-eval">
+                    <div class="card-head">
+                      <span class="card-tag">gate</span>
+                      <span class="gate-route">phase_4<span class="arr">→</span>phase_5</span>
+                      <span class="badge badge-dim" style="margin-left:auto"><span class="badge-dot pulse"></span>evaluating…</span>
+                    </div>
+                    <div class="gate-metric"><span>test_accuracy</span><span class="gm-val">0.9912</span><span>≥ 0.95</span><span class="gm-ok">✓</span><span class="badge badge-moss">tier: could_pass</span></div>
+                    <div class="tiers"><span class="tier-hit">must_pass ≥ 0.95 ✓</span><span class="tier-hit">should_pass ≥ 0.98 ✓</span><span class="tier-hit">could_pass ≥ 0.99 ✓</span></div>
+                    <div class="gate-meta">oracle scored best checkpoint (epoch 5) · exp-003 finishing · then <code>/gates:approve</code> or <code>/gates:reject</code></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Source: the extension host tails <code>logs/comms/2026-07-12.jsonl</code> at a persisted byte offset (fs.watch + incremental read) and streams parsed events to this webview via <code>postMessage</code> — the webview itself never polls or touches disk.</li>
+        <li>Daily rollover: at local midnight the tailer closes the old file, opens <code>logs/comms/{next-date}.jsonl</code> at offset 0, and the feed inserts a dim date-divider row.</li>
+        <li>Dedup key is <code>(file, byte offset)</code>, not <code>event_id</code> — a retried agent may re-emit an event with the same id, but a line's offset is unique per file.</li>
+        <li>Every event carries a <code>project</code> field; the tailer drops non-matching projects so concurrent ZO sessions on one machine never cross-pollute a feed.</li>
+        <li>Filter chips and search run client-side over an in-memory ring buffer (default 500 events); unknown event types render as dim raw-JSON rows for forward compatibility. Older days stay in JSONL, readable via <code>zo logs</code>.</li>
+        <li>Auto-scroll pin: pinned follows the tail; unpinned freezes the viewport and accrues the coral new-events pill — clicking the pill scrolls to tail and re-pins.</li>
+        <li>Gate cards act: the evaluating card will expose approve/reject that run <code>zo runtime send</code> with <code>/gates:approve</code> · <code>/gates:reject</code> into the lead pane; PASS cards deep-link to the gate record in <code>STATE.md</code>.</li>
+        <li>Deferred from v1: cross-day pagination and full-text search over historical days — the feed shows the current day's tail only.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+
+    // demo: pin toggle hides/shows the new-events pill within its feed
+    document.querySelectorAll('[data-pin]').forEach(pin => {
+      pin.addEventListener('click', () => {
+        pin.classList.toggle('pinned');
+        const pill = pin.closest('.feed').querySelector('[data-pill]');
+        if (pill) pill.classList.toggle('hide', pin.classList.contains('pinned'));
+      });
+    });
+
+    // demo: expand the collapsed decision
+    const ex = document.getElementById('expandBtn');
+    ex.addEventListener('click', () => {
+      const d = document.getElementById('decisionDetail');
+      const open = d.classList.toggle('hide');
+      ex.textContent = open ? 'expand ▾' : 'collapse ▴';
+    });
+  </script>
+</body>
+</html>

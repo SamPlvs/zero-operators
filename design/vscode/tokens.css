@@ -1,0 +1,535 @@
+/* ═══════════════════════════════════════════════════════════════
+   ZERO OPERATORS — VS Code Extension Mockups: shared tokens + chrome
+   Brand system v2 ("a quiet, precise workshop") applied to a
+   simulated VS Code workbench. Every mockup page links this file.
+
+   THEME TOGGLE — each page carries this exact markup + script:
+
+     <button class="theme-toggle" id="themeToggle">light</button>
+     <script>
+       const t = document.getElementById('themeToggle');
+       t.addEventListener('click', () => {
+         const root = document.documentElement;
+         const light = root.getAttribute('data-theme') === 'light';
+         root.setAttribute('data-theme', light ? 'dark' : 'light');
+         t.textContent = light ? 'light' : 'dark';
+       });
+     </script>
+
+   MARK — the simplified-C, used in the activity bar and mastheads:
+
+     <svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark">
+       <circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/>
+       <line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/>
+       <circle cx="36" cy="36" r="3.5" fill="var(--coral)"/>
+     </svg>
+
+   PRODUCTION NOTE (extension webviews, not these mockups):
+   no external fonts (bundle Geist / JetBrains Mono / Instrument
+   Serif woff2 — all SIL OFL), strict CSP (no CDN, nonce'd script),
+   every brand token maps to a --vscode-* fallback for the
+   "inherit editor theme" setting. Google Fonts below is a
+   browser-preview convenience only.
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* — Brand surfaces (dark) — */
+  --canvas: #12110F;
+  --canvas-2: #17150F;
+  --canvas-3: #1C1A13;
+  --rule: #2A241C;
+  --rule-2: #35301F;
+
+  /* — Text on dark — */
+  --cream: #EBE3D2;
+  --cream-2: #C8C0AE;
+  --dim: #857D6B;
+  --ghost: #4E4738;
+
+  /* — Paper (light-theme sources) — */
+  --paper: #F4EFE6;
+  --paper-2: #EAE3D2;
+  --ink: #1A1712;
+  --ink-muted: #6B6254;
+
+  /* — Accents — */
+  --coral: oklch(0.74 0.14 35);
+  --coral-soft: oklch(0.74 0.14 35 / 0.14);
+  --coral-dim: oklch(0.52 0.10 35);
+  --dusk: oklch(0.70 0.10 245);
+  --dusk-soft: oklch(0.70 0.10 245 / 0.14);
+  --dusk-dim: oklch(0.48 0.07 245);
+  --moss: oklch(0.62 0.08 150);
+  --moss-soft: oklch(0.62 0.08 150 / 0.14);
+
+  /* — Typography — */
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'Geist', -apple-system, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* — Motion — */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* — Semantic chrome (theme-flipped): the simulated VS Code shell — */
+  --bg: var(--canvas);            /* page behind the window */
+  --surface: var(--canvas-2);     /* sidebar / panel */
+  --surface-2: var(--canvas-3);   /* hover / elevated */
+  --editor: var(--canvas);        /* editor + terminal ground */
+  --line: var(--rule);
+  --line-2: var(--rule-2);
+  --text: var(--cream);
+  --text-2: var(--cream-2);
+  --text-3: var(--dim);
+  --text-4: var(--ghost);
+
+  /* — VS Code chrome proportions (true-ish) — */
+  --w-activitybar: 48px;
+  --w-sidebar: 300px;
+  --h-titlebar: 35px;
+  --h-tabs: 35px;
+  --h-statusbar: 22px;
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: var(--paper);
+  --surface: var(--paper-2);
+  --surface-2: #E2D9C4;
+  --editor: var(--paper);
+  --line: #D8CFBA;
+  --line-2: #C6BCA4;
+  --text: var(--ink);
+  --text-2: #3D362B;
+  --text-3: var(--ink-muted);
+  --text-4: #9A9080;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+body { min-height: 100vh; padding: 0 0 120px; }
+
+.container { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
+
+/* ═══════════════════════════════════════════════
+   MOCKUP PAGE SCAFFOLD (matches design/*.html voice)
+   ═══════════════════════════════════════════════ */
+.mock-masthead {
+  border-bottom: 1px solid var(--line);
+  padding: 56px 0 36px;
+  margin-bottom: 48px;
+}
+.mock-masthead .crumbs {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+.mock-masthead .crumbs a { color: var(--text-3); text-decoration: none; }
+.mock-masthead .crumbs a:hover { color: var(--coral); }
+.mock-masthead h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  margin-bottom: 14px;
+}
+.mock-masthead h1 em { font-style: italic; color: var(--coral); }
+.mock-masthead .deck {
+  font-size: 17px;
+  font-weight: 300;
+  color: var(--text-2);
+  max-width: 640px;
+  line-height: 1.55;
+}
+
+.theme-toggle {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.theme-toggle:hover { color: var(--coral); border-color: var(--coral); }
+
+/* Labeled frame around each mock (mirrors .sample-frame) */
+.mock-frame {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+  margin: 0 0 12px;
+}
+.mock-frame-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* Section scaffold inside a mock page */
+.mock-section { padding: 64px 0 8px; }
+.mock-section + .mock-section { border-top: 1px solid var(--line); margin-top: 40px; }
+.mock-section > h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.mock-section > h2 em { font-style: italic; color: var(--coral); }
+.mock-section > .lede {
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-2);
+  max-width: 620px;
+  line-height: 1.55;
+  margin-bottom: 32px;
+}
+
+/* Implementation notes block (one per page, bottom) */
+.mock-notes {
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+  padding: 24px 28px;
+  margin-top: 48px;
+}
+.mock-notes h3 {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--coral);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.mock-notes ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.mock-notes li {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--text-2);
+  line-height: 1.5;
+  padding-left: 16px;
+  position: relative;
+}
+.mock-notes li::before { content: "—"; position: absolute; left: 0; color: var(--text-4); }
+.mock-notes code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dusk);
+}
+
+/* ═══════════════════════════════════════════════
+   VS CODE CHROME SIMULATION
+   ═══════════════════════════════════════════════ */
+.vsc-window {
+  background: var(--editor);
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  min-height: 640px;
+}
+
+/* Title bar */
+.vsc-titlebar {
+  height: var(--h-titlebar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.vsc-titlebar .dots { display: flex; gap: 7px; }
+.vsc-titlebar .dots span {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--line-2);
+}
+.vsc-titlebar .title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+}
+
+/* Body row: activity bar | sidebar | main */
+.vsc-body { flex: 1; display: flex; min-height: 0; }
+
+.vsc-activitybar {
+  width: var(--w-activitybar);
+  flex: none;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 4px;
+}
+.vsc-activitybar .ab-item {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-4);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.vsc-activitybar .ab-item:hover { color: var(--text-2); }
+.vsc-activitybar .ab-item.active { color: var(--text); border-left-color: var(--coral); }
+.vsc-activitybar .ab-item svg { display: block; }
+.vsc-activitybar .ab-spacer { flex: 1; }
+
+.vsc-sidebar {
+  width: var(--w-sidebar);
+  flex: none;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.vsc-sidebar-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 12px 16px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vsc-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Editor tabs */
+.vsc-tabs {
+  height: var(--h-tabs);
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.vsc-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.vsc-tab.active {
+  background: var(--editor);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 var(--coral);
+}
+.vsc-tab .tab-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Bottom panel */
+.vsc-panel {
+  flex: none;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.vsc-panel-tabs {
+  display: flex;
+  gap: 20px;
+  padding: 8px 18px 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  border-bottom: 1px solid var(--line);
+}
+.vsc-panel-tabs span { padding-bottom: 7px; cursor: pointer; }
+.vsc-panel-tabs span.active {
+  color: var(--text);
+  border-bottom: 1px solid var(--coral);
+}
+
+/* Status bar */
+.vsc-statusbar {
+  height: var(--h-statusbar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  overflow: hidden;
+}
+.vsc-statusbar .sb-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.vsc-statusbar .sb-item .sb-dot { width: 6px; height: 6px; border-radius: 50%; }
+.vsc-statusbar .sb-item.accent { color: var(--coral); }
+.vsc-statusbar .sb-spacer { flex: 1; }
+
+/* ═══════════════════════════════════════════════
+   SHARED PRIMITIVES (from the brand sheet, theme-aware)
+   ═══════════════════════════════════════════════ */
+.zo-mark { color: var(--text); }
+
+.badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 9px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+}
+.badge-coral { background: var(--coral-soft); color: var(--coral); border-color: oklch(0.74 0.14 35 / 0.3); }
+.badge-dusk  { background: var(--dusk-soft); color: var(--dusk); border-color: oklch(0.70 0.10 245 / 0.3); }
+.badge-moss  { background: var(--moss-soft); color: var(--moss); border-color: oklch(0.62 0.08 150 / 0.3); }
+.badge-dim   { background: transparent; color: var(--text-3); border-color: var(--line-2); }
+.badge-dot   { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.btn {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s var(--ease);
+  text-decoration: none;
+  line-height: 1;
+}
+.btn-primary { background: var(--coral); color: #1A0F06; font-weight: 600; }
+.btn-primary:hover { background: oklch(0.78 0.14 35); transform: translateY(-1px); }
+.btn-secondary { background: transparent; color: var(--text); border-color: var(--line-2); }
+.btn-secondary:hover { border-color: var(--text-2); background: var(--surface-2); }
+.btn-danger { background: transparent; color: var(--coral); border-color: oklch(0.74 0.14 35 / 0.4); }
+.btn-danger:hover { background: var(--coral-soft); }
+
+.inp {
+  font-family: var(--sans);
+  font-size: 13px;
+  background: var(--editor);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  padding: 9px 13px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s var(--ease);
+  width: 100%;
+}
+.inp:focus { border-color: var(--coral); }
+.inp::placeholder { color: var(--text-4); }
+
+.code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--editor);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 18px;
+  color: var(--text-2);
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.code .c-prompt { color: var(--coral); user-select: none; margin-right: 8px; }
+.code .c-cmd    { color: var(--text); }
+.code .c-arg    { color: var(--dusk); }
+.code .c-comment{ color: var(--text-4); }
+.code .c-ok     { color: var(--moss); }
+
+/* Terminal ground (xterm.js stand-in) */
+.term {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  background: var(--canvas);
+  color: var(--cream-2);
+  padding: 14px 16px;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+[data-theme="light"] .term { background: #211E17; } /* terminals stay dark in light theme, like VS Code */
+.term .t-coral { color: oklch(0.74 0.14 35); }
+.term .t-dusk  { color: oklch(0.70 0.10 245); }
+.term .t-moss  { color: oklch(0.62 0.08 150); }
+.term .t-dim   { color: #857D6B; }
+.term .t-cream { color: #EBE3D2; }
+.term .caret::after { content: "▍"; color: oklch(0.74 0.14 35); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* Pulse for live/running dots */
+@keyframes pulse-lighthouse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+.pulse { animation: pulse-lighthouse 2.4s var(--ease) infinite; transform-origin: center; }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding-top: 72px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-4);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.footer a { color: inherit; }

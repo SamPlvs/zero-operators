@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Status &amp; Palette</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ═══ Frame 1 · status bar states ═══ */
+.sb-stack { padding: 24px; display: flex; flex-direction: column; gap: 26px; }
+.sb-state-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 9px;
+}
+.sb-state-label .note { color: var(--text-4); letter-spacing: 0.06em; text-transform: none; }
+.sb-strip { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.sb-strip .vsc-statusbar { border-top: none; }
+.sb-item.zo { color: var(--text-2); }
+.sb-item .glyph { font-size: 8px; position: relative; top: -0.5px; }
+.sb-item.dim4 { color: var(--text-4); }
+.sb-item.gate-chip {
+  height: 100%; padding: 0 10px; background: var(--coral-soft);
+  color: var(--coral); cursor: pointer;
+}
+.sb-item.gate-chip:hover { background: color-mix(in srgb, var(--coral-soft) 60%, var(--coral) 12%); }
+
+/* ═══ Mini workbench + dim stage (frames 2 & 3) ═══ */
+.stage { position: relative; }
+.vsc-window.mini { min-height: 0; }
+.stage-dim {
+  position: absolute; inset: 0; z-index: 2;
+  background: color-mix(in srgb, var(--canvas) 52%, transparent);
+}
+.sk { height: 7px; border-radius: 2px; background: var(--line); }
+.sk-col { display: flex; flex-direction: column; gap: 12px; padding: 22px 26px; }
+.sk-side { display: flex; flex-direction: column; gap: 11px; padding: 8px 16px; }
+.sk-side .sk { height: 6px; }
+.sk.i1 { margin-left: 14px; }
+.sk.i2 { margin-left: 28px; }
+.editor-ground { flex: 1; background: var(--editor); min-height: 0; overflow: hidden; }
+
+/* ═══ Frame 2 · quick pick ═══ */
+.quickpick {
+  position: absolute; z-index: 3; top: 44px; left: 50%; transform: translateX(-50%);
+  width: 600px; max-width: calc(100% - 48px);
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px;
+  overflow: hidden;
+}
+.qp-input {
+  display: flex; align-items: center; margin: 9px 9px 7px;
+  padding: 7px 11px; background: var(--editor);
+  border: 1px solid var(--coral); border-radius: 4px;
+  font-size: 13px; color: var(--text);
+}
+.qp-caret::after {
+  content: "▍"; color: var(--coral);
+  animation: blink 1s steps(1) infinite; margin-left: 1px;
+}
+.qp-list { padding-bottom: 7px; }
+.qp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px 6px 12px; border-left: 2px solid transparent;
+  font-size: 13px; cursor: pointer;
+}
+.qp-row:hover { background: var(--surface-2); }
+.qp-row.focused { background: var(--surface-2); border-left-color: var(--coral); }
+.qp-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.qp-label { color: var(--text-2); white-space: nowrap; }
+.qp-label .pfx { color: var(--text-3); }
+.qp-row.focused .qp-label { color: var(--text); }
+.qp-detail { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+.qp-detail .tier { color: var(--moss); }
+.qp-row.danger .qp-label, .qp-row.danger .qp-label .pfx { color: var(--coral); }
+.qp-sub { color: var(--text-4); margin-left: 2px; }
+.qp-keys { margin-left: auto; display: flex; gap: 4px; flex: none; }
+.qp-key {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-bottom-width: 2px; border-radius: 3px; padding: 1px 6px;
+}
+
+/* ═══ Frame 3 · notifications ═══ */
+.toast-stack {
+  position: absolute; z-index: 3; right: 14px; bottom: 34px;
+  width: 356px; display: flex; flex-direction: column; gap: 10px;
+}
+.toast {
+  position: relative; display: flex; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: 13px 15px;
+}
+.toast.dimmed { opacity: 0.78; }
+.toast.dimmed .toast-title { color: var(--text-2); }
+.toast-icon { flex: none; width: 18px; padding-top: 2px; }
+.toast-dot { display: block; width: 8px; height: 8px; border-radius: 50%; margin: 5px 0 0 3px; }
+.toast-body { min-width: 0; flex: 1; }
+.toast-title { font-size: 13px; color: var(--text); line-height: 1.45; padding-right: 14px; }
+.toast-detail { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); margin-top: 4px; line-height: 1.5; }
+.toast-detail .tier { color: var(--moss); }
+.toast-actions { display: flex; gap: 8px; margin-top: 11px; }
+.btn.sm { padding: 5px 12px; font-size: 12px; border-radius: 5px; }
+.toast-x {
+  position: absolute; top: 9px; right: 11px;
+  color: var(--text-4); font-size: 13px; line-height: 1; cursor: pointer;
+}
+.toast-x:hover { color: var(--text-2); }
+
+/* ═══ Frame 4 · settings glimpse ═══ */
+.settings { background: var(--editor); }
+.set-crumbs {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-4);
+  padding: 14px 26px 12px; border-bottom: 1px solid var(--line);
+}
+.set-row { padding: 20px 26px 22px; border-bottom: 1px solid var(--line); position: relative; }
+.set-row:last-child { border-bottom: none; }
+.set-row.modified::before {
+  content: ""; position: absolute; left: 0; top: 20px; bottom: 22px;
+  width: 2px; background: var(--coral);
+}
+.set-key { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+.set-desc { font-size: 12.5px; font-weight: 300; color: var(--text-3); margin: 5px 0 12px; max-width: 560px; line-height: 1.5; }
+.set-cap { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); margin-top: 9px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 5px; overflow: hidden; }
+.seg button {
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  padding: 6px 18px; background: transparent; border: none;
+  color: var(--text-3); cursor: pointer; transition: all 0.15s var(--ease);
+}
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button.on { background: var(--coral-soft); color: var(--coral); }
+.set-inp {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 5px;
+  color: var(--text-2); padding: 7px 12px; width: 440px; max-width: 100%;
+}
+.sel {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 12px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 5px;
+  padding: 7px 12px; cursor: pointer;
+}
+.sel .chev { color: var(--text-3); font-size: 9px; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Quiet signals, <em>everywhere you look</em>.</h1>
+      <p class="deck">Status bar, command palette, notifications, settings: the four smallest surfaces the extension touches. Each carries the minimum useful signal and routes back to a full view in one click.</p>
+    </header>
+
+    <!-- ════════ FRAME 1 · STATUS BAR STATES ════════ -->
+    <section class="mock-section">
+      <h2>Status bar <em>states</em></h2>
+      <p class="lede">One persistent item, three states. Idle keeps the project name warm. Running carries live metrics from the session heartbeat. A pending gate turns the whole item coral and becomes a click target.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>STATUS BAR</span><span>IDLE · RUNNING · GATE-PENDING</span></div>
+        <div class="sb-stack">
+
+          <div class="sb-state">
+            <div class="sb-state-label"><span>idle</span><span class="note">no live session · last state from .zo/runtime/session.json</span></div>
+            <div class="sb-strip">
+              <div class="vsc-statusbar">
+                <span class="sb-item dim4">⎇ main</span>
+                <span class="sb-item zo"><span class="glyph">◆</span> zo: idle · mnist-digit-classifier · last run 2026-07-11</span>
+                <span class="sb-spacer"></span>
+                <span class="sb-item dim4">Ln 128, Col 2</span>
+                <span class="sb-item dim4">UTF-8</span>
+                <span class="sb-item dim4">Python 3.12.6</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-state">
+            <div class="sb-state-label"><span>running</span><span class="note">phase_4 active · exp-003 epoch 6/8</span></div>
+            <div class="sb-strip">
+              <div class="vsc-statusbar">
+                <span class="sb-item dim4">⎇ main</span>
+                <span class="sb-item accent"><span class="glyph">◆</span> zo: phase_4 · training</span>
+                <span class="sb-item">epoch 6/8 · val 0.9871</span>
+                <span class="sb-item dim4">gate: supervised</span>
+                <span class="sb-spacer"></span>
+                <span class="sb-item">exp-003 · session: live <span class="sb-dot pulse" style="background: var(--coral)"></span></span>
+                <span class="sb-item dim4">Python 3.12.6</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-state">
+            <div class="sb-state-label"><span>gate-pending</span><span class="note">phase_4 → phase_5 · whole item is the click target</span></div>
+            <div class="sb-strip">
+              <div class="vsc-statusbar">
+                <span class="sb-item dim4">⎇ main</span>
+                <span class="sb-item gate-chip"><span class="glyph">◆</span> zo: gate pending: phase_4 → phase_5 · click to review</span>
+                <span class="sb-spacer"></span>
+                <span class="sb-item">exp-003 · session: live <span class="sb-dot pulse" style="background: var(--coral)"></span></span>
+                <span class="sb-item dim4">Python 3.12.6</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ FRAME 2 · COMMAND PALETTE ════════ -->
+    <section class="mock-section">
+      <h2>The <em>palette</em></h2>
+      <p class="lede">Every ZO action is a command first. Type ZO: and the whole surface of the extension is enumerable, keyboard-first, and mapped one-to-one onto the CLI.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>COMMAND PALETTE</span><span>QUICK PICK · FIRST ITEM FOCUSED</span></div>
+        <div class="stage">
+          <div class="vsc-window mini" style="min-height: 560px;">
+            <div class="vsc-titlebar">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <div class="title">mnist-digit-classifier — Visual Studio Code</div>
+              <div style="width: 47px;"></div>
+            </div>
+            <div class="vsc-body">
+              <div class="vsc-activitybar">
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h5.5L15 6.5V16.5H6z"/><path d="M11.5 3v3.5H15"/></svg></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="4.5"/><line x1="12.5" y1="12.5" x2="16" y2="16"/></svg></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="1.8"/><circle cx="6" cy="15" r="1.8"/><circle cx="14" cy="7.5" r="1.8"/><path d="M6 6.8v6.4"/><path d="M13.5 9.2c-1 2.4-3.6 2.4-5.6 3.6"/></svg></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="10.5" width="5.5" height="5.5"/><rect x="10" y="10.5" width="5.5" height="5.5"/><rect x="3.5" y="4" width="5.5" height="5.5"/><rect x="11.2" y="2.2" width="5" height="5" transform="rotate(12 13.7 4.7)"/></svg></div>
+                <div class="ab-item active"><svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg></div>
+                <div class="ab-spacer"></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="2.5"/><path d="M10 3.5v2M10 14.5v2M3.5 10h2M14.5 10h2M5.5 5.5l1.4 1.4M13.1 13.1l1.4 1.4M14.5 5.5l-1.4 1.4M6.9 13.1l-1.4 1.4"/></svg></div>
+              </div>
+              <div class="vsc-sidebar">
+                <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span></div>
+                <div class="sk-side">
+                  <div class="sk" style="width: 62%;"></div>
+                  <div class="sk i1" style="width: 48%;"></div>
+                  <div class="sk i1" style="width: 55%;"></div>
+                  <div class="sk i2" style="width: 40%;"></div>
+                  <div class="sk i2" style="width: 46%;"></div>
+                  <div class="sk" style="width: 58%;"></div>
+                  <div class="sk i1" style="width: 36%;"></div>
+                  <div class="sk i1" style="width: 52%;"></div>
+                  <div class="sk" style="width: 44%;"></div>
+                </div>
+              </div>
+              <div class="vsc-main">
+                <div class="vsc-tabs">
+                  <div class="vsc-tab active"><span class="tab-dot" style="background: var(--coral)"></span>ZO: Training · exp-003</div>
+                  <div class="vsc-tab">STATE.md</div>
+                </div>
+                <div class="editor-ground">
+                  <div class="sk-col">
+                    <div class="sk" style="width: 42%;"></div>
+                    <div class="sk" style="width: 68%;"></div>
+                    <div class="sk" style="width: 55%;"></div>
+                    <div class="sk" style="width: 30%;"></div>
+                    <div class="sk" style="width: 61%;"></div>
+                    <div class="sk" style="width: 47%;"></div>
+                    <div class="sk" style="width: 72%;"></div>
+                    <div class="sk" style="width: 38%;"></div>
+                    <div class="sk" style="width: 58%;"></div>
+                    <div class="sk" style="width: 25%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="vsc-statusbar">
+              <span class="sb-item dim4">⎇ main</span>
+              <span class="sb-item accent"><span class="glyph">◆</span> zo: phase_4 · training</span>
+              <span class="sb-item">epoch 6/8 · val 0.9871</span>
+              <span class="sb-spacer"></span>
+              <span class="sb-item">exp-003 · session: live <span class="sb-dot pulse" style="background: var(--coral)"></span></span>
+            </div>
+          </div>
+
+          <div class="stage-dim"></div>
+
+          <div class="quickpick">
+            <div class="qp-input"><span>ZO:&nbsp;</span><span class="qp-caret"></span></div>
+            <div class="qp-list">
+              <div class="qp-row focused">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Start Run</span></div>
+                <div class="qp-keys"><span class="qp-key">⌘⇧Z</span><span class="qp-key">R</span></div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Attach to Session</span></div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main">
+                  <span class="qp-label"><span class="pfx">ZO:</span> Approve Gate</span>
+                  <span class="qp-detail">phase_4 → phase_5 · <span class="tier">could_pass</span></span>
+                </div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Open Training Dashboard</span></div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Open Comms Feed</span></div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Set Gate Mode <span class="qp-sub">▸</span></span></div>
+              </div>
+              <div class="qp-row">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Send Message to Lead</span></div>
+              </div>
+              <div class="qp-row danger">
+                <div class="qp-main"><span class="qp-label"><span class="pfx">ZO:</span> Stop Session</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ FRAME 3 · NOTIFICATIONS ════════ -->
+    <section class="mock-section">
+      <h2>Notifications, <em>rationed</em></h2>
+      <p class="lede">Toasts are reserved for three things: a gate that needs a decision, a run that finished, and a degraded API. Everything else stays in the status bar.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>NOTIFICATIONS</span><span>THREE VARIANTS · STACKED FOR REVIEW</span></div>
+        <div class="stage">
+          <div class="vsc-window mini" style="min-height: 440px;">
+            <div class="vsc-titlebar">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <div class="title">mnist-digit-classifier — Visual Studio Code</div>
+              <div style="width: 47px;"></div>
+            </div>
+            <div class="vsc-body">
+              <div class="vsc-activitybar">
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h5.5L15 6.5V16.5H6z"/><path d="M11.5 3v3.5H15"/></svg></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="4.5"/><line x1="12.5" y1="12.5" x2="16" y2="16"/></svg></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="1.8"/><circle cx="6" cy="15" r="1.8"/><circle cx="14" cy="7.5" r="1.8"/><path d="M6 6.8v6.4"/><path d="M13.5 9.2c-1 2.4-3.6 2.4-5.6 3.6"/></svg></div>
+                <div class="ab-item active"><svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg></div>
+                <div class="ab-spacer"></div>
+                <div class="ab-item"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="2.5"/><path d="M10 3.5v2M10 14.5v2M3.5 10h2M14.5 10h2M5.5 5.5l1.4 1.4M13.1 13.1l1.4 1.4M14.5 5.5l-1.4 1.4M6.9 13.1l-1.4 1.4"/></svg></div>
+              </div>
+              <div class="vsc-main">
+                <div class="vsc-tabs">
+                  <div class="vsc-tab active"><span class="tab-dot" style="background: var(--coral)"></span>ZO: Training · exp-003</div>
+                  <div class="vsc-tab">STATE.md</div>
+                </div>
+                <div class="editor-ground">
+                  <div class="sk-col">
+                    <div class="sk" style="width: 52%;"></div>
+                    <div class="sk" style="width: 71%;"></div>
+                    <div class="sk" style="width: 44%;"></div>
+                    <div class="sk" style="width: 63%;"></div>
+                    <div class="sk" style="width: 35%;"></div>
+                    <div class="sk" style="width: 57%;"></div>
+                    <div class="sk" style="width: 28%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="vsc-statusbar">
+              <span class="sb-item dim4">⎇ main</span>
+              <span class="sb-item accent"><span class="glyph">◆</span> zo: phase_4 · training</span>
+              <span class="sb-item">epoch 6/8 · val 0.9871</span>
+              <span class="sb-spacer"></span>
+              <span class="sb-item">exp-003 · session: live <span class="sb-dot pulse" style="background: var(--coral)"></span></span>
+            </div>
+          </div>
+
+          <div class="stage-dim"></div>
+
+          <div class="toast-stack">
+            <div class="toast">
+              <div class="toast-icon"><svg width="18" height="18" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="3"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="3.6" stroke-linecap="round"/><circle cx="36" cy="36" r="5" fill="var(--coral)"/></svg></div>
+              <div class="toast-body">
+                <div class="toast-title">Gate pending — phase_4 awaiting your decision</div>
+                <div class="toast-detail">oracle: test_accuracy 0.9912 → <span class="tier">could_pass</span></div>
+                <div class="toast-actions">
+                  <button class="btn btn-primary sm">Open</button>
+                  <button class="btn btn-secondary sm">Later</button>
+                </div>
+              </div>
+              <span class="toast-x">×</span>
+            </div>
+
+            <div class="toast">
+              <div class="toast-icon"><span class="toast-dot" style="background: var(--moss)"></span></div>
+              <div class="toast-body">
+                <div class="toast-title">Run complete · <span style="color: var(--moss)">could_pass</span> · 2h 58m</div>
+                <div class="toast-detail">99.12% test accuracy · 3 experiments · memory folded</div>
+                <div class="toast-actions">
+                  <button class="btn btn-secondary sm">Open summary</button>
+                </div>
+              </div>
+              <span class="toast-x">×</span>
+            </div>
+
+            <div class="toast dimmed">
+              <div class="toast-icon"><span class="toast-dot" style="background: var(--dusk)"></span></div>
+              <div class="toast-body">
+                <div class="toast-title">Claude API rate-limited — backing off 42s · run continues</div>
+              </div>
+              <span class="toast-x">×</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ FRAME 4 · SETTINGS GLIMPSE ════════ -->
+    <section class="mock-section">
+      <h2>Settings, <em>three keys</em></h2>
+      <p class="lede">The only opinionated setting is appearance: whether ZO webviews speak the brand tokens or inherit the editor theme. The rest is plumbing that detects itself.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>SETTINGS</span><span>EXTENSION SECTION · GLIMPSE</span></div>
+        <div class="settings">
+          <div class="set-crumbs">Settings › Extensions › Zero Operators</div>
+
+          <div class="set-row modified">
+            <div class="set-key">zo.appearance</div>
+            <div class="set-desc">Visual language for ZO webviews (dashboard, comms feed, gate review).</div>
+            <div class="seg" id="segAppearance">
+              <button class="on">brand</button>
+              <button>editor</button>
+            </div>
+            <div class="set-cap">brand = ZO tokens · editor = inherit VS Code theme</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-key">zo.pythonPath</div>
+            <div class="set-desc">Interpreter used to launch and attach to ZO runs.</div>
+            <input class="set-inp" value="~/.local/share/uv/python/cpython-3.12.6/bin/python3" readonly>
+            <div class="set-cap">auto-detected via uv · leave blank to re-detect on activation</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-key">zo.notifications.gates</div>
+            <div class="set-desc">Where gate-pending signals surface.</div>
+            <div class="sel"><span>toast+statusbar</span><span class="chev">▾</span></div>
+            <div class="set-cap">statusbar-only silences toasts · gates still block until decided</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Status bar = three <code>window.createStatusBarItem</code> entries (state · metrics · gate). State + heartbeat poll <code>.zo/runtime/session.json</code> every 2s; the metrics segment tails <code>.zo/experiments/exp-003/metrics.jsonl</code> and <code>training_status.json</code>; the gate item flips on <code>gate_pending</code> events in <code>logs/comms/2026-07-12.jsonl</code>. Clicks: state → attach terminal, gate → gate review editor.</li>
+        <li>Palette commands map 1:1 onto the CLI: Start Run → <code>zo build</code>; Attach to Session → <code>zo continue --headless-tmux</code>; Approve Gate → <code>/gates:approve</code> (Reject via the review panel → <code>/gates:reject</code>); Set Gate Mode → <code>zo gates set</code>; Send Message to Lead → <code>zo runtime send</code>; Stop Session → runtime teardown of tmux session <code>zo-mnist-20260712-091412</code>. The two Open commands reveal webview panels and invoke nothing.</li>
+        <li>Approve Gate's detail line is composed from the latest oracle event in the comms feed (test_accuracy 0.9912 vs tiers 0.95 / 0.98 / 0.99 → could_pass); the command is hidden behind a <code>zo.gatePending</code> context key when no gate is open.</li>
+        <li>Toasts fire from the comms JSONL tailer: <code>gate_pending</code> → warning toast with actions, <code>run_complete</code> → info toast with Open summary, <code>api_backoff</code> → passive toast, auto-dismissed on recovery. One toast per event type per phase; everything else is status bar only, governed by <code>zo.notifications.gates</code>.</li>
+        <li><code>zo.appearance = brand</code> renders webviews with these tokens; <code>editor</code> swaps each token for its <code>--vscode-*</code> fallback per the mapping table in the tokens.css production note. Status bar and toasts always use native chrome regardless of this setting.</li>
+        <li><code>zo.pythonPath</code> auto-detect runs <code>uv python find</code> on activation; a manual override is validated with an interpreter probe before first use.</li>
+        <li>Keybindings ship in package.json under the ⌘⇧Z chord namespace. Deferred from v1: chord remapping UI, per-project notification levels, and a quick-pick submenu for Set Gate Mode (v1 opens a plain three-option pick).</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+
+    // demo-only: appearance segmented control
+    const seg = document.getElementById('segAppearance');
+    seg.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        seg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+      });
+    });
+  </script>
+</body>
+</html>

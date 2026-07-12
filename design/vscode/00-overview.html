@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Overview</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── Masthead extras ─────────────────────────── */
+  .crumb-mark { display: inline-flex; align-items: center; gap: 10px; }
+  .crumb-mark .zo-mark { width: 15px; height: 15px; position: relative; top: 2px; }
+
+  .moment {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .moment .m-label {
+    color: var(--coral);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .moment .m-sep { color: var(--text-4); }
+  .moment .m-hot { color: var(--text-2); }
+
+  .kicker {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 14px;
+  }
+
+  /* ── Section 1: review steps ─────────────────── */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .step { padding: 22px 22px 26px 0; }
+  .step + .step { border-left: 1px solid var(--line); padding-left: 22px; }
+  .step .n {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--coral);
+    margin-bottom: 12px;
+  }
+  .step h3 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .step p {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+
+  /* ── Section 2: screen cards ─────────────────── */
+  .screen-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .screen-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px 20px;
+    transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+  }
+  .screen-card:hover { border-color: var(--coral-dim); background: var(--surface-2); }
+  .sc-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    margin-bottom: 14px;
+  }
+  .sc-num { font-size: 11px; letter-spacing: 0.1em; color: var(--coral); }
+  .sc-view {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-4);
+    transition: color 0.15s var(--ease);
+  }
+  .screen-card:hover .sc-view { color: var(--coral); }
+  .screen-card h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 25px;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .screen-card p {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+
+  /* ── Section 3: v1 vs deferred ───────────────── */
+  .ship-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+    margin-bottom: 8px;
+  }
+  .ship-grid .mock-frame { margin: 0; }
+  .ship-list { list-style: none; }
+  .ship-list li { padding: 15px 20px 16px; }
+  .ship-list li + li { border-top: 1px solid var(--line); }
+  .ship-name {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .ship-name::before { content: "—"; flex: none; }
+  .ship-v1 .ship-name::before { color: var(--moss); }
+  .ship-def .ship-name::before { color: var(--text-4); }
+  .ship-def .ship-name { color: var(--text-2); }
+  .ship-note {
+    font-size: 12.5px;
+    font-weight: 300;
+    color: var(--text-3);
+    line-height: 1.5;
+    padding-left: 25px;
+  }
+  .ship-note code {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dusk);
+  }
+
+  /* ── Section 4: data-sources table ───────────── */
+  .ds-table { width: 100%; border-collapse: collapse; }
+  .ds-table th {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    text-align: left;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ds-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    line-height: 1.6;
+    vertical-align: top;
+  }
+  .ds-table tr:last-child td { border-bottom: none; }
+  .ds-table td.region {
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    width: 19%;
+  }
+  .ds-table td.contract { color: var(--text-2); font-weight: 300; }
+  .ds-table td.consumer { color: var(--text-3); font-weight: 300; width: 27%; }
+  .ds-table code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--dusk);
+    white-space: nowrap;
+  }
+  .ds-table .ref {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-4);
+  }
+
+  @media (max-width: 960px) {
+    .steps { grid-template-columns: 1fr 1fr; }
+    .step:nth-child(3) { border-left: none; padding-left: 0; }
+    .step:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .screen-grid, .ship-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span class="crumb-mark">
+          <svg width="15" height="15" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg>
+          <a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a>
+        </span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>ZO in VS Code — <em>the mockups</em></h1>
+      <p class="deck">
+        Static, browser-viewable design mockups for the ZO VS Code extension:
+        a headless tmux engine rendered through xterm.js, in place of raw panes.
+        Toggle each page dark or light. Every screen depicts one canonical
+        moment of the public MNIST demo, mid-training.
+      </p>
+      <div class="moment">
+        <span class="m-label">Canonical moment</span>
+        <span class="m-hot">mnist-digit-classifier</span>
+        <span class="m-sep">·</span>
+        <span>workflow deep_learning</span>
+        <span class="m-sep">·</span>
+        <span>tmux zo-mnist-20260712-091412</span>
+        <span class="m-sep">·</span>
+        <span class="m-hot">phase_4 active</span>
+        <span class="m-sep">·</span>
+        <span>exp-003 epoch 6/8</span>
+        <span class="m-sep">·</span>
+        <span>val_acc 0.9871</span>
+      </div>
+    </header>
+
+    <!-- ── Section 1: How to review ─────────────── -->
+    <section class="mock-section">
+      <span class="kicker">01 — Process</span>
+      <h2>How to <em>review</em></h2>
+      <p class="lede">
+        Eight screens, one run. Nothing here is code yet: this set is the
+        approval artifact before the first extension PR lands.
+      </p>
+      <div class="steps">
+        <div class="step">
+          <span class="n">1</span>
+          <h3>Open each screen</h3>
+          <p>Pages 01 through 08, in order. Each stands alone in a browser at desktop width.</p>
+        </div>
+        <div class="step">
+          <span class="n">2</span>
+          <h3>Toggle themes</h3>
+          <p>The light/dark button, top right of every page. Both renders must hold; terminals stay dark by design.</p>
+        </div>
+        <div class="step">
+          <span class="n">3</span>
+          <h3>Read the notes</h3>
+          <p>Implementation notes at each page's foot tie every region to its data source. Engineers build from these.</p>
+        </div>
+        <div class="step">
+          <span class="n">4</span>
+          <h3>Mark up changes</h3>
+          <p>Annotate anything to change now. Approval here freezes the design for the build PRs.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Section 2: The screens ───────────────── -->
+    <section class="mock-section">
+      <span class="kicker">02 — Index</span>
+      <h2>The <em>screens</em></h2>
+      <p class="lede">
+        Each page isolates one surface of the extension and shows its states.
+        All eight depict the same moment of the MNIST run, so a detail seen on
+        one screen can be traced across the others.
+      </p>
+      <div class="screen-grid">
+        <a class="screen-card" href="01-workbench.html">
+          <div class="sc-top"><span class="sc-num">01</span><span class="sc-view">view →</span></div>
+          <h3>Workbench</h3>
+          <p>The whole run in one window: the hero composite of sidebar, terminals, dashboard and status bar.</p>
+        </a>
+        <a class="screen-card" href="02-sidebar.html">
+          <div class="sc-top"><span class="sc-num">02</span><span class="sc-view">view →</span></div>
+          <h3>Sidebar</h3>
+          <p>The ZO view container in four states: empty, idle, running, and reattach.</p>
+        </a>
+        <a class="screen-card" href="03-terminal-panel.html">
+          <div class="sc-top"><span class="sc-num">03</span><span class="sc-view">view →</span></div>
+          <h3>Terminal panel</h3>
+          <p>Read-only agent streams plus the composer, the grid view, and the failure states.</p>
+        </a>
+        <a class="screen-card" href="04-comms-feed.html">
+          <div class="sc-top"><span class="sc-num">04</span><span class="sc-view">view →</span></div>
+          <h3>Comms feed</h3>
+          <p>The agent conversation as a structured stream: five event types, filterable.</p>
+        </a>
+        <a class="screen-card" href="05-gate-approval.html">
+          <div class="sc-top"><span class="sc-num">05</span><span class="sc-view">view →</span></div>
+          <h3>Gate approval</h3>
+          <p>One-click approve, reject, or iterate on a pending gate, plus the gate-mode control.</p>
+        </a>
+        <a class="screen-card" href="06-training-dashboard.html">
+          <div class="sc-top"><span class="sc-num">06</span><span class="sc-view">view →</span></div>
+          <h3>Training dashboard</h3>
+          <p>Loss and accuracy curves, checkpoints, and the experiment lineage behind exp-003.</p>
+        </a>
+        <a class="screen-card" href="07-start-run.html">
+          <div class="sc-top"><span class="sc-num">07</span><span class="sc-view">view →</span></div>
+          <h3>Start run</h3>
+          <p>The launch form with live command preview and preflight checks before anything spawns.</p>
+        </a>
+        <a class="screen-card" href="08-status-and-palette.html">
+          <div class="sc-top"><span class="sc-num">08</span><span class="sc-view">view →</span></div>
+          <h3>Status bar · palette · notifications</h3>
+          <p>The small surfaces: ambient status, command palette entries, and gate toasts.</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- ── Section 3: v1 vs deferred ────────────── -->
+    <section class="mock-section">
+      <span class="kicker">03 — Scope</span>
+      <h2>What ships in v1, what <em>waits</em></h2>
+      <p class="lede">
+        The line is drawn at watching and steering. v1 renders every stream
+        read-only and routes all input through explicit commands; anything
+        that would require owning the TTY waits.
+      </p>
+      <div class="ship-grid">
+        <div class="mock-frame">
+          <div class="mock-frame-label"><span>Ships in v1</span><span>PR D2+</span></div>
+          <ul class="ship-list ship-v1">
+            <li>
+              <span class="ship-name">Read-only terminal streams + composer</span>
+              <span class="ship-note">Pane logs rendered in xterm.js; typed input routed through <code>zo runtime send</code>, never a raw TTY.</span>
+            </li>
+            <li>
+              <span class="ship-name">One-click gates</span>
+              <span class="ship-note">Approve, reject, or iterate from the card, the toast, or the palette; drives <code>/gates:approve</code> and <code>/gates:reject</code>.</span>
+            </li>
+            <li>
+              <span class="ship-name">Comms feed</span>
+              <span class="ship-note">The agent conversation as a filterable event stream over the comms JSONL.</span>
+            </li>
+            <li>
+              <span class="ship-name">Training dashboard</span>
+              <span class="ship-note">Curves, checkpoints, and lineage projected from per-experiment metrics files.</span>
+            </li>
+            <li>
+              <span class="ship-name">Start-run form</span>
+              <span class="ship-note"><code>zo build</code> flags as a form, with live command preview and preflight.</span>
+            </li>
+            <li>
+              <span class="ship-name">Reattach</span>
+              <span class="ship-note">Reopen VS Code, rediscover the live tmux session from <code>.zo/runtime/session.json</code>, catch up from <code>STATE.md</code>.</span>
+            </li>
+          </ul>
+        </div>
+        <div class="mock-frame">
+          <div class="mock-frame-label"><span>Deferred</span><span>Post-v1</span></div>
+          <ul class="ship-list ship-def">
+            <li>
+              <span class="ship-name">Per-keystroke TTY passthrough</span>
+              <span class="ship-note">Fully interactive terminals. The composer covers all v1 input; passthrough needs its own security review.</span>
+            </li>
+            <li>
+              <span class="ship-name">Multi-project concurrent view</span>
+              <span class="ship-note">One window, one project in v1. Concurrent teams wait for the runtime to multiplex sessions.</span>
+            </li>
+            <li>
+              <span class="ship-name">Marketplace theming beyond brand / editor</span>
+              <span class="ship-note">v1 ships the ZO brand theme and an inherit-editor mode; theme packs come later.</span>
+            </li>
+            <li>
+              <span class="ship-name">ZO Studio bundled installer</span>
+              <span class="ship-note">v1 installs from VSIX alongside an existing ZO checkout; a bundled one-step install is a separate effort.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Section 4: Data sources ──────────────── -->
+    <section class="mock-section">
+      <span class="kicker">04 — Contract</span>
+      <h2>Data <em>sources</em></h2>
+      <p class="lede">
+        No invented state. Every region of the UI is a projection of a file
+        the ZO runtime already writes, or a CLI command it already accepts.
+      </p>
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>Runtime contract</span><span>UI region ← file → component</span></div>
+        <table class="ds-table">
+          <thead>
+            <tr>
+              <th>UI region</th>
+              <th>Contract file / mechanism</th>
+              <th>Consuming component</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="region">Sidebar + status bar</td>
+              <td class="contract"><code>.zo/runtime/session.json</code> — heartbeat, phase, and panes map, polled on a short interval.</td>
+              <td class="consumer">TreeDataProvider + StatusBarItem <span class="ref">screens 02 · 08</span></td>
+            </tr>
+            <tr>
+              <td class="region">Terminal panel</td>
+              <td class="contract"><code>.zo/runtime/panes/p12.log</code> (one per pane) written via tmux <code>pipe-pane</code>, tailed by the extension.</td>
+              <td class="consumer">xterm.js webview <span class="ref">screen 03</span></td>
+            </tr>
+            <tr>
+              <td class="region">Comms feed</td>
+              <td class="contract"><code>logs/comms/2026-07-12.jsonl</code> — append-only agent events, tailed and parsed per line.</td>
+              <td class="consumer">Feed webview <span class="ref">screen 04</span></td>
+            </tr>
+            <tr>
+              <td class="region">Training dashboard</td>
+              <td class="contract"><code>.zo/experiments/exp-003/metrics.jsonl</code> + <code>training_status.json</code> for the live epoch state.</td>
+              <td class="consumer">Dashboard webview <span class="ref">screens 01 · 06</span></td>
+            </tr>
+            <tr>
+              <td class="region">Gate actions</td>
+              <td class="contract"><code>zo runtime send</code> delivering <code>/gates:approve</code> or <code>/gates:reject</code> to the lead's pane.</td>
+              <td class="consumer">Approval card + notification <span class="ref">screens 05 · 08</span></td>
+            </tr>
+            <tr>
+              <td class="region">Start run</td>
+              <td class="contract"><code>zo build</code> / <code>zo continue --headless-tmux</code> composed from form state, after preflight checks.</td>
+              <td class="consumer">Form webview → integrated CLI <span class="ref">screen 07</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>All pages are static HTML linking <code>tokens.css</code>; no build step, no JS beyond the theme toggle. Production webviews bundle Geist, JetBrains Mono, and Instrument Serif as woff2 under strict CSP; the Google Fonts import in tokens.css is a browser-preview convenience only.</li>
+        <li>Every screen renders the same canonical moment: mnist-digit-classifier, phase_4 active, exp-003 at epoch 6/8, val_acc 0.9871, best 0.9883. Cross-page consistency is intentional so one run can be traced across all eight surfaces.</li>
+        <li>Semantic vars (<code>--bg</code>, <code>--surface</code>, <code>--text</code>…) flip with <code>data-theme</code>; brand accents (<code>--coral</code>, <code>--dusk</code>, <code>--moss</code>) do not. Terminals stay dark in light theme, matching VS Code.</li>
+        <li>The data-sources table above is the runtime contract summary the extension is built against: sidebar/status from <code>.zo/runtime/session.json</code>, terminals from <code>panes/p12.log</code> pipe-pane tails, feed from <code>logs/comms/2026-07-12.jsonl</code>, training from <code>.zo/experiments/exp-003/metrics.jsonl</code> + <code>training_status.json</code>, gates via <code>zo runtime send</code>. <code>specs/architecture.md</code> and <code>specs/comms.md</code> remain canonical if they disagree.</li>
+        <li>Screen link cards use plain relative hrefs (<code>01-workbench.html</code> … <code>08-status-and-palette.html</code>); this page carries no <code>.vsc-window</code> chrome by design, it is the editorial index.</li>
+        <li>The v1/deferred split is a scope fence for PR D2+, not a backlog ranking: TTY passthrough, multi-project view, marketplace theming, and the ZO Studio installer are all explicitly post-v1 so reviewers do not mark them as missing from the screens.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+  </script>
+</body>
+</html>

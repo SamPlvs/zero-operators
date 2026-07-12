@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Start Run</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── layout: form + preflight ────────────────────────────── */
+  .run-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 720px) minmax(320px, 1fr);
+    gap: 20px;
+    align-items: start;
+    justify-content: center;
+  }
+  @media (max-width: 1080px) { .run-layout { grid-template-columns: 1fr; } }
+
+  /* ── form panel ──────────────────────────────────────────── */
+  .form-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .form-head h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .chip-dot { background: var(--coral); }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .field-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .field-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-4);
+    letter-spacing: 0.02em;
+  }
+  .field-meta .ok { color: var(--moss); }
+  .field-caption {
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--text-3);
+    line-height: 1.5;
+    max-width: 560px;
+  }
+  .field-caption.warn { color: var(--coral-dim); }
+
+  /* fake select */
+  .sel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--editor);
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: 9px 13px;
+    color: var(--text);
+    cursor: pointer;
+    max-width: 520px;
+    transition: border-color 0.15s var(--ease);
+  }
+  .sel:hover { border-color: var(--text-4); }
+  .sel svg { color: var(--text-4); flex: none; }
+
+  /* segmented control */
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--editor);
+    align-self: flex-start;
+  }
+  .seg button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--line);
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button:hover { color: var(--text-2); }
+  .seg button.active {
+    background: var(--surface-2);
+    color: var(--text);
+    box-shadow: inset 0 -1px 0 var(--coral);
+  }
+
+  /* switch rows */
+  .switch-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .switch-row + .switch-row { margin-top: 14px; }
+  .switch {
+    width: 34px;
+    height: 18px;
+    flex: none;
+    margin-top: 1px;
+    border-radius: 9px;
+    border: 1px solid var(--line-2);
+    background: var(--editor);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--text-4);
+    transition: all 0.15s var(--ease);
+  }
+  .switch.on { background: var(--coral-soft); border-color: var(--coral); }
+  .switch.on::after { left: 18px; background: var(--coral); }
+  .switch.locked { opacity: 0.55; cursor: not-allowed; }
+  .switch-body { display: flex; flex-direction: column; gap: 4px; }
+  .switch-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .switch-name .locknote {
+    font-size: 10px;
+    color: var(--text-4);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: 8px;
+  }
+
+  /* stepper */
+  .stepper {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--editor);
+    align-self: flex-start;
+  }
+  .stepper button {
+    width: 32px;
+    background: transparent;
+    border: none;
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+  }
+  .stepper button:hover { color: var(--text); background: var(--surface-2); }
+  .stepper .step-val {
+    min-width: 48px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    padding: 8px 0;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+
+  /* hidden detail row */
+  .hidden-detail {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-4);
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--line);
+    letter-spacing: 0.02em;
+  }
+
+  /* command preview */
+  .cmd-wrap { padding: 16px 24px 20px; border-bottom: 1px solid var(--line); }
+  .cmd-wrap .field-label { display: block; margin-bottom: 9px; }
+  .cmd-wrap .code { white-space: nowrap; }
+
+  .form-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    background: var(--surface);
+  }
+
+  /* ── preflight panel ─────────────────────────────────────── */
+  .pf-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .pf-head h4 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 18px;
+  }
+  .pf-head .pf-when {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-4);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .pf-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .pf-row .pf-detail {
+    display: block;
+    font-size: 10.5px;
+    color: var(--text-4);
+    margin-top: 3px;
+  }
+  .pf-ok { color: var(--moss); font-size: 12px; }
+  .pf-foot {
+    padding: 12px 18px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-4);
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Every flag, <em>remembered for you</em>.</h1>
+      <p class="deck">The start form replaces a memorized CLI incantation. Defaults hydrate from <span style="font-family:var(--mono);font-size:0.85em">.zo/config.yaml</span> and the plan's frontmatter; the live preview shows exactly the command that will run — nothing hidden, nothing forgotten.</p>
+    </header>
+
+    <div class="mock-section">
+      <h2>Configure, <em>preview</em>, launch.</h2>
+      <p class="lede">Mode preselects continue because phases 1–3 are already complete. Preflight has already run; one warning — no CUDA device, Apple mps available — is surfaced but non-blocking.</p>
+
+      <div class="run-layout">
+
+        <!-- ── START RUN FORM ─────────────────────────────── -->
+        <div class="mock-frame">
+          <div class="mock-frame-label"><span>START RUN · WEBVIEW PANEL</span><span>DEFAULTS FROM .ZO/CONFIG.YAML</span></div>
+
+          <div class="form-head">
+            <h3>Start a run</h3>
+            <span class="badge badge-dim"><span class="badge-dot chip-dot"></span>mnist-digit-classifier</span>
+          </div>
+
+          <!-- PLAN -->
+          <div class="field">
+            <span class="field-label">Plan</span>
+            <div class="sel">
+              <span>.zo/plans/mnist-digit-classifier.md</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span class="field-meta"><span class="ok">validated ✓</span> · deep_learning · oracle: test_accuracy ≥ 0.95</span>
+          </div>
+
+          <!-- MODE -->
+          <div class="field">
+            <span class="field-label">Mode</span>
+            <div class="seg" id="segMode">
+              <button data-mode="build">build</button>
+              <button data-mode="continue" class="active">continue</button>
+            </div>
+            <span class="field-meta">phases 1–3 complete — continue resumes at phase_4 Training &amp; Iteration</span>
+          </div>
+
+          <!-- GATE MODE -->
+          <div class="field">
+            <span class="field-label">Gate mode</span>
+            <div class="seg" id="segGate">
+              <button data-gate="supervised" class="active">supervised</button>
+              <button data-gate="auto">auto</button>
+              <button data-gate="full-auto">full-auto</button>
+            </div>
+            <span class="field-caption">Every phase gate waits for a human <span style="font-family:var(--mono);font-size:0.9em">/gates:approve</span> — recommended while a project is still earning trust.</span>
+          </div>
+
+          <!-- LEAD MODEL -->
+          <div class="field">
+            <span class="field-label">Lead model</span>
+            <div class="sel" style="max-width:240px">
+              <span>opus</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span class="field-meta">default · options: sonnet · haiku — reviewer tiers still route per agent</span>
+          </div>
+
+          <!-- TOGGLES -->
+          <div class="field">
+            <span class="field-label">Toggles</span>
+            <div class="switch-row">
+              <div class="switch" id="swLow" role="switch" aria-checked="false" aria-label="low token"></div>
+              <div class="switch-body">
+                <span class="switch-name">--low-token</span>
+                <span class="field-caption">Sonnet lead · Haiku reviewers · caps iterations — ~30% measured savings</span>
+              </div>
+            </div>
+            <div class="switch-row">
+              <div class="switch" id="swBypass" role="switch" aria-checked="false" aria-label="bypass permissions"></div>
+              <div class="switch-body">
+                <span class="switch-name">--bypass-permissions<span class="locknote" id="bypassLock" hidden>implied by full-auto</span></span>
+                <span class="field-caption warn">auto-approves every tool call for this run — only for unattended runs; implied by full-auto</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- MAX ITERATIONS -->
+          <div class="field">
+            <span class="field-label">Max iterations</span>
+            <div class="stepper">
+              <button id="stepDown" aria-label="decrease">−</button>
+              <span class="step-val" id="stepVal">10</span>
+              <button id="stepUp" aria-label="increase">+</button>
+            </div>
+            <span class="field-meta">per-phase experiment budget — lead stops iterating past this count</span>
+          </div>
+
+          <div class="hidden-detail">--headless-tmux · session owned by the extension</div>
+
+          <!-- COMMAND PREVIEW -->
+          <div class="cmd-wrap">
+            <span class="field-label">Live command preview</span>
+            <div class="code" id="cmdPreview"><span class="c-prompt">$</span><span class="c-cmd">zo continue mnist-digit-classifier</span> <span class="c-arg">--repo ~/projects/mnist-delivery</span> <span class="c-arg">--headless-tmux</span> <span class="c-arg">--gate-mode supervised</span></div>
+          </div>
+
+          <div class="form-foot">
+            <button class="btn btn-secondary">Run preflight again</button>
+            <button class="btn btn-primary">Start run</button>
+          </div>
+        </div>
+
+        <!-- ── PREFLIGHT ──────────────────────────────────── -->
+        <div class="mock-frame">
+          <div class="mock-frame-label"><span>PREFLIGHT</span><span>ZO PREFLIGHT --JSON</span></div>
+
+          <div class="pf-head">
+            <h4>Preflight</h4>
+            <span class="pf-when">ran 09:13:58</span>
+          </div>
+
+          <div class="pf-row"><span>claude CLI 2.1.x</span><span class="pf-ok">✓</span></div>
+          <div class="pf-row"><span>tmux 3.4</span><span class="pf-ok">✓</span></div>
+          <div class="pf-row"><span>uv 0.7.x</span><span class="pf-ok">✓</span></div>
+          <div class="pf-row">
+            <span>plan validates<span class="pf-detail">.zo/plans/mnist-digit-classifier.md</span></span>
+            <span class="pf-ok">✓</span>
+          </div>
+          <div class="pf-row">
+            <span>delivery repo clean<span class="pf-detail">~/projects/mnist-delivery · main</span></span>
+            <span class="pf-ok">✓</span>
+          </div>
+          <div class="pf-row">
+            <span>GPU<span class="pf-detail">none — mps available</span></span>
+            <span class="badge badge-dusk">warn</span>
+          </div>
+          <div class="pf-row"><span>disk 214 GB free</span><span class="pf-ok">✓</span></div>
+
+          <div class="pf-foot">7 checks · 6 pass · 1 warn · 0.8 s — warnings never block; failures disable Start run</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Panel is a VS Code <code>WebviewPanel</code> opened by the <code>zo.startRun</code> command — plain HTML controls, strict CSP, no libraries; submit posts form state to the extension host.</li>
+        <li>Defaults hydrate from <code>.zo/config.yaml</code> merged with plan frontmatter in <code>.zo/plans/mnist-digit-classifier.md</code>; mode preselects continue because <code>STATE.md</code> shows phases 1–3 complete.</li>
+        <li>Start run shells <code>zo continue mnist-digit-classifier --repo ~/projects/mnist-delivery --headless-tmux --gate-mode supervised</code> via a VS Code Task; the extension then watches <code>.zo/runtime/session.json</code> for the tmux session it now owns (<code>zo-mnist-20260712-091412</code>).</li>
+        <li>The command preview is the source of truth: form state serializes to argv verbatim, and the preview string is exactly what gets executed — <code>--headless-tmux</code> is always appended since the extension owns the session.</li>
+        <li>Preflight panel renders the check array from <code>zo preflight --json</code> one row per check; "Run preflight again" re-invokes it and diffs statuses in place. Warnings (e.g. mps-only GPU) never block; failed checks disable the primary button.</li>
+        <li>Bypass truth table: selecting full-auto forces the <code>--bypass-permissions</code> toggle on and locks it (flag omitted from argv — the CLI derives it); supervised and auto leave the toggle user-controlled.</li>
+        <li><code>--low-token</code> maps to sonnet lead + haiku reviewers + capped iterations; the ~30% figure is the measured saving recorded in platform priors.</li>
+        <li>Deferred from v1: fuzzy plan picker across multiple workspaces and an editable delivery-repo path — v1 lists <code>.zo/plans/*.md</code> and reads the repo from plan frontmatter only.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+
+    // — tiny demo interactivity: segmented controls + toggles drive the preview —
+    const state = { mode: 'continue', gate: 'supervised', lowToken: false, userBypass: false, iters: 10 };
+    const cmd = document.getElementById('cmdPreview');
+    const swLow = document.getElementById('swLow');
+    const swBypass = document.getElementById('swBypass');
+    const bypassLock = document.getElementById('bypassLock');
+
+    function arg(s) { return ' <span class="c-arg">' + s + '</span>'; }
+    function render() {
+      const full = state.gate === 'full-auto';
+      const bypass = full || state.userBypass;
+      document.querySelectorAll('#segMode button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+      document.querySelectorAll('#segGate button').forEach(b => b.classList.toggle('active', b.dataset.gate === state.gate));
+      swLow.classList.toggle('on', state.lowToken);
+      swLow.setAttribute('aria-checked', state.lowToken);
+      swBypass.classList.toggle('on', bypass);
+      swBypass.classList.toggle('locked', full);
+      swBypass.setAttribute('aria-checked', bypass);
+      bypassLock.hidden = !full;
+      let html = '<span class="c-prompt">$</span><span class="c-cmd">zo ' + state.mode + ' mnist-digit-classifier</span>'
+        + arg('--repo ~/projects/mnist-delivery') + arg('--headless-tmux') + arg('--gate-mode ' + state.gate);
+      if (state.lowToken) html += arg('--low-token');
+      if (bypass && !full) html += arg('--bypass-permissions');
+      if (state.iters !== 10) html += arg('--max-iterations ' + state.iters);
+      cmd.innerHTML = html;
+      document.getElementById('stepVal').textContent = state.iters;
+    }
+    document.getElementById('segMode').addEventListener('click', e => { if (e.target.dataset.mode) { state.mode = e.target.dataset.mode; render(); } });
+    document.getElementById('segGate').addEventListener('click', e => { if (e.target.dataset.gate) { state.gate = e.target.dataset.gate; render(); } });
+    swLow.addEventListener('click', () => { state.lowToken = !state.lowToken; render(); });
+    swBypass.addEventListener('click', () => { if (state.gate !== 'full-auto') { state.userBypass = !state.userBypass; render(); } });
+    document.getElementById('stepDown').addEventListener('click', () => { state.iters = Math.max(1, state.iters - 1); render(); });
+    document.getElementById('stepUp').addEventListener('click', () => { state.iters = Math.min(50, state.iters + 1); render(); });
+    render();
+  </script>
+</body>
+</html>
