@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Workbench</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── hero window ─────────────────────────────── */
+  .vsc-window.hero { min-height: 760px; }
+
+  /* ── sidebar tree ────────────────────────────── */
+  .tree { flex: 1; padding: 2px 0 14px; overflow: hidden; }
+  .tree-group {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--text-4);
+    padding: 16px 16px 6px;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 16px; min-width: 0;
+  }
+  .tree-row:hover { background: var(--surface-2); }
+  .tree-row .name {
+    font-family: var(--mono); font-size: 11px; color: var(--text-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tree-row.project .name { color: var(--text); font-size: 11.5px; }
+  .tree-row .tier { font-family: var(--mono); font-size: 9px; color: var(--text-4); flex: none; }
+  .tree-row .meta {
+    margin-left: auto; font-family: var(--mono); font-size: 9.5px;
+    color: var(--text-4); letter-spacing: 0.04em; white-space: nowrap; flex: none;
+  }
+  .tree-sub {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 1px 16px 4px 31px;
+    font-family: var(--mono); font-size: 9.5px; color: var(--text-4);
+    white-space: nowrap; overflow: hidden;
+  }
+  .tree-sub span { overflow: hidden; text-overflow: ellipsis; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot-moss  { background: var(--moss); }
+  .dot-coral { background: var(--coral); }
+  .status { margin-left: auto; font-family: var(--mono); font-size: 10px; white-space: nowrap; flex: none; }
+  .st-coral { color: var(--coral); }
+  .st-dusk  { color: var(--dusk); }
+  .st-dim   { color: var(--text-3); }
+  .prog { height: 2px; border-radius: 1px; background: var(--line-2); margin: 3px 16px 2px; }
+  .prog i { display: block; height: 100%; width: 75%; border-radius: 1px; background: var(--coral); }
+  .sbt-aside { color: var(--text-4); letter-spacing: 0.1em; }
+
+  /* ── editor: tab aside + phases breadcrumb ───── */
+  .tabs-aside {
+    margin-left: auto; display: flex; align-items: center; padding: 0 14px;
+    font-family: var(--mono); font-size: 10px; color: var(--text-4); white-space: nowrap;
+  }
+  .tab-dot.on  { background: var(--coral); }
+  .tab-dot.off { background: var(--text-4); }
+  .phasebar {
+    flex: none; height: 30px; display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em;
+    color: var(--text-4); overflow: hidden; white-space: nowrap;
+  }
+  .phasebar .ph { display: inline-flex; align-items: center; gap: 5px; }
+  .phasebar .ph.done { color: var(--text-3); }
+  .phasebar .ph.done b { color: var(--moss); font-weight: 400; }
+  .phasebar .ph.active { color: var(--coral); }
+  .phasebar .ph-aside { margin-left: auto; color: var(--text-4); }
+  .hero .term { flex: 1; }
+
+  /* ── comms panel ─────────────────────────────── */
+  .vsc-panel.comms-panel { height: 200px; }
+  .panel-aside { margin-left: auto; text-transform: none; letter-spacing: 0.04em; color: var(--text-4); cursor: default; }
+  .comms { flex: 1; overflow: hidden; padding: 3px 0 0; }
+  .comms-row {
+    display: grid; grid-template-columns: 66px 88px 1fr; gap: 16px;
+    align-items: baseline; padding: 7px 18px;
+    border-bottom: 1px solid var(--line); font-size: 12px;
+  }
+  .c-time { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); }
+  .c-kind { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .k-chk { color: var(--text-3); }
+  .k-msg { color: var(--text-2); }
+  .k-dec { color: var(--dusk); }
+  .k-gate { color: var(--moss); }
+  .c-text {
+    color: var(--text-2); font-weight: 300;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .c-text .agent { font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .c-text .path  { font-family: var(--mono); font-size: 11px; color: var(--dusk); }
+  .comms-foot {
+    padding: 6px 18px; font-family: var(--mono); font-size: 9.5px;
+    color: var(--text-4); letter-spacing: 0.06em;
+  }
+  .sb-live { background: var(--coral); }
+
+  /* ── region map (annotated miniature) ────────── */
+  .anno { display: grid; grid-template-columns: 1.15fr 1fr; }
+  .anno-mini { padding: 32px; border-right: 1px solid var(--line); }
+  .mini {
+    height: 380px; display: flex; flex-direction: column;
+    border: 1px solid var(--line-2); border-radius: 6px;
+    background: var(--editor); overflow: hidden;
+  }
+  .mini-titlebar { flex: none; height: 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .mini-body { flex: 1; display: flex; min-height: 0; }
+  .mini-ab { flex: none; width: 26px; background: var(--surface); border-right: 1px solid var(--line); }
+  .mini-sbar {
+    flex: none; width: 106px; background: var(--surface); border-right: 1px solid var(--line);
+    position: relative; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .mini-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .mini-tabs { flex: none; height: 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .mini-term { flex: 1; position: relative; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .mini-panel {
+    flex: none; height: 88px; background: var(--surface); border-top: 1px solid var(--line);
+    position: relative; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .mini-status { flex: none; height: 14px; background: var(--surface); border-top: 1px solid var(--line); position: relative; }
+  .skel { flex: none; height: 4px; border-radius: 2px; background: var(--line-2); }
+  .skel.soft { background: var(--line); }
+  .w25 { width: 25%; } .w40 { width: 40%; } .w55 { width: 55%; } .w70 { width: 70%; } .w85 { width: 85%; }
+  .callout {
+    position: absolute; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--coral); color: var(--coral); background: var(--bg);
+    font-family: var(--mono); font-size: 11px; z-index: 2;
+  }
+  .mini-sbar  .callout { top: 8px; right: 8px; }
+  .mini-term  .callout { top: 8px; right: 10px; }
+  .mini-panel .callout { top: 8px; right: 10px; }
+  .mini-status .callout { bottom: 2px; right: 10px; }
+  .anno-legend { padding: 32px 36px; display: flex; flex-direction: column; gap: 22px; justify-content: center; }
+  .leg { display: flex; gap: 14px; align-items: flex-start; }
+  .leg .callout { position: static; flex: none; }
+  .leg-t {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text); margin-bottom: 4px;
+  }
+  .leg-s { font-size: 12.5px; font-weight: 300; color: var(--text-3); line-height: 1.55; }
+  .leg-s code { font-family: var(--mono); font-size: 11px; color: var(--dusk); }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>The whole run, <em>one window</em>.</h1>
+      <p class="deck">The hero composite: session tree, live agent terminal, comms stream and run heartbeat in a single VS Code workbench — the surface that replaces four raw tmux panes.</p>
+    </header>
+
+    <!-- ═══════════ FRAME 1 · FULL WORKBENCH ═══════════ -->
+    <div class="mock-frame">
+      <div class="mock-frame-label"><span>WORKBENCH · FULL COMPOSITE</span><span>PHASE_4 ACTIVE · EXP-003 RUNNING</span></div>
+      <div class="vsc-window hero">
+
+        <div class="vsc-titlebar">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="title">mnist-digit-classifier — Zero Operators</div>
+        </div>
+
+        <div class="vsc-body">
+
+          <!-- activity bar -->
+          <div class="vsc-activitybar">
+            <div class="ab-item" title="Explorer">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h7l3 3v11H5z"/><path d="M12 3v3h3"/></svg>
+            </div>
+            <div class="ab-item" title="Search">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="5"/><line x1="12.8" y1="12.8" x2="17" y2="17"/></svg>
+            </div>
+            <div class="ab-item" title="Source Control">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="15" r="2"/><circle cx="14" cy="7" r="2"/><path d="M6 7v6"/><path d="M14 9c0 3.5-5 3-8 4.5"/></svg>
+            </div>
+            <div class="ab-item" title="Extensions">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3.5" y="3.5" width="5.5" height="5.5"/><rect x="11" y="3.5" width="5.5" height="5.5"/><rect x="3.5" y="11" width="5.5" height="5.5"/><rect x="11" y="11" width="5.5" height="5.5"/></svg>
+            </div>
+            <div class="ab-item active" title="Zero Operators">
+              <svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg>
+            </div>
+            <div class="ab-spacer"></div>
+            <div class="ab-item" title="Settings">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="3"/><path d="M10 3.5v2M10 14.5v2M3.5 10h2M14.5 10h2M5.4 5.4l1.4 1.4M13.2 13.2l1.4 1.4M14.6 5.4l-1.4 1.4M6.8 13.2l-1.4 1.4"/></svg>
+            </div>
+          </div>
+
+          <!-- sidebar: ZO panel -->
+          <div class="vsc-sidebar">
+            <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span class="sbt-aside">···</span></div>
+            <div class="tree">
+
+              <div class="tree-row project">
+                <span class="dot dot-moss"></span>
+                <span class="name">mnist-digit-classifier</span>
+                <span class="meta">deep_learning</span>
+              </div>
+
+              <div class="tree-group"><span>Session</span><span>tmux</span></div>
+              <div class="tree-row">
+                <span class="dot dot-coral pulse"></span>
+                <span class="name">zo-mnist-20260712-091412</span>
+                <span class="meta">28m</span>
+              </div>
+              <div class="tree-sub"><span>~/projects/mnist-delivery</span><span>live</span></div>
+
+              <div class="tree-group"><span>Agents</span><span>4</span></div>
+              <div class="tree-row">
+                <span class="name">lead-orchestrator</span><span class="tier">opus</span>
+                <span class="status st-coral">▸ working</span>
+              </div>
+              <div class="tree-row">
+                <span class="name">model-builder</span><span class="tier">sonnet</span>
+                <span class="status st-coral">▸ training</span>
+              </div>
+              <div class="tree-row">
+                <span class="name">training-mnist-cnn-checker</span><span class="tier">sonnet</span>
+                <span class="status st-dusk">▸ watching</span>
+              </div>
+              <div class="tree-row">
+                <span class="name">oracle-qa</span><span class="tier">sonnet</span>
+                <span class="status st-dim">· idle</span>
+              </div>
+
+              <div class="tree-group"><span>Gates</span><span>supervised</span></div>
+              <div class="tree-row">
+                <span class="name">next: phase_4 → phase_5</span>
+                <span class="meta">pending</span>
+              </div>
+              <div class="tree-sub"><span>must ≥0.95 · should ≥0.98 · could ≥0.99</span></div>
+
+              <div class="tree-group"><span>Training</span><span>mps</span></div>
+              <div class="tree-row">
+                <span class="name">exp-003</span>
+                <span class="meta">epoch 6/8</span>
+              </div>
+              <div class="prog"><i></i></div>
+              <div class="tree-sub"><span>val 0.9871 · best 0.9883 @5</span><span>eta ~4m</span></div>
+
+            </div>
+          </div>
+
+          <!-- main: tabs / phases / terminal / panel -->
+          <div class="vsc-main">
+
+            <div class="vsc-tabs">
+              <div class="vsc-tab active"><span class="tab-dot on"></span>lead-orchestrator</div>
+              <div class="vsc-tab"><span class="tab-dot off"></span>model-builder</div>
+              <div class="tabs-aside">delivery ~/projects/mnist-delivery</div>
+            </div>
+
+            <div class="phasebar">
+              <span class="ph done">P1 data review <b>✓</b></span>
+              <span class="ph done">P2 input representation <b>✓</b></span>
+              <span class="ph done">P3 model design <b>✓</b></span>
+              <span class="ph active">P4 ● training &amp; iteration</span>
+              <span class="ph">P5 analysis</span>
+              <span class="ph">P6 packaging</span>
+              <span class="ph-aside">workflow deep_learning</span>
+            </div>
+
+            <div class="term"><span class="t-dim">zo-mnist-20260712-091412 · pane p12 — lead-orchestrator (opus) · claude code</span>
+
+<span class="t-coral">●</span> <span class="t-cream">Read</span><span class="t-dim">(.zo/experiments/exp-003/metrics.jsonl)</span>
+  <span class="t-dim">⎿ 6 entries · last {"epoch": 6, "train_loss": 0.0341, "val_acc": 0.9871}</span>
+
+<span class="t-cream">exp-003 "wider conv + rotation aug" (parent exp-002) is at epoch 6/8 on mps.</span>
+<span class="t-cream">Best val_acc 0.9883 came at epoch 5 — watching for regression before epoch 7.</span>
+
+<span class="t-coral">●</span> <span class="t-cream">SendMessage</span><span class="t-dim">(to: model-builder)</span>
+  <span class="t-dusk">"Continue exp-003 through epoch 8. Val plateaued at 0.9871 (best 0.9883 @5).</span>
+  <span class="t-dusk"> Checkpoint best weights under .zo/experiments/exp-003/ and hold exp-004</span>
+  <span class="t-dusk"> until oracle-qa re-runs the held-out set."</span>
+
+<span class="t-coral">●</span> <span class="t-cream">Read</span><span class="t-dim">(.zo/runtime/training_status.json)</span>
+  <span class="t-dim">⎿ {"exp": "exp-003", "epoch": 6, "of": 8, "device": "mps", "eta_min": 4}</span>
+
+<span class="t-coral">●</span> <span class="t-cream">Update Todos</span>
+  <span class="t-moss">⎿ ☒ phase_2 input representation — human gate passed 07-11</span>
+  <span class="t-moss">  ☒ phase_3 model design approved · exp-003 launched (wider conv + rot aug)</span>
+  <span class="t-cream">  ☐ monitor exp-003 through epoch 8 — training-checker watching metrics</span>
+  <span class="t-cream">  ☐ run oracle: test_accuracy vs must ≥0.95 · should ≥0.98 · could ≥0.99</span>
+  <span class="t-cream">  ☐ assemble phase_4 → phase_5 gate packet (supervised)</span>
+
+<span class="t-cream">Checkpoint noted at epoch 5 (val_acc 0.9883) — retained as best.</span>
+<span class="t-cream">training-mnist-cnn-checker reports train/val curves converging, no divergence.</span>
+
+<span class="t-dim">Next: read epoch 7 from metrics.jsonl, then decide on early stop vs full run.</span>
+
+<span class="t-coral">●</span> <span class="t-cream caret">Waiting on epoch 7 · ETA ~4 min </span></div>
+
+            <div class="vsc-panel comms-panel">
+              <div class="vsc-panel-tabs">
+                <span class="active">COMMS</span>
+                <span>OUTPUT</span>
+                <span>TERMINAL</span>
+                <span class="panel-aside">logs/comms/2026-07-12.jsonl</span>
+              </div>
+              <div class="comms">
+                <div class="comms-row">
+                  <span class="c-time">09:38:05</span>
+                  <span class="c-kind k-chk">checkpoint</span>
+                  <span class="c-text"><span class="agent">model-builder</span> saved epoch-5 weights — val_acc 0.9883 retained as best · <span class="path">.zo/experiments/exp-003/</span></span>
+                </div>
+                <div class="comms-row">
+                  <span class="c-time">09:41:36</span>
+                  <span class="c-kind k-msg">message</span>
+                  <span class="c-text"><span class="agent">lead-orchestrator</span> → <span class="agent">model-builder</span> — continue exp-003 through epoch 8, checkpoint best weights before exp-004</span>
+                </div>
+                <div class="comms-row">
+                  <span class="c-time">09:42:10</span>
+                  <span class="c-kind k-dec">decision</span>
+                  <span class="c-text"><span class="agent">lead-orchestrator</span> — hold exp-004 until oracle re-runs held-out set · logged to DECISION_LOG</span>
+                </div>
+                <div class="comms-row">
+                  <span class="c-time">09:42:58</span>
+                  <span class="c-kind k-gate">gate</span>
+                  <span class="c-text"><span class="agent">oracle-qa</span> — phase_4 → phase_5 pre-check: test_accuracy 0.9912 → tier could_pass (must ≥0.95 · should ≥0.98 · could ≥0.99)</span>
+                </div>
+                <div class="comms-foot">tail —f · 41 events today · checkpoint / message / decision / gate</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="vsc-statusbar">
+          <div class="sb-item accent"><span>◆</span> zo: phase_4 · training</div>
+          <div class="sb-item">epoch 6/8 · val 0.9871</div>
+          <div class="sb-item">gate: supervised</div>
+          <div class="sb-spacer"></div>
+          <div class="sb-item">exp-003</div>
+          <div class="sb-item"><span class="sb-dot sb-live pulse"></span> session: live</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ FRAME 2 · REGION MAP ═══════════ -->
+    <div class="mock-section">
+      <h2>Four regions, <em>four sources</em>.</h2>
+      <p class="lede">Every region of the workbench is a thin view over a file the ZO runtime already writes. Nothing here invents state — the extension watches, tails and renders.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>REGION MAP</span><span>DATA SOURCES</span></div>
+        <div class="anno">
+          <div class="anno-mini">
+            <div class="mini">
+              <div class="mini-titlebar"></div>
+              <div class="mini-body">
+                <div class="mini-ab"></div>
+                <div class="mini-sbar">
+                  <span class="callout">1</span>
+                  <div class="skel w70"></div>
+                  <div class="skel soft w55"></div>
+                  <div class="skel soft w85"></div>
+                  <div class="skel soft w70"></div>
+                  <div class="skel soft w55"></div>
+                  <div class="skel w40"></div>
+                  <div class="skel soft w70"></div>
+                </div>
+                <div class="mini-main">
+                  <div class="mini-tabs"></div>
+                  <div class="mini-term">
+                    <span class="callout">2</span>
+                    <div class="skel soft w55"></div>
+                    <div class="skel soft w85"></div>
+                    <div class="skel soft w70"></div>
+                    <div class="skel soft w40"></div>
+                    <div class="skel soft w70"></div>
+                    <div class="skel soft w25"></div>
+                  </div>
+                  <div class="mini-panel">
+                    <span class="callout">3</span>
+                    <div class="skel soft w85"></div>
+                    <div class="skel soft w70"></div>
+                    <div class="skel soft w55"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mini-status"><span class="callout">4</span></div>
+            </div>
+          </div>
+          <div class="anno-legend">
+            <div class="leg">
+              <span class="callout">1</span>
+              <div>
+                <div class="leg-t">Sidebar — session tree</div>
+                <div class="leg-s">← <code>.zo/runtime/session.json</code> · fs watch; project, agents, gates and training summary re-render on change, no polling.</div>
+              </div>
+            </div>
+            <div class="leg">
+              <span class="callout">2</span>
+              <div>
+                <div class="leg-t">Terminal — agent pane mirror</div>
+                <div class="leg-s">← <code>panes/p12.log</code> · tmux pipe-pane stream rendered in xterm.js; input routed back via <code>zo runtime send</code>.</div>
+              </div>
+            </div>
+            <div class="leg">
+              <span class="callout">3</span>
+              <div>
+                <div class="leg-t">Comms — event stream</div>
+                <div class="leg-s">← <code>logs/comms/2026-07-12.jsonl</code> · incremental tail; event kind maps to accent (checkpoint dim, decision dusk, gate moss).</div>
+              </div>
+            </div>
+            <div class="leg">
+              <span class="callout">4</span>
+              <div>
+                <div class="leg-t">Status bar — heartbeat</div>
+                <div class="leg-s">← <code>training_status.json</code> · phase, epoch/val and gate mode as StatusBarItems; liveness dims when the tmux heartbeat lapses.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ IMPLEMENTATION NOTES ═══════════ -->
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Sidebar tree is a <code>vscode.TreeDataProvider</code> in a dedicated view container; it fires <code>onDidChangeTreeData</code> from an fs watcher on <code>.zo/runtime/session.json</code> — no polling loop.</li>
+        <li>Agent editor tabs are webview-hosted xterm.js instances replaying <code>.zo/runtime/panes/p12.log</code> (tmux pipe-pane); keystrokes route through <code>zo runtime send</code> so the extension never drives tmux directly.</li>
+        <li>Phases breadcrumb parses the phase table from <code>STATE.md</code> on activation and on save; the active phase also feeds the status-bar <code>zo: phase_4</code> item.</li>
+        <li>COMMS panel does an incremental tail of <code>logs/comms/2026-07-12.jsonl</code>; kind → accent mapping is checkpoint dim / message default / decision dusk / gate moss. Clicking a row reveals the source JSONL line; filter chips deferred to v1.1.</li>
+        <li>Status bar is four <code>StatusBarItem</code> entries fed by the <code>training_status.json</code> heartbeat, debounced 2s; <code>session: live</code> flips to a dim <code>detached</code> when the heartbeat lapses beyond 15s.</li>
+        <li>Gate actions (approve / reject from the workbench) invoke <code>/gates:approve</code> and <code>/gates:reject</code> via CLI passthrough — the full gate flow is mocked on its own page, not here.</li>
+        <li>Session bootstrap: the extension attaches to a run started by <code>zo build</code> or <code>zo continue --headless-tmux</code>; it never spawns the team itself in v1.</li>
+        <li>Theming: chrome uses semantic vars mapped to <code>--vscode-*</code> fallbacks in production; terminals intentionally stay dark in light theme, matching VS Code behaviour.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+  </script>
+</body>
+</html>

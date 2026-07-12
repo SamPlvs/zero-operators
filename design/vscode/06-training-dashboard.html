@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Training Dashboard</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ── Webview ground ─────────────────────────────── */
+.tw-webview { padding: 20px 24px 26px; background: var(--editor); }
+
+/* ── Run header row ─────────────────────────────── */
+.tw-runhead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tw-runhead .run-id {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+.tw-runhead .run-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--text-2);
+  letter-spacing: 0.005em;
+}
+.tw-runhead .run-meta {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.tw-runhead .run-meta .sep { color: var(--text-4); }
+.tw-runhead .run-meta .lineage { color: var(--text-4); }
+.tw-runhead .run-meta .lineage b { color: var(--text-2); font-weight: 500; }
+
+/* ── Stat tiles ─────────────────────────────────── */
+.tw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 4px;
+}
+.tw-stat { padding: 18px 20px 16px; border-left: 1px solid var(--line); }
+.tw-stat:first-child { border-left: none; padding-left: 2px; }
+.tw-stat .lbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.tw-stat .num {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.tw-stat .num.em { color: var(--coral); font-style: italic; }
+.tw-stat .num .frac {
+  font-size: 22px;
+  color: var(--text-3);
+  font-style: normal;
+  letter-spacing: 0;
+}
+.tw-stat .sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-4);
+  margin-top: 8px;
+}
+.tw-progress { height: 2px; background: var(--line); margin: 2px 0 0; }
+.tw-progress i { display: block; height: 2px; width: 75%; background: var(--coral); }
+
+/* ── Chart card ─────────────────────────────────── */
+.tw-chart {
+  margin-top: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tw-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.tw-chart-head .ttl {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.tw-legend {
+  display: flex;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+.tw-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.tw-legend .sw { width: 18px; height: 0; border-top: 2px solid; display: inline-block; }
+.tw-legend .sw-train { border-color: var(--text-2); }
+.tw-legend .sw-val { border-color: var(--coral); }
+.tw-chart svg { display: block; width: 100%; height: auto; }
+.tw-chart svg text { font-family: var(--mono); font-size: 10px; letter-spacing: 0.02em; }
+.tw-chart .plot { padding: 12px 14px 4px; }
+.tw-spark {
+  border-top: 1px solid var(--line);
+  padding: 8px 14px 10px;
+}
+
+/* ── Checkpoints table ──────────────────────────── */
+.tw-frag { padding: 22px 26px 20px; }
+.tw-table { width: 100%; border-collapse: collapse; }
+.tw-table th {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  text-align: left;
+  padding: 0 14px 10px 2px;
+  border-bottom: 1px solid var(--line-2);
+}
+.tw-table td {
+  padding: 12px 14px 12px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-2);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tw-table tr:last-child td { border-bottom: none; }
+.tw-table .mono { font-family: var(--mono); font-size: 11.5px; }
+.tw-table .file { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.tw-table .num { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tw-table .dim { color: var(--text-4); }
+.tw-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-4);
+  letter-spacing: 0.04em;
+}
+.tw-caption b { color: var(--text-3); font-weight: 500; }
+
+/* ── Experiment picker ──────────────────────────── */
+.tw-picker { display: flex; flex-direction: column; }
+.tw-pickhead, .tw-exp {
+  display: grid;
+  grid-template-columns: 15px 84px 1fr 150px 120px 100px 80px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 22px;
+}
+.tw-pickhead {
+  padding-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-2);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+.tw-exp { border-bottom: 1px solid var(--line); cursor: pointer; }
+.tw-exp:last-child { border-bottom: none; }
+.tw-exp:hover { background: var(--surface-2); }
+.tw-exp.selected { background: var(--surface); box-shadow: inset 2px 0 0 var(--coral); }
+.tw-exp .dot { width: 7px; height: 7px; border-radius: 50%; }
+.tw-exp .dot.done { background: transparent; border: 1px solid var(--line-2); }
+.tw-exp .dot.live { background: var(--coral); }
+.tw-exp .id { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.tw-exp .name { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-exp .st { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+.tw-exp .acc { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tw-exp .delta { font-family: var(--mono); font-size: 11.5px; color: var(--moss); text-align: right; font-variant-numeric: tabular-nums; }
+.tw-exp .delta.none { color: var(--text-4); }
+
+/* ── Sidebar internals (frame 1) ────────────────── */
+.sb-kv { padding: 2px 16px 12px; border-bottom: 1px solid var(--line); }
+.sb-kv .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 2;
+}
+.sb-kv .k { color: var(--text-4); }
+.sb-kv .v { color: var(--text-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-head {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  padding: 14px 16px 8px;
+}
+.sb-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 16px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.sb-row .g { width: 12px; flex: none; text-align: center; font-size: 11px; color: var(--moss); }
+.sb-row .g .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.sb-row .g .dot.live { background: var(--coral); }
+.sb-row .g .dot.watch { background: var(--dusk); }
+.sb-row .g .dot.idle { background: transparent; border: 1px solid var(--line-2); }
+.sb-row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-row .rt { font-family: var(--mono); font-size: 9.5px; color: var(--text-4); white-space: nowrap; }
+.sb-row.pending { color: var(--text-4); }
+.sb-row.active .nm { color: var(--text); }
+.sb-row.mono .nm { font-family: var(--mono); font-size: 11px; }
+.sb-row.donedim .nm { color: var(--text-4); }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Training, <em>watched</em>.</h1>
+      <p class="deck">The zo watch-training loop, re-rendered as a webview. Live loss curves from metrics.jsonl, checkpoint state, and the experiment lineage for mnist-digit-classifier — repainted on every file change, no polling.</p>
+    </header>
+
+    <!-- ════════ SECTION 1 · LIVE RUN ════════ -->
+    <div class="mock-section">
+      <h2>The <em>live</em> run</h2>
+      <p class="lede">exp-003 mid-flight in phase_4. The stat row reads the last line of metrics.jsonl; the chart replots the whole file. Epochs the run hasn't reached yet stay hatched — the dashboard never pretends to know the future.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>ZO: TRAINING — WEBVIEW PANEL</span><span>LIVE RUN · EXP-003 · EPOCH 6/8</span></div>
+        <div class="vsc-window">
+          <div class="vsc-titlebar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <div class="title">mnist-delivery — Zero Operators — Visual Studio Code</div>
+          </div>
+          <div class="vsc-body">
+
+            <div class="vsc-activitybar">
+              <div class="ab-item">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 2.75h5.5l3.5 3.5v11h-9z"/><path d="M11 2.75v3.5h3.5"/></svg>
+              </div>
+              <div class="ab-item">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8.75" cy="8.75" r="5.25"/><line x1="12.6" y1="12.6" x2="17" y2="17"/></svg>
+              </div>
+              <div class="ab-item">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="15" r="2"/><circle cx="14" cy="7" r="2"/><path d="M6 7v6"/><path d="M14 9c0 2.5-3.5 3-8 3"/></svg>
+              </div>
+              <div class="ab-item active">
+                <svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg>
+              </div>
+              <div class="ab-spacer"></div>
+              <div class="ab-item">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="3.5" width="5.5" height="5.5"/><rect x="3.5" y="11" width="5.5" height="5.5"/><rect x="11" y="11" width="5.5" height="5.5"/><rect x="11.5" y="3" width="5.5" height="5.5"/></svg>
+              </div>
+            </div>
+
+            <div class="vsc-sidebar">
+              <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span style="color: var(--moss);">live</span></div>
+              <div class="sb-kv">
+                <div class="row"><span class="k">session</span><span class="v">zo-mnist-20260712-091412</span></div>
+                <div class="row"><span class="k">plan</span><span class="v">mnist-digit-classifier.md</span></div>
+                <div class="row"><span class="k">workflow</span><span class="v">deep_learning</span></div>
+                <div class="row"><span class="k">gates</span><span class="v">supervised</span></div>
+                <div class="row"><span class="k">lead</span><span class="v">opus</span></div>
+              </div>
+
+              <div class="sb-head">Phases</div>
+              <div class="sb-row"><span class="g">✓</span><span class="nm">phase_1 · Data Review</span><span class="rt">done</span></div>
+              <div class="sb-row"><span class="g">✓</span><span class="nm">phase_2 · Input Representation</span><span class="rt">gate 07-11</span></div>
+              <div class="sb-row"><span class="g">✓</span><span class="nm">phase_3 · Model Design</span><span class="rt">done</span></div>
+              <div class="sb-row active"><span class="g"><span class="dot live pulse"></span></span><span class="nm">phase_4 · Training &amp; Iteration</span><span class="rt">exp-003</span></div>
+              <div class="sb-row pending"><span class="g"><span class="dot idle"></span></span><span class="nm">phase_5 · Analysis &amp; Validation</span><span class="rt">pending</span></div>
+              <div class="sb-row pending"><span class="g"><span class="dot idle"></span></span><span class="nm">phase_6 · Packaging</span><span class="rt">pending</span></div>
+
+              <div class="sb-head">Agents</div>
+              <div class="sb-row mono"><span class="g"><span class="dot live pulse"></span></span><span class="nm">lead-orchestrator</span><span class="rt">opus · working</span></div>
+              <div class="sb-row mono"><span class="g"><span class="dot live pulse"></span></span><span class="nm">model-builder</span><span class="rt">sonnet · training</span></div>
+              <div class="sb-row mono"><span class="g"><span class="dot watch"></span></span><span class="nm">training-mnist-cnn-checker</span><span class="rt">sonnet · watching</span></div>
+              <div class="sb-row mono"><span class="g"><span class="dot idle"></span></span><span class="nm">oracle-qa</span><span class="rt">sonnet · idle</span></div>
+              <div class="sb-row mono donedim"><span class="g">✓</span><span class="nm">code-reviewer</span><span class="rt">done</span></div>
+              <div class="sb-row mono donedim"><span class="g">✓</span><span class="nm">test-engineer</span><span class="rt">done</span></div>
+              <div class="sb-row mono donedim"><span class="g">✓</span><span class="nm">research-scout</span><span class="rt">done</span></div>
+            </div>
+
+            <div class="vsc-main">
+              <div class="vsc-tabs">
+                <div class="vsc-tab active"><span class="tab-dot pulse" style="background: var(--coral);"></span>ZO: Training — exp-003</div>
+                <div class="vsc-tab">STATE.md</div>
+                <div class="vsc-tab">mnist-digit-classifier.md</div>
+              </div>
+
+              <div class="tw-webview">
+
+                <!-- run header -->
+                <div class="tw-runhead">
+                  <span class="run-id">exp-003</span>
+                  <span class="run-name">wider conv + rotation aug</span>
+                  <span class="badge badge-coral"><span class="badge-dot pulse"></span>RUNNING</span>
+                  <span class="run-meta">
+                    <span class="lineage">exp-001 → exp-002 → <b>exp-003</b></span>
+                    <span class="sep">·</span><span>device mps</span>
+                    <span class="sep">·</span><span>started 09:17</span>
+                    <span class="sep">·</span><span>eta ~4 min</span>
+                  </span>
+                </div>
+
+                <!-- stat tiles -->
+                <div class="tw-stats">
+                  <div class="tw-stat">
+                    <div class="lbl">best val_acc</div>
+                    <div class="num em">0.9883</div>
+                    <div class="sub">epoch 5</div>
+                  </div>
+                  <div class="tw-stat">
+                    <div class="lbl">val_acc</div>
+                    <div class="num">0.9871</div>
+                    <div class="sub">epoch 6</div>
+                  </div>
+                  <div class="tw-stat">
+                    <div class="lbl">train_loss</div>
+                    <div class="num">0.0341</div>
+                    <div class="sub">epoch 6</div>
+                  </div>
+                  <div class="tw-stat">
+                    <div class="lbl">epoch</div>
+                    <div class="num">6<span class="frac"> / 8</span></div>
+                    <div class="sub">75% complete</div>
+                  </div>
+                </div>
+                <div class="tw-progress"><i></i></div>
+
+                <!-- chart -->
+                <div class="tw-chart">
+                  <div class="tw-chart-head">
+                    <span class="ttl">loss / epoch — exp-003</span>
+                    <div class="tw-legend">
+                      <span><i class="sw sw-train"></i>train_loss</span>
+                      <span><i class="sw sw-val"></i>val_loss</span>
+                    </div>
+                  </div>
+                  <div class="plot">
+                    <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loss curves for exp-003, epochs 1 to 6 of 8">
+                      <defs>
+                        <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                          <line x1="0" y1="0" x2="0" y2="6" stroke="var(--line-2)" stroke-width="1"/>
+                        </pattern>
+                      </defs>
+
+                      <!-- future epochs 7-8: hatched, unknown -->
+                      <rect x="628.6" y="20" width="231.4" height="250" fill="url(#hatch)" opacity="0.45"/>
+                      <line x1="628.6" y1="20" x2="628.6" y2="270" stroke="var(--line-2)" stroke-width="1" stroke-dasharray="2 4"/>
+
+                      <!-- gridlines 0.1-0.4 -->
+                      <line x1="50" y1="220" x2="860" y2="220" stroke="var(--line)" stroke-width="1"/>
+                      <line x1="50" y1="170" x2="860" y2="170" stroke="var(--line)" stroke-width="1"/>
+                      <line x1="50" y1="120" x2="860" y2="120" stroke="var(--line)" stroke-width="1"/>
+                      <line x1="50" y1="70"  x2="860" y2="70"  stroke="var(--line)" stroke-width="1"/>
+
+                      <!-- axes: hairline only -->
+                      <line x1="50" y1="270" x2="860" y2="270" stroke="var(--line-2)" stroke-width="1"/>
+                      <line x1="50" y1="20"  x2="50"  y2="270" stroke="var(--line-2)" stroke-width="1"/>
+
+                      <!-- val_loss area fill -->
+                      <path d="M50,80 L165.7,190 L281.4,221 L397.1,236.5 L512.9,246 L628.6,248.5 L628.6,270 L50,270 Z" fill="var(--coral-soft)"/>
+
+                      <!-- train_loss -->
+                      <polyline points="50,60 165.7,175 281.4,215 397.1,234 512.9,244.5 628.6,249.5"
+                        fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+                      <circle cx="628.6" cy="249.5" r="2.5" fill="var(--text-2)"/>
+
+                      <!-- val_loss -->
+                      <polyline points="50,80 165.7,190 281.4,221 397.1,236.5 512.9,246 628.6,248.5"
+                        fill="none" stroke="var(--coral)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+                      <!-- epoch-6 marker + callout -->
+                      <circle cx="628.6" cy="248.5" r="3.5" fill="var(--coral)"/>
+                      <text x="628.6" y="230" text-anchor="middle" fill="var(--coral)">0.043</text>
+
+                      <!-- y labels -->
+                      <text x="42" y="273" text-anchor="end" fill="var(--text-3)">0.0</text>
+                      <text x="42" y="223" text-anchor="end" fill="var(--text-3)">0.1</text>
+                      <text x="42" y="173" text-anchor="end" fill="var(--text-3)">0.2</text>
+                      <text x="42" y="123" text-anchor="end" fill="var(--text-3)">0.3</text>
+                      <text x="42" y="73"  text-anchor="end" fill="var(--text-3)">0.4</text>
+                      <text x="42" y="23"  text-anchor="end" fill="var(--text-3)">0.5</text>
+
+                      <!-- x labels: epochs -->
+                      <text x="50"    y="287" text-anchor="middle" fill="var(--text-3)">1</text>
+                      <text x="165.7" y="287" text-anchor="middle" fill="var(--text-3)">2</text>
+                      <text x="281.4" y="287" text-anchor="middle" fill="var(--text-3)">3</text>
+                      <text x="397.1" y="287" text-anchor="middle" fill="var(--text-3)">4</text>
+                      <text x="512.9" y="287" text-anchor="middle" fill="var(--text-3)">5</text>
+                      <text x="628.6" y="287" text-anchor="middle" fill="var(--text-3)">6</text>
+                      <text x="744.3" y="287" text-anchor="middle" fill="var(--text-4)">7</text>
+                      <text x="860"   y="287" text-anchor="middle" fill="var(--text-4)">8</text>
+                    </svg>
+                  </div>
+
+                  <!-- val_acc sparkline strip, x-aligned with chart -->
+                  <div class="tw-spark">
+                    <svg viewBox="0 0 880 56" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Validation accuracy sparkline, 0.9612 to 0.9871">
+                      <text x="42" y="32" text-anchor="end" fill="var(--text-4)">val_acc</text>
+                      <polyline points="50,41.8 165.7,28.6 281.4,21.8 397.1,18.4 512.9,14.7 628.6,15.9"
+                        fill="none" stroke="var(--moss)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+                      <circle cx="512.9" cy="14.7" r="2" fill="none" stroke="var(--moss)" stroke-width="1"/>
+                      <circle cx="628.6" cy="15.9" r="2.5" fill="var(--moss)"/>
+                      <text x="640" y="19.5" text-anchor="start" fill="var(--moss)">0.9871</text>
+                    </svg>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="vsc-panel">
+                <div class="vsc-panel-tabs">
+                  <span class="active">Terminal — p12 · training</span>
+                  <span>Comms</span>
+                  <span>Output</span>
+                </div>
+                <div class="term"><span class="t-dim">09:38:04</span> epoch 5/8 done · train_loss 0.0407 · val_acc <span class="t-moss">0.9883</span> · new best → checkpoints/best.pt
+<span class="t-dim">09:38:05</span> wrote .zo/experiments/exp-003/metrics.jsonl · training_status.json
+<span class="t-dim">09:41:02</span> epoch 6/8 done · train_loss <span class="t-cream">0.0341</span> · val_acc 0.9871 · best stays epoch 5
+<span class="t-dim">09:41:44</span> <span class="t-dusk">training-mnist-cnn-checker</span> Δ(5→6) −0.0012 · within tolerance · plateau watch on
+<span class="t-dim">09:42:15</span> epoch 7/8 · step 118/469 · train_loss 0.0329 · lr 8.1e-4<span class="caret"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vsc-statusbar">
+            <span class="sb-item"><span class="sb-dot" style="background: var(--moss);"></span>zo-mnist-20260712-091412</span>
+            <span class="sb-item">phase_4 · training &amp; iteration</span>
+            <span class="sb-item accent"><span class="sb-dot pulse" style="background: var(--coral);"></span>exp-003 · epoch 6/8</span>
+            <span class="sb-spacer"></span>
+            <span class="sb-item">val_acc 0.9871</span>
+            <span class="sb-item">mps</span>
+            <span class="sb-item">~/projects/mnist-delivery</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION 2 · CHECKPOINTS ════════ -->
+    <div class="mock-section">
+      <h2>Checkpoints, <em>resumable</em></h2>
+      <p class="lede">Everything a restart needs. Each row is a full state dict — model, optimizer, scheduler, RNG — so zo continue can resume mid-phase without losing the run.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>CHECKPOINTS</span><span>EXP-003 · EPOCH 6/8</span></div>
+        <div class="tw-frag">
+          <table class="tw-table">
+            <thead>
+              <tr><th>Epoch</th><th>File</th><th>Kind</th><th>val_acc</th><th>Size</th><th>Saved</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">5</td>
+                <td class="file">best.pt</td>
+                <td><span class="badge badge-moss">BEST</span></td>
+                <td class="num">0.9883</td>
+                <td class="num dim">4.7 MB</td>
+                <td class="num dim">09:38:05</td>
+              </tr>
+              <tr>
+                <td class="num">6</td>
+                <td class="file">last.pt</td>
+                <td><span class="badge badge-dim">LAST</span></td>
+                <td class="num">0.9871</td>
+                <td class="num dim">4.7 MB</td>
+                <td class="num dim">09:41:02</td>
+              </tr>
+              <tr>
+                <td class="num">3</td>
+                <td class="file">epoch-003.pt</td>
+                <td><span class="badge badge-dim">PERIODIC</span></td>
+                <td class="num">0.9803</td>
+                <td class="num dim">4.7 MB</td>
+                <td class="num dim">09:26:44</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="tw-caption">
+            <span>resumable: <b>model + optim + sched + RNG</b> · .zo/experiments/exp-003/checkpoints/</span>
+            <span>should_checkpoint: <b>every, best, last</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ SECTION 3 · EXPERIMENT PICKER ════════ -->
+    <div class="mock-section">
+      <h2>The experiment <em>lineage</em></h2>
+      <p class="lede">Every run descends from a parent. The picker retargets the dashboard to any experiment in the tree — the delta column answers the only question that matters: did the child beat its parent?</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>EXPERIMENT PICKER</span><span>3 EXPERIMENTS · LINEAGE</span></div>
+        <div class="tw-picker">
+          <div class="tw-pickhead" style="margin-top: 18px;">
+            <span></span><span>ID</span><span>Experiment</span><span>Status</span><span>Oracle tier</span><span>best val_acc</span><span style="text-align: right;">Δ parent</span>
+          </div>
+          <div class="tw-exp">
+            <span class="dot done"></span>
+            <span class="id">exp-001</span>
+            <span class="name">baseline cnn</span>
+            <span class="st">complete</span>
+            <span><span class="badge badge-dim">MUST_PASS</span></span>
+            <span class="acc">0.9770</span>
+            <span class="delta none">—</span>
+          </div>
+          <div class="tw-exp">
+            <span class="dot done"></span>
+            <span class="id">exp-002</span>
+            <span class="name">wider conv</span>
+            <span class="st">complete</span>
+            <span><span class="badge badge-dusk">SHOULD_PASS</span></span>
+            <span class="acc">0.9841</span>
+            <span class="delta">+0.0071</span>
+          </div>
+          <div class="tw-exp selected">
+            <span class="dot live pulse"></span>
+            <span class="id">exp-003</span>
+            <span class="name">wider conv + rotation aug</span>
+            <span class="st">running · epoch 6/8</span>
+            <span><span class="badge badge-coral">RUNNING</span></span>
+            <span class="acc">0.9883</span>
+            <span class="delta">+0.0042</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Data source: <code>.zo/experiments/exp-003/metrics.jsonl</code> (one JSON object per epoch) + <code>.zo/experiments/exp-003/training_status.json</code> (epoch, eta, device, state), resolved via <code>resolve_active_experiment_dir</code> from <code>.zo/runtime/session.json</code>. No CLI process is spawned — the webview reads what the training loop already writes.</li>
+        <li>Re-render trigger: <code>vscode.workspace.createFileSystemWatcher</code> on both files, debounced ~250 ms; the extension host posts the parsed payload to the webview via <code>postMessage</code>. No polling.</li>
+        <li>Chart is hand-rolled inline SVG — no chart library (webview CSP forbids CDN scripts, and a bundled lib costs more than ~80 lines of path math). Curves recompute from the full metrics.jsonl on each message; hatched region = epochs not yet reached. train_loss strokes <code>var(--text-2)</code> (cream-2 in dark) so it stays legible when the panel flips to the light theme.</li>
+        <li>Stat tiles = last metrics.jsonl line; best val_acc + epoch come from the running max in <code>training_status.json</code>. Progress rule is epoch/epochs from the same file.</li>
+        <li>Checkpoints table lists <code>.zo/experiments/exp-003/checkpoints/</code> via <code>workspace.fs.readDirectory</code>; kind/cadence from the plan's <code>should_checkpoint: every, best, last</code>. The resumable note reflects the saved state dict (model + optim + sched + RNG) that <code>zo continue</code> restores.</li>
+        <li>Experiment picker enumerates <code>.zo/experiments/*/training_status.json</code>; Δ parent = child best val_acc minus the <code>parent</code> experiment's best. Selecting a row retargets the FileSystemWatcher — completed runs render the same dashboard, static.</li>
+        <li>Terminal panel is the real tmux pane (tail of <code>panes/p12.log</code>) surfaced through the existing terminal integration — the webview renders metrics only; it never re-implements the terminal. Status-bar items via <code>vscode.window.createStatusBarItem</code>, fed from <code>.zo/runtime/session.json</code>.</li>
+        <li>Deferred from v1: per-step (intra-epoch) loss points, ETA regression curve, and two-experiment overlay comparison on one chart.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Sidebar Tree</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── 2×2 state grid ─────────────────────────────── */
+  .states {
+    display: grid;
+    grid-template-columns: repeat(2, 302px);
+    gap: 44px 72px;
+    justify-content: center;
+  }
+  @media (max-width: 760px) { .states { grid-template-columns: 302px; } }
+  .state-frame { width: 302px; margin: 0; }
+
+  /* ── the sidebar shell ──────────────────────────── */
+  .sb {
+    width: 100%;
+    height: 660px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 4px;
+  }
+  .sb .vsc-sidebar-title { flex: none; border-bottom: 1px solid var(--line); }
+  .sb .vsc-sidebar-title .side {
+    display: flex; align-items: center; gap: 6px;
+    letter-spacing: 0.04em; color: var(--text-4);
+  }
+
+  /* project header block */
+  .sb-head { flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .sb-head .name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sb-head .name { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+  .sb-head .meta {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-4); margin-top: 6px; line-height: 1.7;
+  }
+
+  /* group headers (collapsible sections) */
+  .grp {
+    height: 22px; flex: none;
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 10px; padding: 0 14px 0 10px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .grp .right {
+    margin-left: auto; letter-spacing: 0.02em; text-transform: none;
+    color: var(--text-4); display: flex; align-items: center; gap: 6px;
+  }
+
+  /* tree rows — 22px tall, 16px indent per level, mono 11px */
+  .row {
+    --lvl: 0;
+    height: 22px; flex: none;
+    display: flex; align-items: center; gap: 6px;
+    padding-right: 14px;
+    padding-left: calc(10px + var(--lvl) * 16px);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap; cursor: default;
+  }
+  .row:hover, .row.is-hover { background: var(--surface-2); }
+  .lvl-1 { --lvl: 1; } .lvl-2 { --lvl: 2; } .lvl-3 { --lvl: 3; } .lvl-4 { --lvl: 4; }
+  .row .lbl { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .row .right {
+    margin-left: auto; flex: none;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px;
+  }
+  .chev, .slot, .glyph {
+    width: 10px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chev { font-size: 9px; color: var(--text-4); }
+  .glyph { font-size: 10px; }
+  .g-moss { color: var(--moss); }
+  .g-ghost { color: var(--text-4); }
+  .ghost { color: var(--text-4); }
+  .st-coral { color: var(--coral); }
+  .st-dusk { color: var(--dusk); }
+  .st-dim { color: var(--text-3); }
+  .link-dusk { color: var(--dusk); }
+  .row:hover .link-dusk { text-decoration: underline; text-underline-offset: 2px; }
+
+  /* dots */
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .dot-coral { background: var(--coral); }
+  .dot-dusk  { background: var(--dusk); }
+  .dot-moss  { background: var(--moss); }
+  .dot-dim   { background: var(--text-4); }
+
+  /* tiny tree tags (smaller than .badge) */
+  .tag {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 1.5px 6px; border-radius: 3px; line-height: 1.5;
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tag-coral { background: var(--coral-soft); color: var(--coral); }
+  .tag-dusk  { background: var(--dusk-soft);  color: var(--dusk); }
+  .tag-moss  { background: var(--moss-soft);  color: var(--moss); }
+  .tag-dim   { color: var(--text-3); border: 1px solid var(--line-2); padding: 0.5px 5px; }
+
+  /* epoch progress — a 2px coral rule */
+  .ep-bar {
+    height: 2px; flex: none; border-radius: 1px; overflow: hidden;
+    background: var(--line-2);
+    margin: 5px 14px 5px calc(10px + 4 * 16px);
+  }
+  .ep-fill { height: 100%; width: 75%; background: var(--coral); }
+
+  /* State A — welcome view */
+  .sb-welcome {
+    padding: 52px 24px 0; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .sb-welcome .w-title { font-size: 13.5px; font-weight: 500; color: var(--text); margin: 20px 0 6px; }
+  .sb-welcome .w-copy {
+    font-size: 12px; font-weight: 300; color: var(--text-3);
+    line-height: 1.6; max-width: 224px;
+  }
+  .sb-welcome .btn { width: 100%; justify-content: center; margin-top: 22px; }
+  .sb-welcome .w-hint { margin-top: 14px; font-family: var(--mono); font-size: 10.5px; color: var(--text-4); }
+
+  /* action button stack */
+  .sb-actions { flex: none; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sb-actions .btn { width: 100%; justify-content: center; }
+
+  /* footer row pinned to the bottom */
+  .sb-spacer { flex: 1; }
+  .sb-foot {
+    flex: none; border-top: 1px solid var(--line);
+    padding: 9px 14px; margin-bottom: -4px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-4); line-height: 1.7;
+  }
+
+  /* State D — stale-heartbeat notice */
+  .notice {
+    flex: none; margin: 14px 14px 0;
+    border: 1px solid var(--line-2); border-radius: 6px;
+    padding: 12px 13px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .notice .n-row {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+  }
+  .notice .n-coral { color: var(--coral); }
+  .notice .n-moss  { color: var(--moss); }
+  .notice .n-sub {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-4); line-height: 1.6;
+    padding-top: 2px; border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Every session, <em>at a glance</em>.</h1>
+      <p class="deck">The ZO sidebar is the extension's resting face: before a plan exists, between sessions, mid-training, and when a wrapper dies but the tmux session survives. Every row is read from files the CLI already writes.</p>
+    </header>
+
+    <div class="mock-section">
+      <h2>One tree, four <em>states</em></h2>
+      <p class="lede">A single tree view whose root swaps with project state. No dashboards, no cards — the density and indent grammar of a file explorer, applied to agents, experiments, and gates.</p>
+
+      <div class="states">
+
+        <!-- ═══ STATE A · NO PROJECT ═══ -->
+        <div class="mock-frame state-frame">
+          <div class="mock-frame-label"><span>STATE A</span><span>NO PROJECT</span></div>
+          <div class="sb">
+            <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span class="side">···</span></div>
+            <div class="sb-welcome">
+              <svg width="40" height="40" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg>
+              <p class="w-title">No .zo project in this workspace</p>
+              <p class="w-copy">Open a folder that contains a <code>.zo</code> directory, or scaffold one and put an agent team to work.</p>
+              <button class="btn btn-primary">Connect a project</button>
+              <p class="w-hint">zo init &lt;project&gt; · zo draft</p>
+            </div>
+            <div class="sb-spacer"></div>
+            <div class="sb-foot">the tree populates itself the moment a plan lands in .zo/plans/</div>
+          </div>
+        </div>
+
+        <!-- ═══ STATE B · IDLE ═══ -->
+        <div class="mock-frame state-frame">
+          <div class="mock-frame-label"><span>STATE B</span><span>IDLE · BETWEEN SESSIONS</span></div>
+          <div class="sb">
+            <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span class="side">idle</span></div>
+            <div class="sb-head">
+              <div class="name-row">
+                <span class="name">mnist-digit-classifier</span>
+                <span class="tag tag-dim">idle</span>
+              </div>
+              <div class="meta">deep_learning · gates supervised · lead opus</div>
+            </div>
+
+            <div class="grp"><span class="chev">▾</span><span>phases</span><span class="right">STATE.md</span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl">phase_1 · Data Review</span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl">phase_2 · Input Representation</span><span class="right"><span class="ghost">gate 07-11</span></span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl">phase_3 · Model Design</span></div>
+            <div class="row lvl-1"><span class="glyph g-ghost">○</span><span class="lbl">phase_4 · Training &amp; Iteration</span><span class="right"><span class="tag tag-coral">next</span></span></div>
+            <div class="row lvl-1"><span class="glyph g-ghost">○</span><span class="lbl">phase_5 · Analysis &amp; Validation</span></div>
+            <div class="row lvl-1"><span class="glyph g-ghost">○</span><span class="lbl">phase_6 · Packaging</span></div>
+
+            <div class="grp"><span class="chev">▾</span><span>plan</span></div>
+            <div class="row lvl-1"><span class="slot"><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5.5L13 5v9.5H4z" stroke="currentColor" stroke-width="1.2"/><path d="M9.5 1.5V5H13" stroke="currentColor" stroke-width="1.2"/></svg></span><span class="lbl link-dusk">.zo/plans/mnist-digit-classifier.md</span></div>
+
+            <div class="grp"><span class="chev">▾</span><span>experiments</span><span class="right">2</span></div>
+            <div class="row lvl-1"><span class="chev">▸</span><span class="lbl">exp-001</span><span class="right"><span class="ghost">0.9770</span><span class="tag tag-dim">must</span></span></div>
+            <div class="row lvl-1"><span class="chev">▸</span><span class="lbl">exp-002</span><span class="right"><span class="ghost">0.9841</span><span class="tag tag-dusk">should</span></span></div>
+
+            <div class="sb-spacer"></div>
+            <div class="sb-actions">
+              <button class="btn btn-secondary">Resume (zo continue)</button>
+            </div>
+            <div class="sb-foot">Last session: 2026-07-11 · 3h 12m · phase_3 completed</div>
+          </div>
+        </div>
+
+        <!-- ═══ STATE C · RUNNING ═══ -->
+        <div class="mock-frame state-frame">
+          <div class="mock-frame-label"><span>STATE C</span><span>RUNNING · PHASE_4</span></div>
+          <div class="sb">
+            <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span class="side"><span class="dot dot-coral pulse"></span>LIVE</span></div>
+            <div class="sb-head">
+              <div class="name-row">
+                <span class="name">mnist-digit-classifier</span>
+                <span class="tag tag-coral"><span class="dot dot-coral pulse"></span>running</span>
+              </div>
+              <div class="meta">zo-mnist-20260712-091412 · mps<br>~/projects/mnist-delivery</div>
+            </div>
+
+            <div class="grp"><span class="chev">▸</span><span>phases</span><span class="right">3 ✓ · phase_4 active</span></div>
+
+            <div class="grp"><span class="chev">▾</span><span>team</span><span class="right">zo-mnist-digit-classifier</span></div>
+            <div class="row lvl-1"><span class="slot"><span class="dot dot-coral pulse"></span></span><span class="lbl">lead-orchestrator</span><span class="right"><span class="ghost">opus</span><span class="st-coral">working</span></span></div>
+            <div class="row lvl-1 is-hover"><span class="slot"><span class="dot dot-coral pulse"></span></span><span class="lbl">model-builder</span><span class="right"><span class="ghost">sonnet</span><span class="st-coral">training</span></span></div>
+            <div class="row lvl-1"><span class="slot"><span class="dot dot-dusk"></span></span><span class="lbl">training-mnist-cnn-checker</span><span class="right"><span class="ghost">sonnet</span><span class="st-dusk">watching</span></span></div>
+            <div class="row lvl-1"><span class="slot"><span class="dot dot-dim"></span></span><span class="lbl">oracle-qa</span><span class="right"><span class="ghost">sonnet</span><span class="st-dim">idle</span></span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl ghost">code-reviewer</span><span class="right"><span class="ghost">done</span></span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl ghost">test-engineer</span><span class="right"><span class="ghost">done</span></span></div>
+            <div class="row lvl-1"><span class="glyph g-moss">✓</span><span class="lbl ghost">research-scout</span><span class="right"><span class="ghost">done</span></span></div>
+
+            <div class="grp"><span class="chev">▾</span><span>training</span><span class="right">epoch 6/8</span></div>
+            <div class="row lvl-1"><span class="chev">▾</span><span class="lbl ghost">exp-001</span></div>
+            <div class="row lvl-2"><span class="chev">▾</span><span class="lbl ghost">exp-002</span></div>
+            <div class="row lvl-3"><span class="chev">▾</span><span class="slot"><span class="dot dot-coral pulse"></span></span><span class="lbl">exp-003</span><span class="right"><span class="tag tag-coral">running</span></span></div>
+            <div class="row lvl-4"><span class="lbl ghost">wider conv + rotation aug</span></div>
+            <div class="ep-bar"><div class="ep-fill"></div></div>
+            <div class="row lvl-4"><span class="lbl ghost">epoch 6/8 · eta ~4 min</span></div>
+            <div class="row lvl-4"><span class="lbl ghost">loss 0.0341 · val_acc 0.9871</span></div>
+            <div class="row lvl-4"><span class="lbl ghost">checkpoint: best@5 · 0.9883</span></div>
+
+            <div class="grp"><span class="chev">▾</span><span>gates</span><span class="right">1 pending</span></div>
+            <div class="row lvl-1"><span class="slot"><span class="dot dot-dusk"></span></span><span class="lbl">phase_4 → phase_5</span><span class="right"><span class="tag tag-dusk">awaiting</span></span></div>
+            <div class="row lvl-2"><span class="lbl ghost">supervised · awaiting result</span></div>
+          </div>
+        </div>
+
+        <!-- ═══ STATE D · ENDED / REATTACH ═══ -->
+        <div class="mock-frame state-frame">
+          <div class="mock-frame-label"><span>STATE D</span><span>ENDED · REATTACH</span></div>
+          <div class="sb">
+            <div class="vsc-sidebar-title"><span>ZERO OPERATORS</span><span class="side">stale</span></div>
+            <div class="sb-head">
+              <div class="name-row">
+                <span class="name">mnist-digit-classifier</span>
+                <span class="tag tag-dim">ended</span>
+              </div>
+              <div class="meta">zo-mnist-20260712-091412</div>
+            </div>
+
+            <div class="notice">
+              <div class="n-row n-coral"><span class="dot dot-coral"></span>wrapper heartbeat stale · 09:58</div>
+              <div class="n-row n-moss"><span class="dot dot-moss"></span>tmux session still alive</div>
+              <div class="n-sub">.zo/runtime/session.json last written 09:52 — the wrapper stopped reporting; agents may still be working.</div>
+            </div>
+
+            <div class="sb-actions">
+              <button class="btn btn-primary">Reattach</button>
+              <button class="btn btn-secondary">Open session log</button>
+            </div>
+
+            <div class="row"><span class="glyph g-moss">✓</span><span class="lbl ghost">auto-consolidation ran · memory folded</span></div>
+
+            <div class="sb-spacer"></div>
+            <div class="sb-foot">last event 09:52 · logs/comms/2026-07-12.jsonl</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>One native <code>TreeDataProvider</code> in the ZO view container; the four states are the same provider swapping roots. State is derived, never stored: no <code>.zo/</code> → A; <code>.zo/runtime/session.json</code> heartbeat &lt; 90 s → C; heartbeat stale but <code>tmux has-session</code> succeeds → D; otherwise B.</li>
+        <li>Idle phase rows parse the phases table in <code>STATE.md</code>; the plan row opens <code>.zo/plans/mnist-digit-classifier.md</code> via <code>vscode.open</code>; experiment rows enumerate <code>.zo/experiments/*/</code> and read tier (must/should/could) from each oracle result.</li>
+        <li>Running team rows tail <code>logs/comms/2026-07-12.jsonl</code> for agent status events; the training lineage and 2px epoch rule poll <code>.zo/experiments/exp-003/metrics.jsonl</code> + <code>training_status.json</code> on a 2 s fs.watch debounce (epoch/total → fill width).</li>
+        <li>GATES node reads gate mode from plan frontmatter. The row is read-only in v1 — selecting it reveals the gate approval card; <code>/gates:approve</code> · <code>/gates:reject</code> remain terminal actions until PR D3.</li>
+        <li>Buttons shell out to the CLI in the ZO terminal: Connect a project → <code>zo init &lt;project&gt;</code> / <code>zo draft</code>; Resume → <code>zo continue --headless-tmux</code>; Reattach re-binds panes from <code>.zo/runtime/session.json</code> (e.g. <code>panes/p12.log</code>) without restarting agents.</li>
+        <li>Row grammar: 22 px rows, 16 px per indent level, 11 px JetBrains Mono labels, right-aligned tags; hover uses <code>--surface-2</code>, which maps to <code>list.hoverBackground</code> under the "inherit editor theme" setting.</li>
+        <li>Color discipline: coral marks live activity only (running dots, epoch rule, NEXT); dusk = pending/attention; moss = passed/alive; everything else stays in the text ramp.</li>
+        <li>Deferred from v1: multi-project workspaces (one root per window), drag-to-compare experiments, and inline gate actions in the tree.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+  </script>
+</body>
+</html>

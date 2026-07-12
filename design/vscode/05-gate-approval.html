@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZO · VS Code — Gate Approval</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── stages ─────────────────────────────────── */
+  .stage {
+    padding: 56px 40px;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ── frame 1 · gate card ────────────────────── */
+  .gate-card {
+    width: 640px;
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .gc-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .gc-head .gc-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .gc-head .gc-title .gc-phase {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+  .gc-head .gc-spacer { flex: 1; }
+  .gc-head .gc-time {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+  }
+
+  .gc-oracle {
+    display: flex;
+    align-items: stretch;
+    padding: 22px 22px 20px;
+    gap: 26px;
+  }
+  .gc-metric { flex: none; }
+  .gc-metric .gc-num {
+    font-family: var(--serif);
+    font-size: 58px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .gc-metric .gc-metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-top: 10px;
+  }
+  .gc-metric .gc-metric-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-4);
+    margin-top: 4px;
+  }
+  .gc-divider { width: 1px; background: var(--line); flex: none; }
+
+  .gc-tiers {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+  }
+  .tier-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  .tier-row .tier-name { color: var(--text-2); width: 96px; flex: none; }
+  .tier-row .tier-thr  { color: var(--text-3); flex: 1; }
+  .tier-row .tier-ok   { color: var(--moss); }
+  .tier-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+
+  .gc-breakdown {
+    border-top: 1px solid var(--line);
+    padding: 14px 22px 16px;
+  }
+  .gc-breakdown-head {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-4);
+    margin-bottom: 8px;
+  }
+  .gc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(5, auto);
+    grid-auto-flow: column;
+    column-gap: 36px;
+  }
+  .gc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .gc-row:nth-child(5), .gc-row:nth-child(10) { border-bottom: none; }
+  .gc-row .gc-class { color: var(--text-3); width: 54px; flex: none; }
+  .gc-row .gc-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .gc-row .gc-bar i {
+    display: block;
+    height: 100%;
+    background: var(--text-3);
+    border-radius: 2px;
+  }
+  .gc-row .gc-val { color: var(--text-2); width: 46px; text-align: right; flex: none; }
+  .gc-row.worst .gc-class { color: var(--coral-dim); }
+  .gc-row.worst .gc-val   { color: var(--coral); }
+  .gc-row.worst .gc-bar i { background: var(--coral-dim); }
+  [data-theme="light"] .gc-row.worst .gc-val { color: var(--coral-dim); } /* coral is too faint on paper */
+
+  .gc-exp {
+    border-top: 1px solid var(--line);
+    padding: 12px 22px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .gc-exp .gc-exp-id { color: var(--dusk); }
+
+  .gc-actions {
+    border-top: 1px solid var(--line);
+    padding: 16px 22px 18px;
+    position: relative;
+  }
+  .gc-btnrow { display: flex; gap: 10px; }
+  .gc-footnote {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-4);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+  .gc-footnote b { font-weight: 400; color: var(--text-3); }
+
+  /* ── frame 2 · reject popover ───────────────── */
+  .reject-stage { position: relative; width: 640px; max-width: 100%; }
+  .gate-card.is-dim { opacity: 0.4; pointer-events: none; }
+  .reject-pop {
+    position: absolute;
+    left: 112px;
+    bottom: 92px;
+    width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 16px 18px;
+    z-index: 2;
+  }
+  .reject-pop::after {
+    content: "";
+    position: absolute;
+    left: 42px;
+    bottom: -6px;
+    width: 10px;
+    height: 10px;
+    background: var(--surface);
+    border-right: 1px solid var(--line-2);
+    border-bottom: 1px solid var(--line-2);
+    transform: rotate(45deg);
+  }
+  .reject-pop .rp-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 10px;
+  }
+  .reject-pop textarea.inp {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    resize: none;
+    margin-bottom: 12px;
+  }
+  .reject-pop .rp-btns { display: flex; gap: 10px; }
+  .reject-pop .rp-hint {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--text-4);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  /* ── frame 3 · gate-mode control ────────────── */
+  .mode-stage { flex-direction: column; align-items: center; gap: 28px; }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .seg button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--line-2);
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: color 0.15s var(--ease);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button:hover { color: var(--text-2); }
+  .seg button.active {
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 -2px 0 var(--coral);
+  }
+  .mode-captions {
+    width: 560px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .mode-caption {
+    display: flex;
+    gap: 18px;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    opacity: 0.55;
+    transition: opacity 0.15s var(--ease);
+  }
+  .mode-caption:last-child { border-bottom: none; }
+  .mode-caption.active { opacity: 1; }
+  .mode-caption .mc-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    width: 96px;
+    flex: none;
+  }
+  .mode-caption.active .mc-name { color: var(--coral); }
+  .mode-caption .mc-text {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .mode-note {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-4);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .mode-note code { color: var(--dusk); font-size: 10.5px; }
+
+  /* ── frame 4 · toast + status bar ───────────── */
+  .attn-stage {
+    position: relative;
+    height: 280px;
+    background: var(--editor);
+    overflow: hidden;
+  }
+  .attn-crumb {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-4);
+    letter-spacing: 0.04em;
+    padding: 12px 20px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .attn-crumb b { font-weight: 400; color: var(--text-3); }
+  .attn-editor {
+    display: flex;
+    gap: 18px;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.75;
+  }
+  .attn-editor .ln { color: var(--text-4); text-align: right; user-select: none; }
+  .attn-editor pre { font-family: inherit; color: var(--text-3); }
+  .attn-editor .k { color: var(--text-2); }
+  .toast {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 372px;
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .toast .toast-row { display: flex; gap: 12px; align-items: flex-start; }
+  .toast .toast-body { flex: 1; min-width: 0; }
+  .toast .toast-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .toast .toast-sub {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-top: 4px;
+  }
+  .toast .toast-close {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-4);
+    line-height: 1;
+    cursor: pointer;
+    flex: none;
+  }
+  .toast .toast-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 5px; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="mock-masthead">
+      <div class="crumbs">
+        <span><a href="00-overview.html">ZERO OPERATORS · DESIGN / VSCODE</a></span>
+        <button class="theme-toggle" id="themeToggle">light</button>
+      </div>
+      <h1>Approve from <em>anywhere</em> in the editor.</h1>
+      <p class="deck">The human checkpoint, reduced to one decision. The oracle presents its evidence in a single card; you approve, reject with a reason, or send the team back to iterate, without leaving your file.</p>
+    </header>
+
+    <!-- ═══ frame 1 · inline gate card ═══ -->
+    <div class="mock-section">
+      <h2>The inline gate <em>card</em></h2>
+      <p class="lede">Everything needed to decide, nothing else: the oracle metric, the tier ladder it climbed, the per-class breakdown, and the experiment that produced it. Three actions, one footnote explaining the mechanism.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>INLINE GATE CARD</span><span>PHASE_4 → PHASE_5 · PENDING</span></div>
+        <div class="stage">
+          <div class="gate-card">
+            <div class="gc-head">
+              <span class="gc-title">Gate · <span class="gc-phase">phase_4 → phase_5</span></span>
+              <span class="badge badge-dusk">supervised</span>
+              <span class="gc-spacer"></span>
+              <span class="gc-time">12 JUL · 09:43:07</span>
+            </div>
+
+            <div class="gc-oracle">
+              <div class="gc-metric">
+                <div class="gc-num">0.9912</div>
+                <div class="gc-metric-label">test_accuracy</div>
+                <div class="gc-metric-sub">oracle · 10,000 held-out samples</div>
+              </div>
+              <div class="gc-divider"></div>
+              <div class="gc-tiers">
+                <div class="tier-row"><span class="tier-name">must_pass</span><span class="tier-thr">≥ 0.95</span><span class="tier-ok">✓</span></div>
+                <div class="tier-row"><span class="tier-name">should_pass</span><span class="tier-thr">≥ 0.98</span><span class="tier-ok">✓</span></div>
+                <div class="tier-row"><span class="tier-name">could_pass</span><span class="tier-thr">≥ 0.99</span><span class="tier-ok">✓</span></div>
+                <div class="tier-result"><span>→ tier</span><span class="badge badge-moss">could_pass</span></div>
+              </div>
+            </div>
+
+            <div class="gc-breakdown">
+              <div class="gc-breakdown-head"><span>per-class accuracy</span><span>bar scale 0.98 – 1.00</span></div>
+              <div class="gc-grid">
+                <div class="gc-row"><span class="gc-class">class 0</span><span class="gc-bar"><i style="width:94.5%"></i></span><span class="gc-val">0.9989</span></div>
+                <div class="gc-row"><span class="gc-class">class 1</span><span class="gc-bar"><i style="width:82.5%"></i></span><span class="gc-val">0.9965</span></div>
+                <div class="gc-row"><span class="gc-class">class 2</span><span class="gc-bar"><i style="width:51.5%"></i></span><span class="gc-val">0.9903</span></div>
+                <div class="gc-row"><span class="gc-class">class 3</span><span class="gc-bar"><i style="width:45.5%"></i></span><span class="gc-val">0.9891</span></div>
+                <div class="gc-row"><span class="gc-class">class 4</span><span class="gc-bar"><i style="width:62%"></i></span><span class="gc-val">0.9924</span></div>
+                <div class="gc-row"><span class="gc-class">class 5</span><span class="gc-bar"><i style="width:43.5%"></i></span><span class="gc-val">0.9887</span></div>
+                <div class="gc-row"><span class="gc-class">class 6</span><span class="gc-bar"><i style="width:74%"></i></span><span class="gc-val">0.9948</span></div>
+                <div class="gc-row"><span class="gc-class">class 7</span><span class="gc-bar"><i style="width:51%"></i></span><span class="gc-val">0.9902</span></div>
+                <div class="gc-row"><span class="gc-class">class 8</span><span class="gc-bar"><i style="width:33%"></i></span><span class="gc-val">0.9866</span></div>
+                <div class="gc-row worst"><span class="gc-class">class 9</span><span class="gc-bar"><i style="width:19%"></i></span><span class="gc-val">0.9838</span></div>
+              </div>
+            </div>
+
+            <div class="gc-exp"><span class="gc-exp-id">exp-003</span> · wider conv + rotation aug · 8 epochs · mps</div>
+
+            <div class="gc-actions">
+              <div class="gc-btnrow">
+                <button class="btn btn-primary">Approve</button>
+                <button class="btn btn-danger">Reject…</button>
+                <button class="btn btn-secondary">Iterate</button>
+              </div>
+              <div class="gc-footnote"><b>approve</b> = zo runtime send --pane %12 --text "/gates:approve" --submit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ frame 2 · reject popover ═══ -->
+    <div class="mock-section">
+      <h2>Reject, with a <em>reason</em></h2>
+      <p class="lede">Rejection is never a bare no. The reason is required, injected into the lead pane with the slash command, and recorded to the decision log so the rework has a target.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>REJECT POPOVER</span><span>REASON → DECISION_LOG</span></div>
+        <div class="stage">
+          <div class="reject-stage">
+            <div class="gate-card is-dim">
+              <div class="gc-head">
+                <span class="gc-title">Gate · <span class="gc-phase">phase_4 → phase_5</span></span>
+                <span class="badge badge-dusk">supervised</span>
+                <span class="gc-spacer"></span>
+                <span class="gc-time">12 JUL · 09:43:07</span>
+              </div>
+              <div class="gc-oracle">
+                <div class="gc-metric">
+                  <div class="gc-num">0.9912</div>
+                  <div class="gc-metric-label">test_accuracy</div>
+                  <div class="gc-metric-sub">oracle · 10,000 held-out samples</div>
+                </div>
+                <div class="gc-divider"></div>
+                <div class="gc-tiers">
+                  <div class="tier-row"><span class="tier-name">must_pass</span><span class="tier-thr">≥ 0.95</span><span class="tier-ok">✓</span></div>
+                  <div class="tier-row"><span class="tier-name">should_pass</span><span class="tier-thr">≥ 0.98</span><span class="tier-ok">✓</span></div>
+                  <div class="tier-row"><span class="tier-name">could_pass</span><span class="tier-thr">≥ 0.99</span><span class="tier-ok">✓</span></div>
+                  <div class="tier-result"><span>→ tier</span><span class="badge badge-moss">could_pass</span></div>
+                </div>
+              </div>
+              <div class="gc-breakdown">
+                <div class="gc-breakdown-head"><span>per-class accuracy</span><span>bar scale 0.98 – 1.00</span></div>
+                <div class="gc-grid">
+                  <div class="gc-row"><span class="gc-class">class 0</span><span class="gc-bar"><i style="width:94.5%"></i></span><span class="gc-val">0.9989</span></div>
+                  <div class="gc-row"><span class="gc-class">class 1</span><span class="gc-bar"><i style="width:82.5%"></i></span><span class="gc-val">0.9965</span></div>
+                  <div class="gc-row"><span class="gc-class">class 2</span><span class="gc-bar"><i style="width:51.5%"></i></span><span class="gc-val">0.9903</span></div>
+                  <div class="gc-row"><span class="gc-class">class 3</span><span class="gc-bar"><i style="width:45.5%"></i></span><span class="gc-val">0.9891</span></div>
+                  <div class="gc-row"><span class="gc-class">class 4</span><span class="gc-bar"><i style="width:62%"></i></span><span class="gc-val">0.9924</span></div>
+                  <div class="gc-row"><span class="gc-class">class 5</span><span class="gc-bar"><i style="width:43.5%"></i></span><span class="gc-val">0.9887</span></div>
+                  <div class="gc-row"><span class="gc-class">class 6</span><span class="gc-bar"><i style="width:74%"></i></span><span class="gc-val">0.9948</span></div>
+                  <div class="gc-row"><span class="gc-class">class 7</span><span class="gc-bar"><i style="width:51%"></i></span><span class="gc-val">0.9902</span></div>
+                  <div class="gc-row"><span class="gc-class">class 8</span><span class="gc-bar"><i style="width:33%"></i></span><span class="gc-val">0.9866</span></div>
+                  <div class="gc-row worst"><span class="gc-class">class 9</span><span class="gc-bar"><i style="width:19%"></i></span><span class="gc-val">0.9838</span></div>
+                </div>
+              </div>
+              <div class="gc-exp"><span class="gc-exp-id">exp-003</span> · wider conv + rotation aug · 8 epochs · mps</div>
+              <div class="gc-actions">
+                <div class="gc-btnrow">
+                  <button class="btn btn-primary">Approve</button>
+                  <button class="btn btn-danger">Reject…</button>
+                  <button class="btn btn-secondary">Iterate</button>
+                </div>
+                <div class="gc-footnote"><b>approve</b> = zo runtime send --pane %12 --text "/gates:approve" --submit</div>
+              </div>
+            </div>
+
+            <div class="reject-pop">
+              <div class="rp-label">Reason (recorded to DECISION_LOG)</div>
+              <textarea class="inp" rows="3">class 9 accuracy below 0.99 — try aug on 9/4 confusions</textarea>
+              <div class="rp-btns">
+                <button class="btn btn-danger">Reject &amp; rework</button>
+                <button class="btn btn-secondary">Cancel</button>
+              </div>
+              <div class="rp-hint">injects /gates:reject "&lt;reason&gt;" into lead pane %12</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ frame 3 · gate-mode control ═══ -->
+    <div class="mock-section">
+      <h2>How much <em>autonomy</em></h2>
+      <p class="lede">Gate mode is a dial, not a rewrite. Flip it mid-run and the orchestrator picks up the new setting at the next phase boundary.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>GATE-MODE CONTROL</span><span>SUPERVISED ACTIVE</span></div>
+        <div class="stage mode-stage">
+          <div class="seg" id="gateSeg">
+            <button class="active" data-mode="supervised">supervised</button>
+            <button data-mode="auto">auto</button>
+            <button data-mode="full-auto">full-auto</button>
+          </div>
+          <div class="mode-captions" id="gateCaptions">
+            <div class="mode-caption active" data-mode="supervised">
+              <span class="mc-name">supervised</span>
+              <span class="mc-text">Every gate blocks until a human approves, rejects, or iterates.</span>
+            </div>
+            <div class="mode-caption" data-mode="auto">
+              <span class="mc-name">auto</span>
+              <span class="mc-text">Gates self-approve when the oracle clears must_pass; anything below escalates to you.</span>
+            </div>
+            <div class="mode-caption" data-mode="full-auto">
+              <span class="mc-name">full-auto</span>
+              <span class="mc-text">No blocking gates. Oracle results are recorded and the run continues to packaging.</span>
+            </div>
+          </div>
+          <div class="mode-note">writes &lt;memory&gt;/gate_mode via <code>zo gates set</code> — hot-reloaded by the running orchestrator</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ frame 4 · attention ═══ -->
+    <div class="mock-section">
+      <h2>Getting your <em>attention</em></h2>
+      <p class="lede">When a gate opens you may be three files deep in something else. A quiet toast and a coral status-bar item are the only interruptions; both lead back to the card.</p>
+
+      <div class="mock-frame">
+        <div class="mock-frame-label"><span>NOTIFICATION + STATUS BAR</span><span>FIRED FROM COMMS TAIL</span></div>
+        <div class="attn-stage">
+          <div class="attn-crumb">mnist-delivery › src › <b>model.py</b> — editor continues undisturbed</div>
+          <div class="attn-editor" aria-hidden="true">
+            <div class="ln">125<br>126<br>127<br>128<br>129<br>130<br>131<br>132</div>
+            <pre><span class="k">class</span> WideConvNet(nn.Module):
+    <span class="k">def</span> __init__(self, width: int = 64) -&gt; None:
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, width, 3, padding=1)
+        self.conv2 = nn.Conv2d(width, width * 2, 3, padding=1)
+        self.pool = nn.MaxPool2d(2)
+        self.drop = nn.Dropout(0.25)
+        self.head = nn.Linear(width * 2 * 7 * 7, 10)</pre>
+          </div>
+          <div class="toast">
+            <div class="toast-row">
+              <svg width="22" height="22" viewBox="0 0 72 72" fill="none" class="zo-mark"><circle cx="36" cy="36" r="30" stroke="currentColor" stroke-width="2"/><line x1="14" y1="58" x2="58" y2="14" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round"/><circle cx="36" cy="36" r="3.5" fill="var(--coral)"/></svg>
+              <div class="toast-body">
+                <div class="toast-title">Gate pending — phase_4 awaiting your decision</div>
+                <div class="toast-sub">mnist-digit-classifier · test_accuracy 0.9912 · could_pass</div>
+              </div>
+              <span class="toast-close">×</span>
+            </div>
+            <div class="toast-btns">
+              <button class="btn btn-primary btn-sm">Open</button>
+              <button class="btn btn-secondary btn-sm">Later</button>
+            </div>
+          </div>
+        </div>
+        <div class="vsc-statusbar">
+          <span class="sb-item accent"><span class="pulse">◆</span>zo: gate pending</span>
+          <span class="sb-item">zo-mnist-20260712-091412</span>
+          <span class="sb-spacer"></span>
+          <span class="sb-item">exp-003 · epoch 6/8</span>
+          <span class="sb-item">mps</span>
+          <span class="sb-item">Ln 128, Col 41</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-notes">
+      <h3>Implementation notes</h3>
+      <ul>
+        <li>Card data is a <code>GateEvent</code> (gate_name, metric, value, tier thresholds, per-class breakdown) tailed from <code>logs/comms/2026-07-12.jsonl</code> via a workspace FileSystemWatcher; no tmux polling.</li>
+        <li>Approve executes <code>zo runtime send --pane %12 --text "/gates:approve" --submit</code>; the lead pane id is resolved from <code>.zo/runtime/session.json</code>, raw output verifiable in <code>panes/p12.log</code>.</li>
+        <li>Reject &amp; rework injects <code>/gates:reject "&lt;reason&gt;"</code>; the lead records the reason to DECISION_LOG.md before rework. Iterate maps to <code>/gates:reject</code> with iterate intent (same pane, reason auto-prefixed).</li>
+        <li>The card clears only when a gate_resolved event appears in the comms tail; buttons show an in-flight state until then, with a timeout warning if the pane never echoes. No optimistic phase advance in v1.</li>
+        <li>Gate-mode segmented control shells out to <code>zo gates set &lt;mode&gt;</code>, which writes <code>&lt;memory&gt;/gate_mode</code>; the running orchestrator hot-reloads it at the next phase boundary, no session restart.</li>
+        <li>Toast uses <code>vscode.window.showInformationMessage</code> with Open / Later actions; Open reveals the ZO sidebar and focuses the gate card. Later snoozes, the status-bar item stays coral.</li>
+        <li>Status-bar fragment is a <code>vscode.window.createStatusBarItem</code> (left-aligned, high priority) that turns coral only while a gate is pending; click performs the same Open action.</li>
+        <li>Per-class breakdown caps at 12 rows in v1; richer confusion drill-down defers to the report webview page rather than growing this card.</li>
+      </ul>
+    </div>
+
+    <div class="footer">ZERO OPERATORS · VS CODE EXTENSION MOCKUPS · <a href="00-overview.html">INDEX</a></div>
+  </div>
+
+  <script>
+    const t = document.getElementById('themeToggle');
+    t.addEventListener('click', () => {
+      const root = document.documentElement;
+      const light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      t.textContent = light ? 'light' : 'dark';
+    });
+
+    // gate-mode segmented control (page-local demo)
+    const seg = document.getElementById('gateSeg');
+    const captions = document.getElementById('gateCaptions');
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      captions.querySelectorAll('.mode-caption').forEach(c =>
+        c.classList.toggle('active', c.dataset.mode === btn.dataset.mode));
+    });
+  </script>
+</body>
+</html>

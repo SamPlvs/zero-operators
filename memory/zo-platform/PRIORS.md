@@ -1399,3 +1399,27 @@ rm -f package-lock.json                            # keep the diff to the intend
 ### Verified Solution
 
 `_launch_and_monitor` gates `cleanup_stale_overlay` on `session_role == "model"` (report sessions never touch the overlay) and threads a `consolidate_on_exit` flag; `zo report --no-consolidate` sets it False. Tests: `test_report_session_never_cleans_overlay` (report never cleans even with no peer registered), `test_launch_and_monitor_no_consolidate_skips_merge`, plus the concurrency / conflict / resume / STATE-untouched suite (`test_surrogate_edge.py`). Concurrent **bypass** is handled by the same principle: `apply_bypass_overlay` no-ops when bypass is already active (inherit, not clobber), so a second bypass session (`zo report --bypass-permissions` alongside a model session in bypass) cannot leave the repo stuck in bypass after exit (`test_apply_is_noop_when_bypass_already_active`). **Cross-reference:** PR-037 (no session lock — single-session-by-design; this is the multi-session follow-on), PR-038 / PR-043 (permission-overlay lifecycle), PR-009 / PR-041 (built-must-be-wired — here, wired *and* made robust to the unupgraded peer).
+
+---
+
+## PR-046: Plans Referenced From Tracked Memory Must Themselves Be Tracked — ~/.claude/plans Is Ephemeral
+**Source:** Session 040 (2026-07-12), roadmap planning
+**Root cause category:** incomplete_rule (memory protocol covered STATE/DECISION_LOG/PRIORS but not externally-stored artifacts they reference)
+
+**Failure:** Session 028's STATE.md and DECISION_LOG both referenced "full internal plan at `~/.claude/plans/so-before-i-begin-peaceful-valley.md`" (effort estimates, file paths, TODO checklists for the F3 cross-phase work and the VS Code extension). In session 040 that file **no longer exists** — `~/.claude/plans/` is session tooling scratch, subject to cleanup outside ZO's control. Only the design-level summary duplicated into DECISION_LOG survived; the granular detail was unrecoverable and had to be re-derived from scratch (three exploration agents + three design agents).
+
+### Rules
+
+1. **Any artifact referenced from tracked memory must itself be tracked.** If STATE.md or DECISION_LOG says "full detail lives at <path>", that path must be inside the repo (for ZO-platform work: `memory/zo-platform/roadmaps/` or `sessions/`). Copy the artifact verbatim at reference time — at approval, not "later".
+   - **Why:** memory is only as durable as its weakest pointer. A tracked one-line reference to an untracked file silently becomes a dangling pointer, and the reader discovers it exactly when they need the detail.
+   - **How to apply:** when ending a session that produced an approved plan in `~/.claude/plans/`, `cp` it into `memory/zo-platform/roadmaps/<date>-<slug>.md` with a provenance header, and reference the tracked copy (the ephemeral path at most as a courtesy note).
+
+2. **Treat `~/.claude/plans/`, scratchpads, and session temp dirs as ephemeral by definition.** They are fine as working locations, never as archival ones. Same reasoning as PR-028 (gitignored project memory trapped on one machine — gitignored/external files don't transfer OR persist).
+
+3. **Duplication into DECISION_LOG is the safety net, not the archive.** The session-028 DECISION_LOG summary is what made re-derivation possible at all — keep writing rich summaries — but a summary is lossy by design; the full artifact needs its own tracked home.
+
+### Verified Solution
+
+The 2026-07 feature roadmap was persisted verbatim to `memory/zo-platform/roadmaps/2026-07-feature-roadmap.md` (with a provenance header) in the same session it was approved, and STATE.md/DECISION_LOG reference the tracked copy. Applied retroactively where possible: the lost session-028 detail was re-derived and is superseded by the new roadmap. The rule would have caught the original failure — session 028 would have copied the peaceful-valley file at write time.
+
+**Cross-reference:** PR-028 (project memory must live where it transfers), PR-003/PR-005 (references and rules drift without enforcement).
