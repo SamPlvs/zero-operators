@@ -60,19 +60,17 @@ else
     fixable "claude"
 fi
 
-# 4. Agent teams enabled
+# 4. Agent teams enabled — ZO-scoped file preferred, global settings accepted
 echo -e "${DIM}Checking agent teams...${RESET}"
 SETTINGS_FILE="$HOME/.claude/settings.json"
-if [[ -f "$SETTINGS_FILE" ]]; then
-    if grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$SETTINGS_FILE" 2>/dev/null; then
-        pass "Agent teams enabled in global settings"
-    else
-        fail "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not set in $SETTINGS_FILE"
-        fixable "agent-teams-env"
-    fi
+ZO_SETTINGS_FILE="${ZO_CLAUDE_SETTINGS:-$HOME/.zo/settings.json}"
+if grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$ZO_SETTINGS_FILE" 2>/dev/null; then
+    pass "Agent teams enabled in ZO settings ($ZO_SETTINGS_FILE)"
+elif grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$SETTINGS_FILE" 2>/dev/null; then
+    pass "Agent teams enabled in global settings"
 else
-    fail "Global settings not found at $SETTINGS_FILE"
-    fixable "global-settings"
+    fail "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not set in $ZO_SETTINGS_FILE or $SETTINGS_FILE"
+    fixable "agent-teams-env"
 fi
 
 # 5. Project settings.json
@@ -208,17 +206,34 @@ fix_item() {
             echo -e "  ${RED}✗${RESET} Claude CLI install failed — try manually: curl -fsSL https://claude.ai/install.sh | bash"
             return 1
             ;;
-        global-settings)
-            echo -e "  ${AMBER}→${RESET} Creating global settings at $SETTINGS_FILE..."
-            mkdir -p "$HOME/.claude"
-            cat > "$SETTINGS_FILE" << 'SETTINGS_EOF'
+        agent-teams-env)
+            echo -e "  ${AMBER}→${RESET} Enabling agent teams in $ZO_SETTINGS_FILE..."
+            mkdir -p "$(dirname "$ZO_SETTINGS_FILE")"
+            if [[ -f "$ZO_SETTINGS_FILE" ]]; then
+                # Merge into existing ZO settings without clobbering other keys
+                if python3 -c "
+import json
+with open('$ZO_SETTINGS_FILE') as f:
+    data = json.load(f)
+data.setdefault('env', {})['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1'
+with open('$ZO_SETTINGS_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+" 2>/dev/null; then
+                    echo -e "  ${GREEN}✓${RESET} Agent teams env merged into ZO settings"
+                    return 0
+                fi
+                echo -e "  ${RED}✗${RESET} Failed to update $ZO_SETTINGS_FILE — add manually"
+                return 1
+            fi
+            cat > "$ZO_SETTINGS_FILE" << 'SETTINGS_EOF'
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
 SETTINGS_EOF
-            echo -e "  ${GREEN}✓${RESET} Global settings created with agent teams enabled"
+            echo -e "  ${GREEN}✓${RESET} ZO settings created with agent teams enabled"
             return 0
             ;;
         zo-cli)
@@ -246,25 +261,6 @@ SETTINGS_EOF
             fi
             echo -e "  ${RED}✗${RESET} zo symlink created but not working — check PATH includes ~/.local/bin"
             return 1
-            ;;
-        agent-teams-env)
-            echo -e "  ${AMBER}→${RESET} Adding agent teams env to $SETTINGS_FILE..."
-            # Use python to merge the env key into existing settings
-            if python3 -c "
-import json, sys
-with open('$SETTINGS_FILE') as f:
-    data = json.load(f)
-data.setdefault('env', {})['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1'
-with open('$SETTINGS_FILE', 'w') as f:
-    json.dump(data, f, indent=2)
-    f.write('\n')
-" 2>/dev/null; then
-                echo -e "  ${GREEN}✓${RESET} Agent teams env added to global settings"
-                return 0
-            else
-                echo -e "  ${RED}✗${RESET} Failed to update settings — add manually"
-                return 1
-            fi
             ;;
     esac
 }

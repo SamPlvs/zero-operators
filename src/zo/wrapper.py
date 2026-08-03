@@ -55,6 +55,20 @@ _RATE_LIMIT_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"too many requests", re.IGNORECASE),
 ]
 
+_ZO_USER_SETTINGS = Path.home() / ".zo" / "settings.json"
+
+
+def zo_user_settings_path() -> Path | None:
+    """Return the ZO-scoped Claude settings file, if present.
+
+    ``~/.zo/settings.json`` (override via ``ZO_CLAUDE_SETTINGS``) is passed
+    to every spawned Claude session via ``--settings``, so ZO-specific
+    config such as ``CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`` never has to
+    live in the user's global ``~/.claude/settings.json``.
+    """
+    path = Path(os.environ.get("ZO_CLAUDE_SETTINGS") or _ZO_USER_SETTINGS)
+    return path if path.is_file() else None
+
 
 class LifecycleWrapper:
     """Manages the lifecycle of a Claude Code lead orchestrator session.
@@ -229,11 +243,16 @@ class LifecycleWrapper:
         env_prefix = ""
         for k, v in (extra_env or {}).items():
             env_prefix += f'{k}={shlex.quote(v)} '
+        settings_flag = ""
+        zo_settings = zo_user_settings_path()
+        if zo_settings:
+            settings_flag = f' --settings {shlex.quote(str(zo_settings))}'
         interactive_cmd = (
             f'{env_prefix}'
             f'{shlex.quote(claude_abs)}'
             f' --model {shlex.quote(model)}'
             f' --max-turns {max_turns}'
+            f'{settings_flag}'
             f'{add_dir_flags}'
         )
         subprocess.run(
@@ -439,6 +458,9 @@ class LifecycleWrapper:
             "--max-turns", str(max_turns),
             "--add-dir", cwd,
         ]
+        zo_settings = zo_user_settings_path()
+        if zo_settings:
+            cmd.extend(["--settings", str(zo_settings)])
         if bypass_permissions:
             from zo.permissions_overlay import ensure_bypass_disclaimer_accepted
             # --dangerously-skip-permissions / bypass mode refuses to start
