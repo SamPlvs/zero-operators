@@ -18,11 +18,13 @@ Typical usage::
 from __future__ import annotations
 
 import hashlib
+import secrets
 from datetime import UTC, datetime
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
+from zo import contracts as zo_contracts
 from zo._evolution_models import FailureRecord, FailureSeverity
 from zo._memory_models import (
     Confidence,
@@ -344,6 +346,8 @@ class Orchestrator:
             mode=mode, phases=phases, agent_contracts=contracts,
         )
         self._restore_phase_states()
+        self._consume_gate_decision()
+        self._emit_contracts_file()
         self._comms.log_decision(
             agent="orchestrator",
             title=f"Plan decomposed into {len(phases)} phases ({mode})",
@@ -352,6 +356,71 @@ class Orchestrator:
         if self._session_state is not None and not self._session_state.phase_states:
             self._session_state.phase = phases[0].phase_id
         return self._workflow
+
+    def _consume_gate_decision(self) -> None:
+        """Apply a nonce-verified CLI gate decision recorded while offline.
+
+        ``zo gates approve/reject`` validates the nonce and persists a
+        ``gate_decision`` file; on the next decompose (fresh session or
+        plan-edit replan) the decision is applied to the matching GATED
+        phase and the file is cleared (v2 WS-A5).
+        """
+        pending = self._memory.read_gate_decision()
+        if pending is None or self._workflow is None:
+            return
+        phase_id = pending.get("phase", "")
+        try:
+            phase = self._find_phase(phase_id)
+        except ValueError:
+            self._memory.clear_gate_decision()
+            return
+        if phase.status == PhaseStatus.GATED:
+            self.apply_human_decision(
+                phase_id,
+                GateDecision(pending.get("decision", "hold")),
+                pending.get("notes", ""),
+                nonce=self._memory.read_gate_nonce(),
+            )
+        self._memory.clear_gate_decision()
+
+    def _emit_contracts_file(self) -> None:
+        """Serialize contracts to ``memory_root/contracts.json`` (v2 WS-A1).
+
+        Fail-open: emission problems are logged, never raised — the
+        enforcement plane degrades to the prose contracts rather than
+        blocking a build.
+        """
+        if self._workflow is None:
+            return
+        active_phase = next(
+            (
+                p.phase_id
+                for p in self._workflow.phases
+                if p.status != PhaseStatus.COMPLETED
+            ),
+            self._workflow.phases[0].phase_id if self._workflow.phases else "",
+        )
+        try:
+            path = zo_contracts.emit_contracts(
+                self._workflow,
+                self._memory.memory_root,
+                self._plan.frontmatter.project_name,
+                active_phase,
+            )
+        except OSError as exc:
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="contracts_emission_failed",
+                description=f"contracts.json emission failed: {exc}",
+                severity="warning",
+            )
+            return
+        self._comms.log_decision(
+            agent="orchestrator",
+            title="Machine-readable contracts emitted",
+            rationale=f"{len(self._workflow.agent_contracts)} agent contracts",
+            outcome=str(path), confidence="high",
+        )
 
     def _restore_phase_states(self) -> None:
         """Restore persisted phase states from session_state into workflow phases."""
@@ -378,7 +447,7 @@ class Orchestrator:
             role_description=_ROLE_MAP.get(agent_name, f"{agent_name} agent"),
             ownership=_OWNERSHIP_MAP.get(agent_name, []),
             off_limits=_OFF_LIMITS_MAP.get(agent_name, []),
-            contract_produced=[f"{phase.phase_id}/{agent_name} artifacts"],
+            contract_produced=self._concrete_produced(agent_name, phase),
             contract_consumed=[f"Inputs from prior phase for {agent_name}"],
             validation_checklist=[
                 "All outputs exist at specified paths",
@@ -391,6 +460,22 @@ class Orchestrator:
                 f"Report status for phase {phase.phase_id}",
             ],
         )
+
+    @staticmethod
+    def _concrete_produced(agent_name: str, phase: PhaseDefinition) -> list[str]:
+        """Concrete deliverable paths for an agent in a phase (v2 WS-A1).
+
+        Phase artifacts inside the agent's ownership prefixes become the
+        verifiable ``contract_produced`` list; when none match, fall back
+        to the prose placeholder so legacy prompts stay unchanged.
+        """
+        ownership = _OWNERSHIP_MAP.get(agent_name, [])
+        produced = [
+            artifact
+            for artifact in phase.required_artifacts
+            if any(artifact.startswith(prefix) for prefix in ownership)
+        ]
+        return produced or [f"{phase.phase_id}/{agent_name} artifacts"]
 
     # -- Build lead prompt ----------------------------------------------------
 
@@ -657,6 +742,10 @@ class Orchestrator:
             )
             if all_done:
                 phase.status = PhaseStatus.GATED
+                self._memory.write_gate_nonce(secrets.token_hex(8))
+                zo_contracts.set_active_phase(
+                    self._memory.memory_root, phase_id,
+                )
             self._log_gate(ev)
             return ev
 
@@ -757,13 +846,47 @@ class Orchestrator:
         if self._plan.oracle:
             review["oracle_metric"] = self._plan.oracle.primary_metric
             review["target_threshold"] = self._plan.oracle.target_threshold
+        nonce = self._memory.read_gate_nonce()
+        if nonce is not None:
+            review["approval_nonce"] = nonce
         return review
 
     def apply_human_decision(
-        self, phase_id: str, decision: GateDecision, notes: str = "",
+        self,
+        phase_id: str,
+        decision: GateDecision,
+        notes: str = "",
+        *,
+        nonce: str | None = None,
     ) -> None:
-        """Apply a human's gate decision to a phase."""
+        """Apply a human's gate decision to a phase.
+
+        When a gate nonce is stored (minted at ``PhaseStatus.GATED``, v2
+        WS-A5), the decision must carry the matching nonce — approvals
+        echoed from context without it are rejected. The nonce is
+        single-use: cleared on every terminal decision so a replayed tag
+        can never pass a later gate.
+
+        Raises:
+            PermissionError: If a nonce is required and missing/mismatched.
+        """
         phase = self._find_phase(phase_id)
+        stored_nonce = self._memory.read_gate_nonce()
+        if stored_nonce is not None and nonce != stored_nonce:
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="gate_approval_forgery_suspected",
+                severity="blocking",
+                description=(
+                    f"Gate decision for {phase_id} rejected: nonce "
+                    f"{'missing' if nonce is None else 'mismatch'} (WS-A5)."
+                ),
+            )
+            raise PermissionError(
+                f"Gate decision for {phase_id} requires the approval nonce "
+                "shown in the gate review (zo gates approve --nonce ...)."
+            )
+        self._memory.clear_gate_nonce()
         if decision == GateDecision.PROCEED:
             phase.status = PhaseStatus.COMPLETED
             self._finalize_experiments(phase)
@@ -1504,7 +1627,11 @@ class Orchestrator:
     def _prompt_contracts(self, phase: PhaseDefinition) -> str:
         if not self._workflow:
             return ""
-        lines: list[str] = []
+        lines: list[str] = [
+            "Machine-readable contracts: "
+            f"{self._memory.memory_root / zo_contracts.CONTRACTS_FILENAME} "
+            "(deliverables are hook-verified when an agent stops — WS-A1).",
+        ]
         for c in self._workflow.agent_contracts:
             if c.phase_id == phase.phase_id:
                 block = (

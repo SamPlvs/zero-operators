@@ -158,6 +158,26 @@ zo gates set MODE --project NAME
 
 `MODE` is one of: `supervised` (human approves every gate), `auto` (orchestrator approves unless ambiguous), `full-auto` (all gates auto-approved).
 
+### zo gates approve / reject
+
+Record a nonce-verified human decision on the pending blocking gate (v2
+WS-A5). When a phase reaches its blocking gate, ZO mints a single-use
+approval nonce and shows it in the gate review banner. Decisions are only
+valid through these commands — hand-edited approvals cannot pass the nonce
+check, which is what makes gate passage unforgeable by agents.
+
+```
+zo gates approve PHASE --project NAME --nonce NONCE [--notes TEXT]
+zo gates reject PHASE --project NAME --nonce NONCE --reason TEXT
+```
+
+Both validate the nonce, append the decision to `DECISION_LOG.md`, log a
+comms gate event, and record the decision for the orchestrator (applied
+live at the next gate poll, or on `zo continue` for a fresh session).
+`reject` returns the phase to ACTIVE for rework with your `--reason`
+driving the next iteration. The nonce is cleared on use — replaying an
+old approval can never pass a later gate.
+
 ### zo watch-training
 
 Live training metrics dashboard. Tails `logs/training/metrics.jsonl` in the delivery repo and renders a persistent Rich panel with epoch progress, loss/metrics table, checkpoint log, and loss sparkline. Auto-launched by `zo build` during Phase 4 via tmux split-pane.

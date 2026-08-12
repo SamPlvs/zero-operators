@@ -2377,6 +2377,118 @@ def gates_set(mode: str, project: str, repo: str | None) -> None:
     console.print(f"  Gate mode set to: [{_AMBER}]{gm.value}[/]")
 
 
+def _apply_gate_decision_cli(
+    project: str,
+    repo: str | None,
+    phase: str,
+    nonce: str,
+    decision: str,
+    notes: str,
+) -> None:
+    """Shared body of ``zo gates approve`` / ``zo gates reject`` (v2 WS-A5).
+
+    Validates the single-use approval nonce minted when the phase went
+    GATED, then records the decision in DECISION_LOG.md and the comms
+    JSONL — the same artifacts the (previously forgeable) slash-command
+    path hand-edited, now nonce-checked and schema-consistent.
+    """
+    delivery = Path(repo).resolve() if repo else None
+    pctx = _load_project_context(project, delivery_repo=delivery)
+    memory = pctx.make_memory()
+    if not memory.memory_root.exists():
+        console.print(
+            f"[red bold]No memory found for '{project}'.[/] "
+            "Run [bold]zo init[/] or [bold]zo build[/] first."
+        )
+        raise SystemExit(1)
+
+    from zo._memory_models import DecisionEntry
+    from zo.comms import CommsLogger
+
+    stored = memory.read_gate_nonce()
+    if stored is None:
+        console.print(
+            "[red bold]No gate is awaiting approval[/] (no nonce on file). "
+            "A nonce is minted when a phase reaches its blocking gate."
+        )
+        raise SystemExit(1)
+    if nonce != stored:
+        console.print(
+            "[red bold]Nonce mismatch — decision rejected.[/] Use the "
+            "approval nonce shown in the gate review banner."
+        )
+        raise SystemExit(1)
+    memory.clear_gate_nonce()
+
+    memory.append_decision(DecisionEntry(
+        title=f"Human gate decision: {phase}",
+        context=f"Phase: {phase} | via zo gates {decision} (nonce-verified)",
+        decision=decision, rationale=notes or "Human reviewer decision.",
+        outcome=decision,
+    ))
+    comms = CommsLogger(
+        log_dir=pctx.zo_root / "logs" / "comms",
+        project=project, session_id=f"gate-{uuid.uuid4().hex[:8]}",
+    )
+    comms.log_gate(
+        agent="human", gate_id=phase, gate_name=f"{phase} blocking gate",
+        metric_name="human_review",
+        metric_value=1.0 if decision == "proceed" else 0.0,
+        threshold=1.0, tier=1,
+        result="pass" if decision == "proceed" else "fail",
+        notes=notes or f"Nonce-verified human {decision} via CLI.",
+    )
+    memory.write_gate_decision(phase, decision, notes)
+
+    _show_banner(project=project, mode="gates", gate_mode=decision)
+    console.print(
+        f"  Gate [{_AMBER}]{phase}[/] {decision} recorded (nonce verified). "
+        "A running session picks this up at its next gate poll; otherwise "
+        "it applies on [bold]zo continue[/]."
+    )
+
+
+@gates.command("approve")
+@click.argument("phase")
+@click.option("--project", "-p", required=True, help="Project name.")
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+@click.option(
+    "--nonce", required=True,
+    help="Approval nonce shown in the gate review (single-use).",
+)
+@click.option("--notes", default="", help="Optional reviewer notes.")
+def gates_approve(
+    phase: str, project: str, repo: str | None, nonce: str, notes: str,
+) -> None:
+    """Approve the pending blocking gate for PHASE (nonce-verified)."""
+    _apply_gate_decision_cli(project, repo, phase, nonce, "proceed", notes)
+
+
+@gates.command("reject")
+@click.argument("phase")
+@click.option("--project", "-p", required=True, help="Project name.")
+@click.option(
+    "--repo", type=click.Path(exists=True, file_okay=False), default=None,
+    help="Path to delivery repo with .zo/ directory.",
+)
+@click.option(
+    "--nonce", required=True,
+    help="Approval nonce shown in the gate review (single-use).",
+)
+@click.option(
+    "--reason", "notes", required=True,
+    help="Why the gate is rejected (drives rework).",
+)
+def gates_reject(
+    phase: str, project: str, repo: str | None, nonce: str, notes: str,
+) -> None:
+    """Reject the pending blocking gate for PHASE (nonce-verified)."""
+    _apply_gate_decision_cli(project, repo, phase, nonce, "iterate", notes)
+
+
 # ---------------------------------------------------------------------------
 # Experiments — inspect the Phase 4 experiment registry
 # ---------------------------------------------------------------------------

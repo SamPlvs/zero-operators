@@ -17,7 +17,6 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -147,8 +146,12 @@ class TestFullSessionLifecycle:
         assert gate_eval.requires_human is True
         assert first_phase.status == PhaseStatus.GATED
 
-        # Apply human decision to proceed
-        orch.apply_human_decision(first_phase.phase_id, GateDecision.PROCEED)
+        # Apply human decision to proceed (WS-A5: nonce from the gate review)
+        review = orch.prepare_gate_review(first_phase.phase_id)
+        orch.apply_human_decision(
+            first_phase.phase_id, GateDecision.PROCEED,
+            nonce=review["approval_nonce"],
+        )
         assert first_phase.status == PhaseStatus.COMPLETED
 
         # End session with a summary

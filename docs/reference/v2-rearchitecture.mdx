@@ -46,7 +46,7 @@ architecture — features from different repos interlock into single mechanisms.
 | 1 | **Machine-checked deliverable contracts** — every agent's produced/consumed contract compiles to JSON (required files, sections, patterns) verified mechanically when the agent stops, plus a zero-cost "completion claim vs. TODO-stub diff" drift guard | oh-my-claudecode | P0 |
 | 3 | **Hook-enforced memory protocol** — STATE.md flushes before compaction, session summaries verified at session end, structured failure records captured automatically; the model can't forget because the model isn't asked | oh-my-claudecode | P0 |
 | 7 | **Anti-forgery gate approvals** — approvals only valid as structured tags carrying a per-verification nonce, so no agent can forge gate passage by echoing text | oh-my-claudecode | P1 |
-| 9 | **Structurally trustworthy verifiers** — the oracle and reviewers mechanically cannot edit code (tool-level enforcement), evaluators emit a strict JSON contract, and evaluation files are sealed against modification by the loop they evaluate | oh-my-claudecode | P1 |
+| 9 | **Structurally trustworthy verifiers** — verifier writes are mechanically confined to their contract scope (a PreToolUse guard denies writes into off-limits paths), evaluators emit a strict JSON contract, and oracle/control files are sealed against modification by the loop they evaluate | oh-my-claudecode | P1 |
 
 ### Workstream B — Control plane
 
