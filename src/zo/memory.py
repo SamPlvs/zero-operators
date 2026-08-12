@@ -21,6 +21,8 @@ Typical usage::
 
 from __future__ import annotations
 
+import contextlib
+import json
 import os
 import subprocess
 from datetime import UTC, datetime
@@ -340,6 +342,64 @@ class MemoryManager:
         self._memory_root.mkdir(parents=True, exist_ok=True)
         path = self._memory_root / "gate_mode"
         path.write_text(mode + "\n", encoding="utf-8")
+
+    # -- Gate nonce file (v2 WS-A5) -------------------------------------------
+
+    def read_gate_nonce(self) -> str | None:
+        """Read the pending gate-approval nonce, or ``None`` if absent."""
+        path = self._memory_root / "gate_nonce"
+        if not path.exists():
+            return None
+        try:
+            value = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        return value or None
+
+    def write_gate_nonce(self, nonce: str) -> None:
+        """Persist a single-use gate-approval nonce (minted at GATED)."""
+        self._memory_root.mkdir(parents=True, exist_ok=True)
+        (self._memory_root / "gate_nonce").write_text(
+            nonce + "\n", encoding="utf-8",
+        )
+
+    def clear_gate_nonce(self) -> None:
+        """Remove the gate nonce (single-use: cleared on terminal decisions)."""
+        with contextlib.suppress(OSError):
+            (self._memory_root / "gate_nonce").unlink(missing_ok=True)
+
+    # -- Gate decision file (v2 WS-A5) ----------------------------------------
+
+    def read_gate_decision(self) -> dict[str, str] | None:
+        """Read a pending nonce-verified gate decision, or ``None``."""
+        path = self._memory_root / "gate_decision"
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict) or "phase" not in data:
+            return None
+        return data
+
+    def write_gate_decision(self, phase: str, decision: str, notes: str) -> None:
+        """Persist a nonce-verified gate decision for the orchestrator."""
+        self._memory_root.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "phase": phase,
+            "decision": decision,
+            "notes": notes,
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+        (self._memory_root / "gate_decision").write_text(
+            json.dumps(payload) + "\n", encoding="utf-8",
+        )
+
+    def clear_gate_decision(self) -> None:
+        """Remove a consumed gate decision file."""
+        with contextlib.suppress(OSError):
+            (self._memory_root / "gate_decision").unlink(missing_ok=True)
 
     # -- Project initialization ---------------------------------------------
 

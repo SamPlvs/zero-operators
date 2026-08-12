@@ -288,6 +288,7 @@ class TestPhase4IterateMintsChild:
         orch.advance_phase(phase.phase_id)
         orch.apply_human_decision(
             phase.phase_id, GateDecision.ITERATE, "needs tuning",
+            nonce=orch.prepare_gate_review(phase.phase_id)["approval_nonce"],
         )
 
         reg_after_iterate = load_registry(

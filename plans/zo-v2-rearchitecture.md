@@ -50,7 +50,7 @@ substrate.
 3. PreCompact hook flushes state before a forced compaction; STATE.md reflects it
 4. PostToolUseFailure produces structured JSONL consumed by the priors pipeline
 5. A forged gate approval (echoed tag without nonce) is rejected; a genuine nonce-tagged approval passes
-6. oracle-qa/reviewers mechanically cannot Write/Edit (disallowedTools + PreToolUse); a seeded write attempt is blocked
+6. A contracted agent's Write/Edit into an off-limits path is denied by the PreToolUse guard reading contracts.json (amended from "disallowedTools" during Phase 1: verifiers need scoped write access — oracle-qa writes oracle/reports/ — and Claude Code has no disallowedTools frontmatter for subagents, so enforcement is path-scoped, keyed on agent identity in the hook input; fail-open when identity is absent)
 7. A seeded edit to a sealed eval file is blocked
 8. plan-ledger.json generated from plan.md; `zo status` renders from the ledger, not prose parsing
 9. A builder attempt to flip `passes: true` is blocked; only oracle-qa's flip lands

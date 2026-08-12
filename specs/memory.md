@@ -282,18 +282,21 @@ Interruptions are expected. Every component is designed for fault tolerance.
 
 **If session is interrupted mid-task**:
 
-1. STATE.md has the last checkpoint (updated periodically via postToolUse hook)
-2. DECISION_LOG.md has all decisions made up to interrupt point
+1. STATE.md has the last checkpoint (flushed by the PreCompact hook before any context compaction — v2 WS-A3)
+2. DECISION_LOG.md has all decisions made up to interrupt point (plus a "Checkpoint: pre-compaction state flush" entry per compaction)
 3. Git history is ground truth for file state
 4. New session reads STATE.md and picks up from last_completed_subtask
-5. Previous session summary is available in sessions/ (though not yet written if session was interrupted)
+5. Previous session summary is available in sessions/ — if none was written, the SessionEnd hook backfills an auto-generated stub (v2 WS-A3)
 
-**Recovery mechanism**:
+**Recovery mechanism (implemented, v2 WS-A3)**:
 
-- Hooks: sessionStart (read memory), postToolUse (periodic checkpoint), sessionEnd (write summary + update state)
-- Implemented via Claude Code settings.json hook mechanism
-- postToolUse hook triggers every 5 tool invocations or every 30 minutes, whichever comes first
-- If interrupted before hook fires: STATE.md is from previous session, not current partial session
+- Hooks in `.claude/settings.json`, all routed through `.claude/hooks/zo-hookkit.sh` → `python3 -m zo.hookkit`:
+  - `SessionStart` — read memory and inject context (pre-existing)
+  - `PreCompact` — flush STATE.md + append a checkpoint decision before compaction destroys in-context state
+  - `SessionEnd` — verify a session summary exists for today; backfill an auto-generated stub if not
+  - `PostToolUseFailure` — append a structured failure record to `logs/comms/failures-{date}.jsonl` (consumed by the evolution/priors pipeline)
+- All handlers are fail-open: infrastructure problems never block a session; only real violations emit blocking JSON
+- Historical note: an earlier draft of this spec called for a periodic postToolUse checkpoint (every 5 tool calls / 30 min); v2 replaced that design with compaction-triggered flushing, which protects exactly the moment state was actually being lost
 
 ## Context Reset Protocol
 

@@ -59,6 +59,16 @@
             "statusMessage": "Validating documentation consistency..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh sealed-paths 2>/dev/null || exit 0",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -80,6 +90,60 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/stop-check.sh 2>/dev/null || exit 0",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh drift-guard 2>/dev/null || exit 0",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh subagent-stop 2>/dev/null || exit 0",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh precompact 2>/dev/null || exit 0",
+            "timeout": 15,
+            "statusMessage": "Flushing state before compaction..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh session-end 2>/dev/null || exit 0",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh post-tool-failure 2>/dev/null || exit 0",
             "timeout": 10
           }
         ]

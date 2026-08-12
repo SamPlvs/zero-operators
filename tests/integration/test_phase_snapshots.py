@@ -85,6 +85,7 @@ class TestSnapshotGeneratedOnHumanGate:
 
         orch.apply_human_decision(
             phase.phase_id, GateDecision.PROCEED, "looks good",
+            nonce=memory.read_gate_nonce(),  # WS-A5: gates minted via advance_phase need the nonce
         )
         assert phase.status == PhaseStatus.COMPLETED
 
@@ -100,7 +101,9 @@ class TestSnapshotGeneratedOnHumanGate:
         for st in phase.subtasks:
             orch.mark_subtask_complete(phase.phase_id, st)
         orch.advance_phase(phase.phase_id)
-        orch.apply_human_decision(phase.phase_id, GateDecision.PROCEED)
+        orch.apply_human_decision(
+            phase.phase_id, GateDecision.PROCEED, nonce=memory.read_gate_nonce(),
+        )
 
         loaded = load_latest_snapshot(memory.memory_root, phase.phase_id)
         assert loaded is not None
