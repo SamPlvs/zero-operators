@@ -11,9 +11,39 @@ For cost-sensitive plans (Anthropic Pro, student tier, individual researchers on
 
 ---
 
+## The v2 rearchitecture
+
+The headline: after a full-source review of three agent-orchestration systems —
+[oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode),
+[ruflo](https://github.com/ruvnet/ruflo), and
+[ralph](https://github.com/snarktank/ralph) — ZO v2 adopts 12 features across
+five workstreams. ZO's oracle discipline stays; underneath it we're adding:
+
+<CardGroup cols={2}>
+  <Card title="An enforcement plane below the prompts" icon="shield-check">
+    Deterministic hooks that mechanically guarantee what spawn prompts currently promise: deliverable contracts checked when an agent stops, memory that persists automatically, gate approvals that can't be forged, verifiers that structurally cannot edit code.
+  </Card>
+  <Card title="A machine-readable control plane" icon="list-check">
+    A plan ledger where every subtask has verifiable acceptance criteria and a pass flag only the oracle may flip — progress becomes a query, not prose interpretation. STATE.md stays as the human-readable projection.
+  </Card>
+  <Card title="A fresh-context execution substrate" icon="arrows-spin">
+    A new agent per iteration, all state on disk, git as the checkpoint — context rot and compounding errors eliminated structurally, with a watchdog built from battle-tested parts (heartbeats, never-fight-these-stops taxonomy, rate-limit auto-resume).
+  </Card>
+  <Card title="An oracle for the platform itself" icon="scale-balanced">
+    Every learned rule binds to a code marker checked in CI; every documented failure gets a smoke test reproducing its symptom. The self-evolution loop gets the same rigor ZO applies to ML work.
+  </Card>
+</CardGroup>
+
+The full feature list, provenance, and the plan/build/test/verify/ship process
+live on the [v2 rearchitecture page](/reference/v2-rearchitecture). Credit where
+due: these three open-source projects each solved a piece of this puzzle in
+public, and the review that shaped v2 reads their source closely.
+
+---
+
 ## What we're working on
 
-Three workstreams shape the next 1–2 quarters, driven by recent user feedback on cost, accessibility, and cross-phase autonomy. Grouped by horizon: **Now**, **Next quarter**, and **Major design**.
+Alongside the v2 rearchitecture, three ongoing tracks shape the next 1–2 quarters, driven by recent user feedback on cost, accessibility, and cross-phase autonomy — they fold into or queue behind the v2 workstreams above. Grouped by horizon: **Now**, **Next quarter**, and **Major design**.
 
 ### Now (next 2–4 weeks)
 
