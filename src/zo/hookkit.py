@@ -68,8 +68,41 @@ def _memory_root(repo_root: Path) -> Path | None:
     return default if default.is_dir() else None
 
 
+_emitted = False
+
+
 def _emit(payload: dict) -> None:
+    global _emitted
+    _emitted = True
     sys.stdout.write(json.dumps(payload))
+
+
+def _trace(event: str, data: dict) -> None:
+    """Append one observability line per hook invocation (fail-open).
+
+    Written to ``logs/hook-trace-{date}.jsonl`` under the repo root
+    (gitignored). This is how we verify the enforcement plane actually
+    fires in live sessions — the handlers themselves are silent unless
+    they block. Records which stdin keys the live payload carried
+    (answers the agent-identity question) but never payload values.
+    Disable with ``ZO_HOOK_TRACE=0``.
+    """
+    if os.environ.get("ZO_HOOK_TRACE", "1") == "0":
+        return
+    with contextlib.suppress(OSError):
+        trace_dir = _repo_root() / "logs"
+        trace_dir.mkdir(parents=True, exist_ok=True)
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
+        line = json.dumps({
+            "ts": datetime.now(UTC).isoformat(),
+            "event": event,
+            "stdin_keys": sorted(data.keys()),
+            "agent_identity": _agent_name(data),
+            "session_id": data.get("session_id", ""),
+            "emitted_output": _emitted,
+        })
+        with (trace_dir / f"hook-trace-{date}.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
 
 
 # -- subagent-stop ------------------------------------------------------------
@@ -162,10 +195,15 @@ def _added_stub_lines(repo_root: Path) -> list[str]:
 def _handle_drift_guard(data: dict) -> None:
     if os.environ.get("ZO_DRIFT_GUARD", "1") == "0" or data.get("stop_hook_active"):
         return
-    transcript = data.get("transcript_path")
-    if not isinstance(transcript, str):
-        return
-    last_message = _last_assistant_text(transcript)
+    # Live Stop payloads carry the last message directly (verified in the
+    # 2026-08-12 live-session trace); fall back to transcript parsing for
+    # older payload shapes.
+    last_message = data.get("last_assistant_message")
+    if not isinstance(last_message, str) or not last_message:
+        transcript = data.get("transcript_path")
+        if not isinstance(transcript, str):
+            return
+        last_message = _last_assistant_text(transcript)
     if not last_message or _COMPLETION_CLAIM.search(last_message) is None:
         return
     stubs = _added_stub_lines(_repo_root())
@@ -352,13 +390,18 @@ _HANDLERS = {
 
 def main(argv: list[str] | None = None) -> int:
     """Dispatch a hook event; always returns 0 (fail-open)."""
+    global _emitted
+    _emitted = False
     args = argv if argv is not None else sys.argv[1:]
     if not args or args[0] not in _HANDLERS:
         return 0
+    data = _read_stdin_json()
     try:
-        _HANDLERS[args[0]](_read_stdin_json())
+        _HANDLERS[args[0]](data)
     except Exception:  # noqa: BLE001 — hooks are fail-open by contract
+        _trace(args[0], data)
         return 0
+    _trace(args[0], data)
     return 0
 
 

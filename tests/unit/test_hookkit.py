@@ -357,3 +357,61 @@ class TestDispatcher:
         )
         monkeypatch.setattr("sys.stdin", io.StringIO("{}"))
         assert hookkit.main(["explode"]) == 0
+
+
+# ---- trace observability -------------------------------------------------
+
+
+class TestTrace:
+    def test_every_invocation_writes_a_trace_line(
+        self, tmp_path: Path, monkeypatch, capsys,
+    ):
+        monkeypatch.setenv("ZO_REPO_ROOT", str(tmp_path))
+        monkeypatch.setenv("ZO_FAILURE_FEED_DIR", str(tmp_path / "feed"))
+        _run("post-tool-failure", {"tool_name": "Bash", "error": "x"}, monkeypatch, capsys)
+        traces = list((tmp_path / "logs").glob("hook-trace-*.jsonl"))
+        assert len(traces) == 1
+        record = json.loads(traces[0].read_text().splitlines()[0])
+        assert record["event"] == "post-tool-failure"
+        assert "tool_name" in record["stdin_keys"]
+
+    def test_trace_records_agent_identity_and_block(
+        self, tmp_path: Path, monkeypatch, capsys,
+    ):
+        contracts = _emit_demo_contracts(tmp_path / "mem")
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        monkeypatch.setenv("ZO_REPO_ROOT", str(tmp_path))
+        monkeypatch.setenv("ZO_CONTRACTS_PATH", str(contracts))
+        monkeypatch.setenv("ZO_DELIVERY_ROOT", str(repo))
+        _run("subagent-stop", {"agent_name": "data-engineer"}, monkeypatch, capsys)
+        record = json.loads(
+            next((tmp_path / "logs").glob("hook-trace-*.jsonl")).read_text().splitlines()[0]
+        )
+        assert record["agent_identity"] == "data-engineer"
+        assert record["emitted_output"] is True
+
+    def test_trace_disabled_by_env(self, tmp_path: Path, monkeypatch, capsys):
+        monkeypatch.setenv("ZO_REPO_ROOT", str(tmp_path))
+        monkeypatch.setenv("ZO_HOOK_TRACE", "0")
+        monkeypatch.setenv("ZO_FAILURE_FEED_DIR", str(tmp_path / "feed"))
+        _run("post-tool-failure", {"tool_name": "Bash", "error": "x"}, monkeypatch, capsys)
+        assert not (tmp_path / "logs").exists()
+
+
+class TestDriftGuardLivePayload:
+    """Live Stop payloads carry last_assistant_message directly (verified
+    in the 2026-08-12 live-session trace) — no transcript parse needed."""
+
+    def test_inline_last_message_used_over_transcript(
+        self, git_repo: Path, monkeypatch, capsys,
+    ):
+        (git_repo / "mod.py").write_text("def f():\n    # TODO: later\n    return 1\n")
+        monkeypatch.setenv("ZO_REPO_ROOT", str(git_repo))
+        out = _run(
+            "drift-guard",
+            {"last_assistant_message": "All tests pass, implementation complete."},
+            monkeypatch, capsys,
+        )
+        assert out is not None
+        assert out["decision"] == "block"

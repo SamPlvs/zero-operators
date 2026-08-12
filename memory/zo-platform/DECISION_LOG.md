@@ -1253,3 +1253,15 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 **Alternatives considered:** (1) tools: allowlist frontmatter on verifiers — rejected, cosmetic without Bash coverage and breaks legitimate writes; (2) six separate bash hook scripts — rejected for one parameterized shim (DRY, one venv-resolution path); (3) hard-blocking every stop while work remains (OMC's stop-engine) — explicitly rejected by the plan's anti-scope (fresh spawns + caps are the foundation; these hooks only catch violations).
 
 **Outcome:** 854 → 904 passed / 7 skipped (+50: 19 contracts, 19 hookkit, 9 nonce, 8 shim integration — first tests ever to execute a .claude/hooks script), ruff src/ clean, validate-docs green. 4 pre-existing integration tests updated to supply the nonce (designed behaviour change). Cascade: docs/COMMANDS.md (+gates approve/reject), specs/memory.md recovery section rewritten to implemented reality, plan check 6 + docs feature #9 amended. Branch `claude/v2-phase1-enforcement` stacked on `claude/v2-rearchitecture-plan`.
+
+## Decision: 2026-08-12T15:30:00Z
+**Type:** VERIFICATION
+**Title:** Live pre-PR verification of the WS-A enforcement plane (in-session, bypass-equivalent)
+
+**Decision:** Verified the Phase 1 hooks firing in a REAL Claude Code session before merging PR #107, per Sam's direction. Method: added always-on hook-trace observability (one JSONL line per invocation to `logs/hook-trace-{date}.jsonl`: event, stdin keys, agent identity, whether output was emitted; `ZO_HOOK_TRACE=0` disables), then used the current live session itself as the test vehicle — the runtime picked up the new settings.json wiring mid-session.
+
+**Evidence (from logs/hook-trace-2026-08-12.jsonl):** (1) `drift-guard` fired on a real Stop event, correctly silent — and the live payload carries `last_assistant_message` directly (drift-guard now prefers it; transcript parse kept as fallback). (2) `sealed-paths` fired on a real Write to `memory/zo-platform/gate_mode` and DENIED it — the lead agent of a live session was mechanically blocked from touching gate control state. (3) `subagent-stop` fired when a probe subagent stopped, and the live payload carries `agent_type` + `agent_id` + `agent_transcript_path` — RESOLVING the Phase-1 open question: per-agent contract enforcement will key correctly in live team sessions; the fail-open path is the exception, not the norm.
+
+**Honest caveats:** PostToolUseFailure did not fire for nonzero-exit Bash commands in this session — its semantics appear limited to tool-infrastructure errors, so the failure feed will capture fewer events than designed; if nonzero-exit capture matters, add PostToolUse-with-error-inspection in WS-D. PreCompact/SessionEnd not yet observed live (no compaction occurred; SessionEnd fires at session close) — same wiring pattern as the three proven events. A full `zo build` demo run remains desirable on a machine with the claude CLI (this Desktop-managed Mac has none — see PR-046).
+
+**Outcome:** 904 → 908 tests (3 trace + 1 live-payload drift-guard), ruff clean. Fail-open verified end to end in production conditions. Evidence committed to PR #107.
