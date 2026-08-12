@@ -251,6 +251,33 @@ These sections are included based on project needs.
 
 Milestones are informational. Agents do not skip work to meet deadlines. If a milestone is missed, the orchestrator logs the delay and notifies the human.
 
+### 10. Stories (optional, v2 WS-B)
+
+An optional `## Stories` section declares explicit user stories with per-story
+acceptance criteria. Each `### <title>` sub-heading is one story; bullets under
+an `**Acceptance criteria:**` label become its criteria:
+
+```markdown
+## Stories
+
+### Load and validate the dataset
+
+**Acceptance criteria:**
+- `pytest tests/test_ingest.py` passes with exit code 0
+- data/processed/clean.csv exists
+```
+
+**Sizing lint (ralph's "Number One Rule"):** when stories are declared, every
+story must carry at least one *machine-verifiable* acceptance criterion — a
+threshold comparison (`RMSE <= 0.05`), an artifact path, or a backticked
+runnable command. `validate_plan` rejects vague criteria ("works well") as an
+error, which also fails `zo preflight` and `zo validate`. Plans without a
+Stories section are unaffected. Story sizing guidance: each story should be
+completable in a single agent context window.
+
+Parsed stories feed `plan-ledger.json` (the machine-readable progress ledger
+whose `passes` flags only the oracle-verified gate paths may flip).
+
 ### 10. Delivery Specification
 
 ```markdown

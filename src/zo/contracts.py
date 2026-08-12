@@ -170,13 +170,24 @@ def load_contracts(path: Path) -> ContractsFile | None:
 
 
 def set_active_phase(memory_root: Path, phase_id: str) -> None:
-    """Update ``active_phase`` in an existing contracts file, if present."""
+    """Update ``active_phase`` in an existing contracts file, if present.
+
+    Atomic (temp + ``os.replace``) — a torn read in the fail-open hook
+    layer would silently disable contract enforcement.
+    """
     path = memory_root / CONTRACTS_FILENAME
     doc = load_contracts(path)
     if doc is None:
         return
     doc.active_phase = phase_id
-    path.write_text(doc.model_dump_json(indent=2), encoding="utf-8")
+    fd, tmp = tempfile.mkstemp(dir=str(memory_root), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(doc.model_dump_json(indent=2))
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def _check_spec(repo_root: Path, spec: DeliverableSpec) -> str | None:

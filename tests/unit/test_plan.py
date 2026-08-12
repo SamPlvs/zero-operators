@@ -679,3 +679,98 @@ class TestAgentAdaptations:
         assert "xai-agent" not in names  # empty body skipped
         assert "domain-evaluator" in names
         assert plan.workflow.mode == WorkflowMode.CLASSICAL_ML
+
+
+# ---------------------------------------------------------------------------
+# Stories & sizing lint (v2 WS-B3, plan oracle check 10)
+# ---------------------------------------------------------------------------
+
+
+STORIES_SECTION_VALID = """
+## Stories
+
+### Load and validate the dataset
+
+Ingest the raw CSV and produce a validated frame.
+
+**Acceptance criteria:**
+- `pytest tests/test_ingest.py` passes with exit code 0
+- data/processed/clean.csv exists
+
+### Train the baseline
+
+**Acceptance criteria:**
+- Validation RMSE <= 0.05 on the held-out split
+"""
+
+STORIES_SECTION_VAGUE = """
+## Stories
+
+### Make the model good
+
+**Acceptance criteria:**
+- The model works well and the code is clean
+"""
+
+STORIES_SECTION_EMPTY_CRITERIA = """
+## Stories
+
+### A story with no criteria
+
+Just prose, no bullets at all.
+"""
+
+
+class TestStoriesParsing:
+    def test_valid_stories_parse(self, tmp_path: Path) -> None:
+        plan = parse_plan(
+            _write_plan(tmp_path, MINIMAL_VALID_PLAN + STORIES_SECTION_VALID)
+        )
+        assert len(plan.stories) == 2
+        first = plan.stories[0]
+        assert first.title == "Load and validate the dataset"
+        assert "validated frame" in first.description
+        assert len(first.acceptance_criteria) == 2
+
+    def test_plan_without_stories_has_empty_list(self, tmp_path: Path) -> None:
+        plan = parse_plan(_write_plan(tmp_path, MINIMAL_VALID_PLAN))
+        assert plan.stories == []
+
+
+class TestSizingLint:
+    """Plan oracle check 10: non-verifiable stories are rejected."""
+
+    def test_machine_verifiable_stories_pass(self, tmp_path: Path) -> None:
+        plan = parse_plan(
+            _write_plan(tmp_path, MINIMAL_VALID_PLAN + STORIES_SECTION_VALID)
+        )
+        report = validate_plan(plan)
+        assert not [i for i in report.issues if i.section == "Stories"]
+
+    def test_vague_story_rejected(self, tmp_path: Path) -> None:
+        """The seeded violation: criteria with no threshold/path/command."""
+        plan = parse_plan(
+            _write_plan(tmp_path, MINIMAL_VALID_PLAN + STORIES_SECTION_VAGUE)
+        )
+        report = validate_plan(plan)
+        story_issues = [i for i in report.issues if i.section == "Stories"]
+        assert len(story_issues) == 1
+        assert "machine-verifiable" in story_issues[0].message
+        assert report.valid is False
+
+    def test_story_without_criteria_rejected(self, tmp_path: Path) -> None:
+        plan = parse_plan(
+            _write_plan(
+                tmp_path, MINIMAL_VALID_PLAN + STORIES_SECTION_EMPTY_CRITERIA
+            )
+        )
+        report = validate_plan(plan)
+        story_issues = [i for i in report.issues if i.section == "Stories"]
+        assert len(story_issues) == 1
+        assert "no acceptance criteria" in story_issues[0].message
+
+    def test_lint_silent_without_stories_section(self, tmp_path: Path) -> None:
+        """Legacy plans without ## Stories are untouched by the lint."""
+        plan = parse_plan(_write_plan(tmp_path, MINIMAL_VALID_PLAN))
+        report = validate_plan(plan)
+        assert not [i for i in report.issues if i.section == "Stories"]
