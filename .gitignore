@@ -19,6 +19,7 @@ website/.astro/
 # ZO platform's own files are explicitly preserved below.
 plans/*
 !plans/zero-operators-build.md
+!plans/zo-v2-rearchitecture.md
 !plans/mnist-digit-classifier.md
 !plans/cifar10-classifier.md
 targets/*

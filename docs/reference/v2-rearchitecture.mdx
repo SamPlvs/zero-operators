@@ -1,0 +1,113 @@
+---
+title: "v2 Rearchitecture"
+description: "The full feature set ZO v2 adopts from a deep-dive review of oh-my-claudecode, ruflo, and ralph — and how each will be built, tested, and verified."
+---
+
+## Where this comes from
+
+In August 2026 we ran a full-source review of three agent-orchestration systems
+— reading implementations, not READMEs, and separating genuinely-built
+capability from aspiration:
+
+<CardGroup cols={3}>
+  <Card title="oh-my-claudecode" icon="github" href="https://github.com/yeachan-heo/oh-my-claudecode">
+    Hook-enforced execution guarantees, battle-tested across thousands of users. Its enforcement hooks each trace to a real production failure.
+  </Card>
+  <Card title="ruflo" icon="github" href="https://github.com/ruvnet/ruflo">
+    Self-verification machinery: witness manifests, behavioral smoke-test CI, temporal memory semantics.
+  </Card>
+  <Card title="ralph" icon="github" href="https://github.com/snarktank/ralph">
+    The fresh-context loop: 113 lines of bash proving statelessness can be the architecture.
+  </Card>
+</CardGroup>
+
+The review's seven deep-dive passes catalogued 63 features (nine passes in
+total, including a ZO baseline map and an adversarial synthesis), then distilled
+them to the 12 below — deduplicated, ranked by leverage against ZO's documented
+failure modes, and stripped of the things those repos get wrong (we documented
+11 anti-patterns we are explicitly *not* copying, from keyword-triggered
+orchestration to self-asserted completion).
+
+The conclusion in one line: **ZO's oracle discipline stays; underneath it we're
+adding a deterministic enforcement plane, a machine-readable control plane, a
+fresh-context execution substrate, and an oracle for the platform itself.**
+
+## The 12 features
+
+Organized into five layer-based workstreams. The source repo is provenance, not
+architecture — features from different repos interlock into single mechanisms.
+
+### Workstream A — Enforcement plane
+
+*What spawn prompts promise, hooks now guarantee.*
+
+| # | Feature | From | Priority |
+|---|---------|------|----------|
+| 1 | **Machine-checked deliverable contracts** — every agent's produced/consumed contract compiles to JSON (required files, sections, patterns) verified mechanically when the agent stops, plus a zero-cost "completion claim vs. TODO-stub diff" drift guard | oh-my-claudecode | P0 |
+| 3 | **Hook-enforced memory protocol** — STATE.md flushes before compaction, session summaries verified at session end, structured failure records captured automatically; the model can't forget because the model isn't asked | oh-my-claudecode | P0 |
+| 7 | **Anti-forgery gate approvals** — approvals only valid as structured tags carrying a per-verification nonce, so no agent can forge gate passage by echoing text | oh-my-claudecode | P1 |
+| 9 | **Structurally trustworthy verifiers** — the oracle and reviewers mechanically cannot edit code (tool-level enforcement), evaluators emit a strict JSON contract, and evaluation files are sealed against modification by the loop they evaluate | oh-my-claudecode | P1 |
+
+### Workstream B — Control plane
+
+*Progress becomes a query, not prose interpretation.*
+
+| # | Feature | From | Priority |
+|---|---------|------|----------|
+| 4 | **Machine-readable plan ledger with oracle-owned pass flags** — every subtask carries acceptance criteria, a verification command, and a boolean `passes` that only the oracle may flip; plan validation enforces ralph's "Number One Rule": every story fits one context window | ralph + oh-my-claudecode | P0 |
+
+### Workstream C — Execution substrate
+
+*The failure unit becomes one iteration, not one 38-hour session.*
+
+| # | Feature | From | Priority |
+|---|---------|------|----------|
+| 2 | **Watchdog from proven parts** — heartbeat-file liveness, a taxonomy of stops that must never be fought (context-limit, rate-limit, auth, user abort), bounded nudge budgets, and rate-limit wait-and-resume for overnight runs | oh-my-claudecode + ruflo | P0 |
+| 6 | **Fresh-context-per-subtask execution loop** — a new agent per iteration re-derives state from the ledger, experiment lineage, and a curated priors digest; git commits are the checkpoints; context rot and compounding hallucination are eliminated structurally | ralph + oh-my-claudecode | P1 |
+
+### Workstream D — Self-learning & platform oracle
+
+*The self-evolution loop gets the same rigor ZO applies to ML work.*
+
+| # | Feature | From | Priority |
+|---|---------|------|----------|
+| 5 | **Witness manifests + fixture regression** — every verified fix in PRIORS binds to a code marker checked in CI, and prompt-level rule edits replay the original failure fixture before promotion; "this rule would have caught it" becomes a standing check, not a one-time claim | ruflo + oh-my-claudecode | P1 |
+| 11 | **Platform CI doctrine** — behavioral smoke tests reproducing each documented failure symptom, monotone quality ratchets on agent definitions, and doc counts generated from the filesystem instead of hand-maintained | ruflo + oh-my-claudecode | P2 |
+| 12 | **Memory layer upgrades** — temporal supersession semantics (refuted knowledge is invalidated with a pointer to its replacement, never overwritten), a three-question quality gate on new priors, a curated read-first digest, and a CI-enforced context budget | ruflo + oh-my-claudecode + ralph | P2 |
+
+### Workstream E — Operator experience
+
+*Observe/notify/control as load-bearing infrastructure.*
+
+| # | Feature | From | Priority |
+|---|---------|------|----------|
+| 8 | **Two-way gate notifications** — gate-pending, loop verdicts, and stall alerts pushed to Slack/Telegram with cooldowns; replies ("approve" / "reject: reason") route back into the running session with authorization and sanitization | oh-my-claudecode | P1 |
+| 10 | **ZO HUD statusline** — project, phase, pending gate, oracle status, iteration, active agents, and context usage at a glance, rendered from control-plane files | oh-my-claudecode | P2 |
+
+## How it ships
+
+The build follows ZO's own discipline — the plan lives at
+`plans/zo-v2-rearchitecture.md` with a full oracle:
+
+1. **Plan** — six gated phases (enforcement → control plane → substrate →
+   platform oracle → operator UX → integration), each with named verification
+   checks agreed before work starts.
+2. **Build** — every feature lands as a PR with a **seeded-failure test**: the
+   enforcement mechanism must catch a deliberately planted violation before it
+   merges. Nothing ships unwired — no mechanism merges without a runtime caller
+   and an observable test.
+3. **Test** — the 854-test platform suite stays green on Python 3.11 and 3.12
+   throughout; new mechanisms add their own unit + integration coverage.
+4. **Verify** — 20 oracle verification checks (tiered must/should/could), ending
+   with a full demo project run where every new mechanism is observed firing —
+   and a substrate go/no-go: the fresh-context loop must match v1's demo
+   accuracy at ≤ 1.15× cost before it becomes the default.
+5. **Ship** — phase-gated releases; the roadmap and this page track progress.
+
+## What we're deliberately not copying
+
+The review also produced an anti-pattern catalog — dead code presented as
+capability, unverified performance claims, keyword-triggered orchestration,
+self-asserted completion, verification theater, surface-area maximalism. These
+are encoded in the plan's anti-scope and enforced in review. ZO's small, honest
+surface is the asset we're protecting.

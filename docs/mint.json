@@ -71,6 +71,7 @@
     {
       "group": "Reference",
       "pages": [
+        "reference/v2-rearchitecture",
         "reference/low-token-preset",
         "reference/cost-benchmark"
       ]
