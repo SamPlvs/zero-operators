@@ -45,7 +45,8 @@ _STUB_MARKER = re.compile(
     r"^\+.*(\bTODO\b|\bFIXME\b|\bXXX\b|NotImplementedError|raise NotImplemented\b)"
 )
 _SEALED_DEFAULTS = (
-    "gate_mode", "gate_nonce", "gate_decision", CONTRACTS_FILENAME, "sealed_paths",
+    "gate_mode", "gate_nonce", "gate_decision", CONTRACTS_FILENAME,
+    "plan-ledger.json", "sealed_paths",
 )
 
 

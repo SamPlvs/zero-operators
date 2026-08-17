@@ -127,3 +127,42 @@ class TestGateDecisionFile:
         memory.write_gate_decision("phase_99", "proceed", "stale")
         orch.decompose_plan()
         assert memory.read_gate_decision() is None
+
+
+class TestLedgerOracleFlip:
+    """Check 9 (landing half): the nonce-verified gate path flips the ledger."""
+
+    def test_nonce_approval_marks_ledger_phase_passed(self, wired) -> None:
+        from zo.ledger import LEDGER_FILENAME, load_ledger, summarize
+
+        orch, memory = wired
+        phase_id = _gate_first_phase(orch)
+        ledger = load_ledger(memory.memory_root / LEDGER_FILENAME)
+        assert ledger is not None  # emitted at decompose
+        passed, total = summarize(ledger).get(phase_id, (0, 0))
+        assert passed == 0  # nothing passes before the oracle path runs
+
+        orch.apply_human_decision(
+            phase_id, GateDecision.PROCEED, "verified",
+            nonce=memory.read_gate_nonce(),
+        )
+        ledger = load_ledger(memory.memory_root / LEDGER_FILENAME)
+        passed, total = summarize(ledger)[phase_id]
+        assert passed == total > 0
+        assert ledger.phase_status[phase_id] == "completed"
+
+    def test_iterate_resets_ledger(self, wired) -> None:
+        from zo.ledger import LEDGER_FILENAME, load_ledger, summarize
+
+        orch, memory = wired
+        phase_id = _gate_first_phase(orch)
+        orch.apply_human_decision(
+            phase_id, GateDecision.ITERATE, "rework the audit",
+            nonce=memory.read_gate_nonce(),
+        )
+        ledger = load_ledger(memory.memory_root / LEDGER_FILENAME)
+        passed, _ = summarize(ledger)[phase_id]
+        assert passed == 0
+        assert ledger.phase_status[phase_id] == "active"
+        entry = next(e for e in ledger.entries if e.phase_id == phase_id)
+        assert "rework the audit" in (entry.last_failure or "")

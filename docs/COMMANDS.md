@@ -158,6 +158,14 @@ zo gates set MODE --project NAME
 
 `MODE` is one of: `supervised` (human approves every gate), `auto` (orchestrator approves unless ambiguous), `full-auto` (all gates auto-approved).
 
+### zo status (control plane)
+
+When a project has a `plan-ledger.json` (v2 WS-B — generated automatically at
+plan decompose), `zo status` renders progress from it first: per-phase status,
+oracle-owned pass counts, attempts, and last failure. The ledger is the
+machine-readable truth; STATE.md remains the human-readable projection and
+the fallback for legacy projects.
+
 ### zo gates approve / reject
 
 Record a nonce-verified human decision on the pending blocking gate (v2

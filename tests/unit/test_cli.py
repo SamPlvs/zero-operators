@@ -843,6 +843,56 @@ class TestStatusCommand:
         assert "test-project" in result.output
 
 
+
+    def test_status_renders_from_ledger(
+        self, runner: click.testing.CliRunner, tmp_path: Path
+    ) -> None:
+        """Check 8 (v2 WS-B): with plan-ledger.json present, zo status
+        renders progress from the control plane, not STATE.md prose."""
+        from zo._orchestrator_models import (
+            GateType,
+            PhaseDefinition,
+            WorkflowDecomposition,
+        )
+        from zo.ledger import emit_ledger, mark_phase_passed
+
+        mem_root = tmp_path / "memory" / "test-project"
+        mem_root.mkdir(parents=True)
+        (mem_root / "sessions").mkdir()
+        (mem_root / "STATE.md").write_text(
+            "---\ntimestamp: 2026-01-01T00:00:00Z\nmode: build\n"
+            "phase: stale-prose-phase\n---\n",
+            encoding="utf-8",
+        )
+        wf = WorkflowDecomposition(
+            mode="classical_ml",
+            phases=[
+                PhaseDefinition(
+                    phase_id="phase_1", name="Data", description="d",
+                    gate_type=GateType.BLOCKING,
+                    subtasks=["Audit", "Schema"],
+                ),
+                PhaseDefinition(
+                    phase_id="phase_2", name="Features", description="f",
+                    gate_type=GateType.BLOCKING, subtasks=["Engineer"],
+                ),
+            ],
+        )
+        emit_ledger(wf, mem_root, "test-project")
+        mark_phase_passed(mem_root, "phase_1")
+
+        with patch("zo.cli._zo_root", return_value=tmp_path):
+            result = runner.invoke(cli, ["status", "test-project"])
+
+        assert result.exit_code == 0
+        assert "Control plane" in result.output
+        assert "2/2" in result.output  # phase_1 fully passed
+        assert "0/1" in result.output  # phase_2 pending
+        # Phase shown comes from the ledger (first non-completed phase),
+        # not the stale STATE.md prose.
+        assert "phase_2" in result.output
+
+
 # ---------------------------------------------------------------------------
 # build command
 # ---------------------------------------------------------------------------

@@ -1056,6 +1056,12 @@ def build(
         extra_env["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"] = str(
             _LOW_TOKEN_PRESET["compact_threshold"],
         )
+    # Enforcement-plane hook environment (WS-A/WS-B): the sealed-paths,
+    # contract, and ledger hooks resolve the project memory root and
+    # delivery repo from these — without them, delivery-repo sessions
+    # fall back to platform-memory defaults and per-project sealing
+    # silently no-ops (recon: sealing gap 1).
+    # Note: set after project context resolution below.
 
     # 2. Resolve project context (.zo/ or legacy)
     # If the plan lives inside a .zo/plans/ directory, infer delivery repo
@@ -1067,6 +1073,9 @@ def build(
     target = ctx.make_target()
     memory = ctx.make_memory()
     memory.initialize_project()
+    extra_env["ZO_MEMORY_ROOT"] = str(memory.memory_root)
+    extra_env["ZO_DELIVERY_ROOT"] = str(target.target_repo)
+    extra_env["ZO_CONTRACTS_PATH"] = str(memory.memory_root / "contracts.json")
 
     # 3. Detect mode from state
     state_check = memory.read_state()
@@ -2301,12 +2310,49 @@ def status(project_name: str | None, repo: str | None) -> None:
 
     state = memory.read_state()
 
+    # Control plane first (WS-B, check 8): when plan-ledger.json exists,
+    # progress renders from it — machine state, not STATE.md prose.
+    from zo.ledger import LEDGER_FILENAME, load_ledger, summarize
+
+    ledger_doc = load_ledger(memory.memory_root / LEDGER_FILENAME)
+    current_phase = state.phase
+    if ledger_doc is not None and ledger_doc.entries:
+        counts = summarize(ledger_doc)
+        current_phase = next(
+            (
+                p for p in ledger_doc.phase_status
+                if ledger_doc.phase_status[p] != "completed"
+            ),
+            current_phase,
+        )
+        ledger_table = Table(
+            title="Control plane (plan-ledger.json — passes are oracle-owned)",
+            style=_AMBER,
+        )
+        ledger_table.add_column("Phase", style="bold")
+        ledger_table.add_column("Status")
+        ledger_table.add_column("Passed")
+        ledger_table.add_column("Attempts")
+        ledger_table.add_column("Last failure")
+        for phase_id, status_str in ledger_doc.phase_status.items():
+            passed, total = counts.get(phase_id, (0, 0))
+            phase_entries = [
+                e for e in ledger_doc.entries if e.phase_id == phase_id
+            ]
+            attempts = sum(e.attempts for e in phase_entries)
+            failures = [e.last_failure for e in phase_entries if e.last_failure]
+            ledger_table.add_row(
+                phase_id, status_str, f"{passed}/{total}",
+                str(attempts), (failures[-1][:60] if failures else "—"),
+            )
+        console.print(ledger_table)
+
     table = Table(title=f"Project: {project_name}", style=_AMBER)
     table.add_column("Field", style="bold")
     table.add_column("Value")
 
     table.add_row("Mode", state.mode)
-    table.add_row("Phase", state.phase)
+    table.add_row("Phase", current_phase)
     table.add_row("Last Subtask", state.last_completed_subtask or "none")
     table.add_row("Blockers", ", ".join(state.active_blockers) or "none")
     table.add_row("Next Steps", ", ".join(state.next_steps) or "none")

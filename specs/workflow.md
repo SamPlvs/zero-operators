@@ -878,7 +878,7 @@ Within each sequential phase:
 
 1. **Strict ordering:** Each subtask must complete fully before the next begins. No parallelization within a sequential phase.
 2. **Dependency enforcement:** Downstream subtasks assume upstream artifacts are ready. Do not skip or reorder without explicit `plan.md` override.
-3. **State tracking:** Orchestrator records subtask completion in `STATE.md` with timestamp and artifact location.
+3. **State tracking:** the machine-readable record is `plan-ledger.json` in the project memory root (v2 WS-B) — one entry per subtask with acceptance criteria, attempts, and a `passes` flag only the orchestrator's oracle-verified gate paths may flip (the file is sealed against direct agent writes). `STATE.md` remains the human-readable projection and records subtask completion with timestamp and artifact location.
 4. **Failure handling:** If a subtask fails:
    - Do NOT skip it or proceed to next subtask
    - Either retry the subtask, escalate to human with error details, or pause the phase

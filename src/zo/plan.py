@@ -150,6 +150,20 @@ class ExperimentLoopSpec(BaseModel):
     dead_end_threshold: float | None = None
 
 
+class StorySpec(BaseModel):
+    """One user story from an optional ``## Stories`` section (v2 WS-B).
+
+    Stories carry ralph's "Number One Rule": each must be sized to one
+    context window and carry machine-verifiable acceptance criteria —
+    a threshold comparison, an artifact path, or a runnable command.
+    ``validate_plan`` rejects stories whose criteria are none of these.
+    """
+
+    title: str
+    description: str = ""
+    acceptance_criteria: list[str] = Field(default_factory=list)
+
+
 class Plan(BaseModel):
     """The full parsed plan — top-level container."""
 
@@ -171,6 +185,10 @@ class Plan(BaseModel):
     # Autonomous-iteration knobs — optional; defaults applied by the
     # orchestrator when absent. Parsed from ``## Experiment Loop``.
     experiment_loop: ExperimentLoopSpec | None = None
+
+    # Optional per-story acceptance criteria (v2 WS-B). Parsed from
+    # ``## Stories``; the sizing lint fires only when stories exist.
+    stories: list[StorySpec] = Field(default_factory=list)
 
     # Raw section map for introspection.
     raw_sections: dict[str, str] = Field(default_factory=dict)
@@ -576,6 +594,8 @@ _OPTIONAL_SECTION_ALIASES: dict[str, str] = {
     "experiment loop": "experiment_loop",
     "experiment loop policy": "experiment_loop",
     "autonomous iteration": "experiment_loop",
+    "stories": "stories",
+    "user stories": "stories",
 }
 
 
@@ -639,6 +659,7 @@ def parse_plan(path: Path) -> Plan:
         _parse_experiment_loop(mapped["experiment_loop"])
         if "experiment_loop" in mapped else None
     )
+    stories = _parse_stories(mapped["stories"]) if "stories" in mapped else []
 
     return Plan(
         frontmatter=frontmatter,
@@ -654,8 +675,62 @@ def parse_plan(path: Path) -> Plan:
         environment=mapped.get("environment"),
         open_questions=mapped.get("open_questions"),
         experiment_loop=experiment_loop,
+        stories=stories,
         raw_sections=raw_sections,
         source_path=path,
+    )
+
+
+def _parse_stories(body: str) -> list[StorySpec]:
+    """Parse a ``## Stories`` section body into StorySpec entries.
+
+    Each ``### <title>`` sub-heading starts a story; ``- `` bullets under
+    an ``Acceptance criteria:`` line (or all bullets, if no such label)
+    become its acceptance criteria; remaining prose is the description.
+    """
+    stories: list[StorySpec] = []
+    blocks = re.split(r"^###\s+", body, flags=re.MULTILINE)
+    for block in blocks[1:]:
+        lines = block.splitlines()
+        title = lines[0].strip()
+        rest = lines[1:]
+        criteria: list[str] = []
+        prose: list[str] = []
+        in_criteria = False
+        for line in rest:
+            stripped = line.strip()
+            if re.match(r"(?i)^\**acceptance criteria\**\s*:?\s*$", stripped):
+                in_criteria = True
+                continue
+            if stripped.startswith("- "):
+                criteria.append(stripped[2:].strip())
+            elif stripped and not in_criteria:
+                prose.append(stripped)
+        stories.append(
+            StorySpec(
+                title=title,
+                description=" ".join(prose),
+                acceptance_criteria=criteria,
+            )
+        )
+    return stories
+
+
+# Machine-verifiability heuristics for the sizing lint (v2 WS-B3):
+# a criterion is machine-verifiable when it names a threshold comparison,
+# an artifact path, or a runnable (backticked) command.
+_CRITERION_THRESHOLD_RE = re.compile(r"[<>≤≥=]=?\s*\d|\d+(\.\d+)?\s*%")
+_CRITERION_PATH_RE = re.compile(
+    r"\b[\w./-]+\.(py|md|json|yaml|yml|csv|txt|pt|onnx)\b|\b[\w-]+/[\w./-]+"
+)
+_CRITERION_COMMAND_RE = re.compile(r"`[^`]+`")
+
+
+def _criterion_is_verifiable(criterion: str) -> bool:
+    return bool(
+        _CRITERION_THRESHOLD_RE.search(criterion)
+        or _CRITERION_PATH_RE.search(criterion)
+        or _CRITERION_COMMAND_RE.search(criterion)
     )
 
 
@@ -776,6 +851,33 @@ def validate_plan(plan: Plan) -> ValidationReport:
             section="Agents",
             message="At least one active agent must be specified.",
         ))
+
+    # --- Story sizing lint (v2 WS-B3, ralph's Number One Rule) ---
+    # Fires only when a ## Stories section is declared: every story must
+    # carry at least one machine-verifiable acceptance criterion (a
+    # threshold comparison, an artifact path, or a backticked command).
+    for story in plan.stories:
+        if not story.acceptance_criteria:
+            issues.append(ValidationIssue(
+                section="Stories",
+                message=(
+                    f"Story '{story.title}' has no acceptance criteria. "
+                    "Each story needs at least one machine-verifiable "
+                    "criterion (threshold, artifact path, or `command`)."
+                ),
+            ))
+        elif not any(
+            _criterion_is_verifiable(c) for c in story.acceptance_criteria
+        ):
+            issues.append(ValidationIssue(
+                section="Stories",
+                message=(
+                    f"Story '{story.title}' has no machine-verifiable "
+                    "acceptance criterion — none contains a threshold "
+                    "comparison, artifact path, or `command`. Vague "
+                    "criteria cannot gate work (v2 sizing lint)."
+                ),
+            ))
 
     return ValidationReport(
         valid=len(issues) == 0,

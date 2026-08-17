@@ -17,6 +17,7 @@ Typical usage::
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import secrets
 from datetime import UTC, datetime
@@ -25,6 +26,7 @@ from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from zo import contracts as zo_contracts
+from zo import ledger as zo_ledger
 from zo._evolution_models import FailureRecord, FailureSeverity
 from zo._memory_models import (
     Confidence,
@@ -348,6 +350,7 @@ class Orchestrator:
         self._restore_phase_states()
         self._consume_gate_decision()
         self._emit_contracts_file()
+        self._emit_plan_ledger()
         self._comms.log_decision(
             agent="orchestrator",
             title=f"Plan decomposed into {len(phases)} phases ({mode})",
@@ -356,6 +359,46 @@ class Orchestrator:
         if self._session_state is not None and not self._session_state.phase_states:
             self._session_state.phase = phases[0].phase_id
         return self._workflow
+
+    def _emit_plan_ledger(self) -> None:
+        """Generate/refresh ``plan-ledger.json`` (v2 WS-B, merge-preserving).
+
+        Fail-open: emission problems are logged, never raised.
+        """
+        if self._workflow is None:
+            return
+        threshold = (
+            self._plan.oracle.target_threshold if self._plan.oracle else None
+        )
+        try:
+            path = zo_ledger.emit_ledger(
+                self._workflow,
+                self._memory.memory_root,
+                self._plan.frontmatter.project_name,
+                oracle_threshold=threshold,
+            )
+        except OSError as exc:
+            self._comms.log_error(
+                agent="orchestrator",
+                error_type="ledger_emission_failed",
+                severity="warning",
+                description=f"plan-ledger.json emission failed: {exc}",
+            )
+            return
+        self._comms.log_decision(
+            agent="orchestrator",
+            title="Plan ledger emitted",
+            rationale=(
+                f"{sum(len(p.subtasks) for p in self._workflow.phases)} "
+                "subtask entries; passes flags are oracle-owned"
+            ),
+            outcome=str(path), confidence="high",
+        )
+
+    def _ledger_safe(self, fn: str, *args: object) -> None:
+        """Invoke a zo.ledger mutator, swallowing IO errors (fail-open)."""
+        with contextlib.suppress(OSError):
+            getattr(zo_ledger, fn)(self._memory.memory_root, *args)
 
     def _consume_gate_decision(self) -> None:
         """Apply a nonce-verified CLI gate decision recorded while offline.
@@ -746,6 +789,7 @@ class Orchestrator:
                 zo_contracts.set_active_phase(
                     self._memory.memory_root, phase_id,
                 )
+                self._ledger_safe("set_phase_status", phase_id, "gated")
             self._log_gate(ev)
             return ev
 
@@ -762,6 +806,10 @@ class Orchestrator:
                         f"{', '.join(all_missing)}"
                     ),
                 )
+                self._ledger_safe(
+                    "record_phase_failure", phase_id,
+                    f"artifacts missing: {', '.join(all_missing)}",
+                )
                 self._log_gate(ev)
                 return ev
             # For phase_4 (training/iteration), consult the autonomous
@@ -775,6 +823,10 @@ class Orchestrator:
                 return auto_iter
 
             phase.status = PhaseStatus.COMPLETED
+            # Oracle-owned flip (WS-B2): only this verified path — artifacts
+            # checked, experiments finalized, loop evaluator consulted —
+            # may set passes:true. Builders cannot write the ledger (sealed).
+            self._ledger_safe("mark_phase_passed", phase_id)
             self._generate_test_report(phase)
             self._generate_notebook(phase)
             self._generate_snapshot(phase, "automated", GateDecision.PROCEED)
@@ -803,6 +855,7 @@ class Orchestrator:
             )
         if subtask not in phase.completed_subtasks:
             phase.completed_subtasks.append(subtask)
+        self._ledger_safe("record_attempt", phase_id, subtask)
         if self._session_state is not None:
             self._session_state.last_completed_subtask = subtask
             self._memory.write_state(self._session_state)
@@ -889,6 +942,8 @@ class Orchestrator:
         self._memory.clear_gate_nonce()
         if decision == GateDecision.PROCEED:
             phase.status = PhaseStatus.COMPLETED
+            # Oracle-owned flip (WS-B2): nonce-verified human PROCEED.
+            self._ledger_safe("mark_phase_passed", phase_id)
             self._finalize_experiments(phase)
             self._generate_test_report(phase)
             self._generate_notebook(phase)
@@ -896,9 +951,13 @@ class Orchestrator:
         elif decision == GateDecision.ITERATE:
             phase.status = PhaseStatus.ACTIVE
             phase.completed_subtasks.clear()
+            self._ledger_safe(
+                "reset_phase", phase_id, notes or "human ITERATE decision",
+            )
             self._abort_running_experiments(phase_id)
         elif decision == GateDecision.ESCALATE:
             phase.status = PhaseStatus.BLOCKED
+            self._ledger_safe("set_phase_status", phase_id, "blocked")
         else:
             phase.status = PhaseStatus.GATED
 
@@ -1250,6 +1309,10 @@ class Orchestrator:
         # Continue — reset phase, next prompt mints child exp.
         phase.status = PhaseStatus.ACTIVE
         phase.completed_subtasks.clear()
+        self._ledger_safe(
+            "reset_phase", phase.phase_id,
+            f"loop CONTINUE: {decision.reason}",
+        )
         return GateEvaluation(
             phase_id=phase.phase_id,
             gate_type=GateType.AUTOMATED,
