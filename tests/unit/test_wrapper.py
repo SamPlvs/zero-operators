@@ -38,11 +38,29 @@ from zo.watchdog import (
 from zo.wrapper import LifecycleWrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
 # ------------------------------------------------------------------ #
 # Fixtures
 # ------------------------------------------------------------------ #
+
+
+@pytest.fixture(autouse=True)
+def _no_real_cpu_probe() -> Iterator[None]:
+    """Never spawn the real ``ps -A`` CPU probe from a wrapper unit test.
+
+    The runner samples process-tree CPU time on every tick when the lead has
+    a pid. Left unpatched, ``subprocess.run(timeout=...)`` inside the probe
+    reaches CPython's ``Popen.wait`` doubling back-off (``time.sleep(0.001,
+    0.002, ...)``) — and ``mock.patch("zo.wrapper.time.sleep")`` patches the
+    *global* ``time.sleep``, so those internal sleeps leaked into the poll
+    interval assertions on CI (race-dependent: seen on Linux 3.11/3.12,
+    not on macOS 3.14). ``None`` = "CPU unknown", which is exactly the
+    evidence-free default the tests want; the two tests that exercise CPU
+    evidence patch the probe explicitly and win over this fixture.
+    """
+    with mock.patch("zo._wrapper_watchdog.process_tree_cpu_seconds", return_value=None):
+        yield
 
 
 @pytest.fixture()

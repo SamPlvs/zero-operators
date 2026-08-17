@@ -1305,3 +1305,9 @@ The `--no-headlines` flag is preserved (not removed) for backwards compatibility
 **Verification method:** contract-first build (4 concurrent builders on disjoint files) → integrator → 3 adversarial verifier lenses (semantics / wiring+sealing / test quality: 19 findings, 2 high — banner reset times parsed in UTC; static banner could never resume) → fixer (11 applied with regression tests, 4 rejected with reasons). 929 → 1131 passed / 7 skipped, ruff clean, validate-docs 0 failures. Seeded tests for checks 11 and 12 on both loops.
 
 **Follow-ups (not done, recorded):** `_watchdog-ticks.jsonl` unbounded growth; `wrapper.py` 1404 lines (split `_wrapper_tmux.py`); verify the CPU-evidence idle threshold on a real tmux session; sealed-prefix symlink resolution in hookkit; `is_interrupt` from the failure feed not yet fed to `evaluate()`.
+
+## Decision: 2026-08-17T13:05:00Z
+**Type:** FAILURE + FIX
+**Title:** PR #109 CI red on 3.11/3.12 (green locally on 3.14) — CPU-evidence probe spawned `ps -A` under a global `time.sleep` mock
+
+**Failure:** `test_running_process_with_rate_limit_text_pauses_without_backoff` saw CPython's `Popen.wait` doubling back-off sleeps in `mock_sleep.call_args_list` because the watchdog's CPU probe ran the real `ps -A` (`subprocess.run(timeout=5)`) and `mock.patch("zo.wrapper.time.sleep")` patches the global `time` module. Race-dependent reap timing → Linux red, macOS green. **Root cause:** `missing_rule` — no rule required neutralising new process-spawning helpers in unit tests. **Fix:** autouse fixture `_no_real_cpu_probe` in `tests/unit/test_wrapper.py` (probe → `None`); proven with a counting `Popen` spy (2 spawns before, 0 after). **Prior:** PR-049 (five rules incl. "raising traps are swallowed by fail-open code — use counting spies" and "default-arg binding defeats late patching"). Suite 1131 / 7 skipped, ruff clean; pushed to #109.

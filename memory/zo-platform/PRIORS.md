@@ -1441,3 +1441,21 @@ Not a code fix in PR-A — the finding shaped Phase 3's design (DECISION_LOG 202
 ### Verified Solution
 
 `scratchpad/pr-a-build.js` (session 041) rewritten from Core → Build(3) to Build(4 concurrent) → Integrate → Verify(3) → Fix; final: 1131 passed / 7 skipped, 19 verifier findings triaged, no integration defect reached the commit. Same playbook for PR-B.
+
+## PR-049: Unit tests must never spawn the real process probes — a fail-open probe hides the leak, and `mock.patch("zo.wrapper.time.sleep")` patches the GLOBAL `time.sleep`
+**Source:** Session 041 (2026-08-17), PR #109 CI red on Python 3.11 + 3.12 after a green local run on 3.14
+**Root cause category:** missing_rule
+
+**Failure:** `tests/unit/test_wrapper.py::TestWaitForCompletion::test_running_process_with_rate_limit_text_pauses_without_backoff` asserted `{c.args[0] for c in mock_sleep.call_args_list} == {0.01}` ("no back-off: every sleep is the poll interval"). On CI the recorded sleeps were `{0.001, 0.002, 0.004, 0.008, 0.01, 0.016, 0.032, 0.05}`. Cause chain: the new WatchdogRunner samples process-tree CPU time every tick when the lead has a pid → `zo._proc.process_tree_cpu_seconds` runs `ps -A` via `subprocess.run(timeout=5)` → CPython's `Popen.wait(timeout)` polls with a doubling `time.sleep(0.0005·2ⁿ, cap 0.05)` while the child is reaped → `mock.patch("zo.wrapper.time.sleep")` resolves `zo.wrapper.time` to the `time` MODULE, so it patches `time.sleep` for every caller including `subprocess` → the internal back-off sleeps landed in the assertion. Race-dependent (`ps` reaped before the first `WNOHANG` on macOS, after it on Linux) → green locally, red on both CI Pythons. Two things hid it: the probe is fail-open (`except Exception: return None`), so a raising trap on `subprocess.Popen` was swallowed silently and "proved" nothing; and `process_tree_cpu_seconds(..., run=subprocess.run)` binds `run` at definition time, so patching `subprocess.run` afterwards is inert.
+
+### Rules
+
+1. **Any new helper that spawns a process gets an autouse neutralising fixture in every unit-test module whose code path can reach it.** Unit tests must not depend on the host's process table or reap timing. Patch the NAME the caller imported (`zo._wrapper_watchdog.process_tree_cpu_seconds`), not the stdlib function it wraps.
+2. **`mock.patch("<module>.time.sleep")` is a global patch** — `<module>.time` is the shared `time` module. Assertions on `mock_sleep.call_args_list` therefore see every sleeper in the process (subprocess, threading, retries). Either isolate the loop from all other sleepers (rule 1) or assert on the loop's own sleeps by value (`poll_interval in calls`), never on the full set.
+3. **Verify a "nothing spawns" claim with a counting spy, not a raising trap.** Fail-open code swallows the trap's AssertionError; a spy that records and delegates (`class Spy(subprocess.Popen)`) shows the true count with and without the fix.
+4. **Default-argument binding defeats late patching.** `def f(*, run=subprocess.run)` captures the function object; tests that need to intercept must inject `run=` or patch the wrapper's imported name — document which one at the definition.
+5. **CI (3.11/3.12 on Linux) is the binding check; local 3.14 on macOS is a preview** (PR-039 family). A CI-only failure after a green local run means an environment-dependent path — find the spawn/race, do not retry.
+
+### Verified Solution
+
+`tests/unit/test_wrapper.py`: autouse fixture `_no_real_cpu_probe` patches `zo._wrapper_watchdog.process_tree_cpu_seconds` to return `None` (CPU unknown = no evidence — the default the tests want; the two CPU-evidence tests patch explicitly and win). Proof by counting spy: the failing test spawned `ps -A` ×2 without the fixture and 0 with it. 90 wrapper tests pass; full suite 1131 / 7 skipped; ruff clean. The rule would have caught the original failure: with rule 1 applied at build time the probe could never have run under a global sleep mock.
