@@ -137,6 +137,7 @@ While `zo build` is running, you have several windows into what the team is doin
 | `--max-iterations N` | `10` (or `2` if `--low-token`) | Hard cap on Phase-4 experiment iterations. Wins over plan and preset. |
 | `--no-headlines` | (off) | Skip the end-of-session Haiku bullet summary (~1 Haiku call per run, ~$0.0002). |
 | `--bypass-permissions` | (off) | Auto-approve Claude Code tool-call prompts. Implied by `--gate-mode full-auto`. See [Permission prompts](#permission-prompts-bypass-permissions). |
+| `--no-watchdog` | (off) | Disable the anti-stall watchdog for this run (no stall detection, nudges, or rate-limit pause). Equivalent to `ZO_WATCHDOG=0`. Policy otherwise comes from the `watchdog:` block in `.zo/config.yaml`. |
 
 ## Examples
 

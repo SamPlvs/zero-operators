@@ -10,7 +10,7 @@
 <br/>
 
 [![Status](https://img.shields.io/badge/status-validated-D87A57?style=flat-square&labelColor=12110F)](#status)
-[![Tests](https://img.shields.io/badge/tests-854_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
+[![Tests](https://img.shields.io/badge/tests-1053_passing-D87A57?style=flat-square&labelColor=12110F)](#status)
 [![Agents](https://img.shields.io/badge/agents-21_defined-D87A57?style=flat-square&labelColor=12110F)](#agent-teams)
 [![Docs](https://img.shields.io/badge/docs-zerooperators.com-D87A57?style=flat-square&labelColor=12110F)](https://docs.zerooperators.com)
 
@@ -526,7 +526,7 @@ delivery-repo/
 | 1.0.2 | Platform-aware Docker scaffold + reference-project end-to-end demos | Done |
 | 1.0.2-post | `--low-token` cost-saving preset (two-tier model routing, per-phase trims) + `ZOTrainingCallback` hard gate enforcement | Done |
 
-780 platform tests. ruff clean (`src/zo/`). 21 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
+1053 platform tests. ruff clean (`src/zo/`). 21 agents. 24 slash commands. Measured benchmarks tracked in [docs/reference/cost-benchmark.mdx](docs/reference/cost-benchmark.mdx).
 
 ---
 

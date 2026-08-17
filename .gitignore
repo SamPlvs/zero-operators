@@ -32,6 +32,12 @@ logs/
 # Per-project memory (keep ZO platform memory, ignore everything else)
 memory/*
 !memory/zo-platform/
+# Runtime control-plane state under the platform memory root is never
+# tracked (WS-B ledger/contracts, WS-C heartbeats). These MUST come after
+# the !memory/zo-platform/ re-include above.
+memory/zo-platform/heartbeats/
+memory/zo-platform/plan-ledger.json
+memory/zo-platform/contracts.json
 
 # Design source files contain project-specific examples (client-identifying)
 docs/source-design/

@@ -11,12 +11,17 @@ Events:
     session-end        ensure a session summary exists for today
     post-tool-failure  append a structured failure record (JSONL feed)
     sealed-paths       deny Write/Edit into sealed or off-limits paths
+    heartbeat          stamp <memory_root>/heartbeats/<agent_key>.json (WS-C)
 
 Every handler is fail-open: infrastructure problems (missing files,
 unparseable stdin, unknown agent) exit 0 with no output. Only genuine
 violations produce blocking JSON on stdout. This mirrors the existing
 ``.claude/hooks/*.sh`` convention — the enforcement plane must never
 brick a session.
+
+The ``heartbeat`` path is stdlib-only (no pydantic import) because it runs
+on every PostToolUse — the writer lives in ``zo._hook_heartbeat``;
+``zo.contracts`` is imported lazily by the handlers that need it.
 """
 
 from __future__ import annotations
@@ -31,7 +36,8 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from zo.contracts import CONTRACTS_FILENAME, load_contracts, validate_agent_stop
+from zo._hook_heartbeat import HEARTBEATS_DIRNAME, stamp_heartbeat
+from zo._hook_heartbeat import agent_identity as _agent_identity
 
 __all__ = ["main"]
 
@@ -44,9 +50,13 @@ _COMPLETION_CLAIM = re.compile(
 _STUB_MARKER = re.compile(
     r"^\+.*(\bTODO\b|\bFIXME\b|\bXXX\b|NotImplementedError|raise NotImplemented\b)"
 )
+# Literal "contracts.json" (== zo.contracts.CONTRACTS_FILENAME) keeps this
+# module free of the pydantic import; "heartbeats" seals the whole subtree
+# via the prefix match in _handle_sealed_paths (agents cannot forge liveness).
+_CONTRACTS_FILENAME = "contracts.json"
 _SEALED_DEFAULTS = (
-    "gate_mode", "gate_nonce", "gate_decision", CONTRACTS_FILENAME,
-    "plan-ledger.json", "sealed_paths",
+    "gate_mode", "gate_nonce", "gate_decision", _CONTRACTS_FILENAME,
+    "plan-ledger.json", "sealed_paths", HEARTBEATS_DIRNAME,
 )
 
 
@@ -117,12 +127,35 @@ def _agent_name(data: dict) -> str | None:
     return None
 
 
+def _stamp_heartbeat(data: dict, fallback_event: str) -> None:
+    """Fail-open heartbeat stamp for handlers wired to non-PostToolUse events.
+
+    ``fallback_event`` supplies ``hook_event_name`` when the payload lacks
+    it (older payload shapes / tests) without mutating ``data`` — the trace
+    line records the payload's real ``stdin_keys``.
+    """
+    with contextlib.suppress(Exception):
+        payload = data if data.get("hook_event_name") else {
+            **data, "hook_event_name": fallback_event,
+        }
+        _handle_heartbeat(payload)
+
+
 def _handle_subagent_stop(data: dict) -> None:
+    try:
+        _subagent_stop(data)
+    finally:
+        _stamp_heartbeat(data, "SubagentStop")
+
+
+def _subagent_stop(data: dict) -> None:
     if data.get("stop_hook_active"):
         return
     agent = _agent_name(data)
     if agent is None:
         return
+    from zo.contracts import validate_agent_stop
+
     repo_root = _repo_root()
     contracts_env = os.environ.get("ZO_CONTRACTS_PATH")
     if contracts_env:
@@ -131,7 +164,7 @@ def _handle_subagent_stop(data: dict) -> None:
         memory_root = _memory_root(repo_root)
         if memory_root is None:
             return
-        contracts_path = memory_root / CONTRACTS_FILENAME
+        contracts_path = memory_root / _CONTRACTS_FILENAME
     delivery_root = Path(os.environ.get("ZO_DELIVERY_ROOT", str(repo_root)))
     violations = validate_agent_stop(contracts_path, agent, delivery_root)
     if not violations:
@@ -194,6 +227,13 @@ def _added_stub_lines(repo_root: Path) -> list[str]:
 
 
 def _handle_drift_guard(data: dict) -> None:
+    try:
+        _drift_guard(data)
+    finally:
+        _stamp_heartbeat(data, "Stop")
+
+
+def _drift_guard(data: dict) -> None:
     if os.environ.get("ZO_DRIFT_GUARD", "1") == "0" or data.get("stop_hook_active"):
         return
     # Live Stop payloads carry the last message directly (verified in the
@@ -231,6 +271,13 @@ def _memory_manager(memory_root: Path):
 
 
 def _handle_precompact(data: dict) -> None:
+    try:
+        _precompact(data)
+    finally:
+        _stamp_heartbeat(data, "PreCompact")
+
+
+def _precompact(data: dict) -> None:
     repo_root = _repo_root()
     memory_root = _memory_root(repo_root)
     if memory_root is None or not (memory_root / "STATE.md").exists():
@@ -255,6 +302,13 @@ def _handle_precompact(data: dict) -> None:
 
 
 def _handle_session_end(data: dict) -> None:
+    try:
+        _session_end(data)
+    finally:
+        _stamp_heartbeat(data, "SessionEnd")
+
+
+def _session_end(data: dict) -> None:
     repo_root = _repo_root()
     memory_root = _memory_root(repo_root)
     if memory_root is None or not (memory_root / "STATE.md").exists():
@@ -289,6 +343,7 @@ def _handle_post_tool_failure(data: dict) -> None:
     feed_dir = Path(
         os.environ.get("ZO_FAILURE_FEED_DIR", str(repo_root / "logs" / "comms"))
     )
+    agent_type, agent_id = _agent_identity(data)
     try:
         feed_dir.mkdir(parents=True, exist_ok=True)
         record = {
@@ -299,6 +354,10 @@ def _handle_post_tool_failure(data: dict) -> None:
             "tool_name": data.get("tool_name", "unknown"),
             "error": str(data.get("error", data.get("tool_response", "")))[:2000],
             "input_preview": json.dumps(data.get("tool_input", {}))[:500],
+            # WS-C: user-abort evidence for the watchdog taxonomy + identity.
+            "is_interrupt": data.get("is_interrupt"),
+            "agent_id": agent_id,
+            "agent_type": agent_type,
         }
         date = datetime.now(UTC).strftime("%Y-%m-%d")
         path = feed_dir / f"failures-{date}.jsonl"
@@ -350,7 +409,9 @@ def _handle_sealed_paths(data: dict) -> None:
     if deny_reason is None:
         agent = _agent_name(data)
         if agent is not None and memory_root is not None:
-            doc = load_contracts(memory_root / CONTRACTS_FILENAME)
+            from zo.contracts import load_contracts
+
+            doc = load_contracts(memory_root / _CONTRACTS_FILENAME)
             if doc is not None:
                 normalized = agent.strip().lower().replace(" ", "-")
                 for entry in doc.agents:
@@ -379,6 +440,22 @@ def _handle_sealed_paths(data: dict) -> None:
         )
 
 
+# -- heartbeat (WS-C) ---------------------------------------------------------
+
+
+def _handle_heartbeat(data: dict) -> None:
+    """Stamp ``<memory_root>/heartbeats/<agent_key>.json`` (advisory, fail-open).
+
+    The writer lives in ``zo._hook_heartbeat`` (stdlib-only by design — it
+    runs on every PostToolUse and must not import pydantic). This handler
+    only resolves the memory root and never creates one.
+    """
+    memory_root = _memory_root(_repo_root())
+    if memory_root is None or not memory_root.is_dir():
+        return
+    stamp_heartbeat(data, memory_root=memory_root)
+
+
 _HANDLERS = {
     "subagent-stop": _handle_subagent_stop,
     "drift-guard": _handle_drift_guard,
@@ -386,6 +463,7 @@ _HANDLERS = {
     "session-end": _handle_session_end,
     "post-tool-failure": _handle_post_tool_failure,
     "sealed-paths": _handle_sealed_paths,
+    "heartbeat": _handle_heartbeat,
 }
 
 

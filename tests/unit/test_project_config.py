@@ -1,11 +1,17 @@
-"""Unit tests for zo.project_config — .zo/ config reader/writer."""
+"""Unit tests for zo.project_config — .zo/ config reader/writer.
+
+Includes the WS-C watchdog config threading (plan oracle checks 11-12):
+the ``watchdog:`` block round-trips through save/load, legacy configs
+without it get defaults, and unknown top-level keys are ignored.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from zo.project_config import (
     LocalConfig,
@@ -17,6 +23,10 @@ from zo.project_config import (
     save_project_config,
     to_target_config,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+from zo.watchdog import WatchdogConfig
 
 # ---------------------------------------------------------------------------
 # Model defaults
@@ -39,6 +49,10 @@ class TestProjectConfigDefaults:
         assert cfg.git_author_name == "ZO Agent"
         assert cfg.git_author_email == "zo-agent@zero-operators.dev"
         assert cfg.enforce_isolation is True
+        # WS-C: watchdog block defaults to ON with the spec thresholds.
+        assert isinstance(cfg.watchdog, WatchdogConfig)
+        assert cfg.watchdog.enabled is True
+        assert cfg.watchdog.stall_threshold_sec == 1200
 
 
 class TestLocalConfigDefaults:
@@ -253,3 +267,118 @@ class TestYamlOutput:
         data = yaml.safe_load(raw)
         assert data["project_name"] == "readable"
         assert isinstance(data["agent_working_dirs"], dict)
+
+
+# ---- watchdog config threading (oracle checks 11-12, WS-C) ----
+
+
+def _write_raw_config(repo: Path, text: str) -> None:
+    zo_dir = repo / ".zo"
+    zo_dir.mkdir(parents=True, exist_ok=True)
+    (zo_dir / "config.yaml").write_text(text, encoding="utf-8")
+
+
+class TestWatchdogConfigThreading:
+    """The ``watchdog:`` block is a first-class, round-tripping part of ProjectConfig.
+
+    Seeded half: a config carrying a non-default watchdog block (and one with
+    a typo) is written to disk and must come back intact / be rejected.
+    Wiring half: legacy files without the block, and files with unknown
+    top-level keys, still load (documented ``extra="ignore"``).
+    """
+
+    def test_watchdog_block_round_trip(self, tmp_path: Path) -> None:
+        """A non-default watchdog block survives save → load unchanged."""
+        original = ProjectConfig(
+            project_name="wd-round-trip",
+            watchdog=WatchdogConfig(
+                enabled=False,
+                stall_threshold_sec=600,
+                nudge_budget=1,
+                nudge_message="carry on",
+                progress_paths=["logs/train.log", "runs/"],
+            ),
+        )
+        save_project_config(tmp_path, original)
+        loaded = load_project_config(tmp_path)
+
+        assert loaded.watchdog == original.watchdog
+        assert loaded.watchdog.enabled is False
+        assert loaded.watchdog.stall_threshold_sec == 600
+        assert loaded.watchdog.progress_paths == ["logs/train.log", "runs/"]
+
+    def test_saved_yaml_has_nested_watchdog_block(self, tmp_path: Path) -> None:
+        """save_project_config writes the block as nested YAML, not a repr."""
+        save_project_config(
+            tmp_path,
+            ProjectConfig(
+                project_name="wd-yaml",
+                watchdog=WatchdogConfig(stall_threshold_sec=900),
+            ),
+        )
+        raw = (tmp_path / ".zo" / "config.yaml").read_text(encoding="utf-8")
+        data = yaml.safe_load(raw)
+
+        assert "watchdog:" in raw
+        assert isinstance(data["watchdog"], dict)
+        assert data["watchdog"]["stall_threshold_sec"] == 900
+        assert data["watchdog"]["enabled"] is True
+
+    def test_seeded_watchdog_disabled_in_file_loads_disabled(self, tmp_path: Path) -> None:
+        """Seeded: a hand-written ``watchdog: {enabled: false}`` is honoured on load."""
+        _write_raw_config(
+            tmp_path,
+            "project_name: seeded-off\nwatchdog:\n  enabled: false\n  nudge_budget: 0\n",
+        )
+        loaded = load_project_config(tmp_path)
+
+        assert loaded.watchdog.enabled is False
+        assert loaded.watchdog.nudge_budget == 0
+        # Unspecified nested keys keep their defaults.
+        assert loaded.watchdog.stall_threshold_sec == 1200
+
+    def test_legacy_config_without_watchdog_block_gets_defaults(self, tmp_path: Path) -> None:
+        """A pre-WS-C config.yaml (no watchdog key) loads with the watchdog ON."""
+        _write_raw_config(
+            tmp_path,
+            "project_name: legacy\nalias: prod-001\nbranch: main\n",
+        )
+        loaded = load_project_config(tmp_path)
+
+        assert loaded.alias == "prod-001"
+        assert loaded.watchdog == WatchdogConfig()
+        assert loaded.watchdog.enabled is True
+
+    def test_unknown_top_level_key_is_ignored(self, tmp_path: Path) -> None:
+        """Documented choice: unknown top-level keys are ignored, not an error."""
+        _write_raw_config(
+            tmp_path,
+            "project_name: forward-compat\nfuture_feature: {x: 1}\nwatchdog:\n  enabled: true\n",
+        )
+        loaded = load_project_config(tmp_path)
+
+        assert loaded.project_name == "forward-compat"
+        assert not hasattr(loaded, "future_feature")
+        assert loaded.watchdog.enabled is True
+
+    def test_seeded_watchdog_typo_is_rejected(self, tmp_path: Path) -> None:
+        """Seeded: a misspelt key INSIDE the watchdog block is a hard error.
+
+        ``WatchdogConfig`` forbids extras so a policy typo cannot silently
+        turn into "defaults, watchdog on" — the opposite of what the operator
+        intended.
+        """
+        _write_raw_config(
+            tmp_path,
+            "project_name: typo\nwatchdog:\n  stall_treshold_sec: 5\n",
+        )
+        with pytest.raises(ValidationError):
+            load_project_config(tmp_path)
+
+    def test_watchdog_model_dump_is_plain_data(self) -> None:
+        """model_dump() nests the block as a plain dict (what yaml.dump needs)."""
+        dumped = ProjectConfig(project_name="dump").model_dump()
+
+        assert isinstance(dumped["watchdog"], dict)
+        assert dumped["watchdog"]["enabled"] is True
+        assert dumped["watchdog"]["progress_paths"] == []

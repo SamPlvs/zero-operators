@@ -1406,3 +1406,38 @@ rm -f package-lock.json                            # keep the diff to the intend
 **Evidence:** 2026-08-12 session 040 — `claude`, `uv`, `npm` all exit 127 in the sandbox shell; no `.venv/` in repo; hooks verified live via the session's own runtime instead (see DECISION_LOG 15:30 entry).
 **Rules learned:** (1) Probe for a binary before building a plan around it (`which X` first, not after failure). (2) Keep every hook/script runnable on bare `python3` + stdlib-adjacent deps. (3) Machine-specific capabilities belong in a preflight check, not in assumptions — `zo preflight` should test for the claude CLI explicitly.
 **Confidence:** high
+
+## PR-047: "Built and tested" was never "wired" for the oracle-owned gate path — grep runtime callers before assuming a mechanism fires
+**Source:** Session 041 (2026-08-17), Phase 3 recon swarm on `claude/v2-phase3-substrate`
+**Root cause category:** ignored_rule (PR-009 rule 1 — "built and tested is not wired and enforced" — was itself never applied to `advance_phase`)
+
+**Failure:** `Orchestrator.advance_phase()` and `mark_subtask_complete()` — the "single enforcement point" named by PR-009, and the ONLY code that mints a gate nonce (`orchestrator.py:788`), evaluates the automated gate, runs `_auto_iterate_if_needed`, and flips the WS-B ledger — have zero runtime callers outside tests (`grep -rn advance_phase src/ .claude/ scripts/` → definition only). `zo build` launches one lead session per phase and calls `end_session()`, which writes the in-memory (unchanged) phase states back to STATE.md, clobbering any `## Phases` edit the lead made. Phases advanced in production only through hand-edited STATE.md (the PR-036/037 prod-001 incident was that lever failing), and `zo gates approve --nonce` could never find a nonce. Two whole workstreams (WS-A5 nonce gates, WS-B oracle-owned flips) shipped with passing seeded tests but sat behind an unreachable path.
+
+### Rules
+
+1. **A mechanism's wiring test must start from the CLI/hook entry point, not from the orchestrator method.** `test_artifacts_present_allows_gate` (PR-009) proved subtasks → gate → notebook — but started at `orch.mark_subtask_complete`, which nothing calls. A wiring test is only a wiring test if its first call is something a user or a hook actually invokes (`zo build`, a settings.json hook event, a slash command).
+   - **How to apply:** For every "oracle-owned" or "enforced" mechanism, add a test that patches the wrapper/session launch and asserts the CLI path reaches the mechanism (`advance_phase` called after `wait_for_completion` returns). PR-B's first test is exactly this.
+
+2. **Recon before build: enumerate runtime callers of every enforcement point with grep, and treat "definition only" as a red flag, not a detail.** The 2026-08-12 baseline review (9 agents) missed this; a single `grep -rn advance_phase` found it in seconds. Read-only mapper swarms that return exact `file:line` integration points (session 041 playbook) surface these gaps cheaply — run one before every substrate change.
+
+3. **STATE.md `## Phases` is a projection, never a control input, once a driver exists.** Until then it is the only lever operators have — so the PR-B cutover must ship the sanctioned `zo phase set` override in the same change (Sam's decision, DECISION_LOG 2026-08-17T09:00).
+
+### Verified Solution
+
+Not a code fix in PR-A — the finding shaped Phase 3's design (DECISION_LOG 2026-08-17T09:00: driver evaluates gates for ALL phases; PR-B is the first runtime caller). PR-A's own mechanisms follow rule 1: `tests/integration/test_hooks_shim.py::TestSettingsWiring::test_heartbeat_wired_on_post_tool_use` starts from settings.json; `tests/unit/test_wrapper.py::test_watchdog_tick_runs_on_suspected_dead_path` starts from `wait_for_completion`; `tests/unit/test_cli.py` asserts `build` passes `watchdog=/memory_root=/zo_session_id=` into the wrapper. The rule would have caught the original failure: a wiring test starting at `zo build` would have found no path to `advance_phase` on day one.
+
+## PR-048: Contract-first spawning applies to the lead's own build plan — a pinned API is the shared context; do not serialize the shared module ahead of parallel builders
+**Source:** Session 041 (2026-08-17), PR-A build workflow; Sam's pushback ("why don't you use multiple agents … with shared context")
+**Root cause category:** ignored_rule (CLAUDE.md design principle "contract-first spawning: define all agent interfaces before parallel spawn")
+
+**Failure:** The first PR-A workflow put the core module (`zo.watchdog`) on a serial critical path and gated the wrapper/hooks/config builders behind it, "to reduce integration risk" — even though the build contract already pinned the module's public API verbatim. ~12 minutes of a builder's work was lost restarting; the second run (four builders concurrent, core-finisher reconciling the drafted module while the others imported it) delivered the same integration quality (an integrator + adversarial verify pass caught the two mid-flight mismatches).
+
+### Rules
+
+1. **When the contract pins the interface, spawn every builder at once; the integrator step absorbs mismatches.** Subagents share no context window; the contract + integration map on disk ARE the shared context (ZO's own "state on disk" doctrine). Serializing a dependency only pays when the interface is genuinely undecided.
+2. **Cross-builder seams go through the contract and an integrator, not live chatter** — pin kwargs/keys/paths in the contract, tell each builder to code defensively across the seam (`getattr` defaults, patched call sites in tests), and let one integrator reconcile. Peer messaging is for undecided interfaces only.
+3. **Restart cheaply:** if a serial stage is already mid-flight and its artefact is on disk, keep the artefact and hand it to a "finisher" running concurrently with the rest, rather than throwing it away or waiting.
+
+### Verified Solution
+
+`scratchpad/pr-a-build.js` (session 041) rewritten from Core → Build(3) to Build(4 concurrent) → Integrate → Verify(3) → Fix; final: 1131 passed / 7 skipped, 19 verifier findings triaged, no integration defect reached the commit. Same playbook for PR-B.
