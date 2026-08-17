@@ -81,6 +81,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/zo-hookkit.sh heartbeat 2>/dev/null || exit 0",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [

@@ -27,7 +27,9 @@ from zo._orchestrator_models import GateMode
 
 if TYPE_CHECKING:
     from zo.memory import MemoryManager
+    from zo.project_config import ProjectConfig
     from zo.target import TargetConfig
+    from zo.watchdog import WatchdogConfig
 
 console = Console()
 
@@ -84,6 +86,18 @@ class ProjectContext:
 
         target_path = self.zo_root / "targets" / f"{self.project_name}.target.md"
         return parse_target(target_path)
+
+    def make_project_config(self) -> ProjectConfig | None:
+        """Load ``.zo/config.yaml`` as a ProjectConfig; None for legacy layouts.
+
+        Legacy (``targets/*.target.md``) projects have no config file, so
+        callers fall back to hardcoded defaults (e.g. watchdog ON).
+        """
+        if self.layout != "zo-dir":
+            return None
+        from zo.project_config import load_project_config
+
+        return load_project_config(self.delivery_repo)
 
 
 def _detect_delivery_repo(project_name: str | None = None) -> Path | None:
@@ -706,6 +720,42 @@ def _generate_session_summary(events: list[str], team_name: str) -> None:
     console.print()
 
 
+def _print_session_outcome(process, zo_root: Path) -> None:  # noqa: ANN001
+    """Print the end-of-session line, with watchdog-specific outcomes first.
+
+    ``STALLED`` (watchdog escalated) and ``RATE_LIMITED`` (session ended
+    while rate-limited; ``resume_at`` may carry the parsed reset time) get
+    actionable messages; everything else falls through to the generic
+    completed / ended-with-status lines. Status is compared by string value
+    so both ``AgentStatus`` members and plain strings (test doubles) work.
+    """
+    status = str(getattr(process, "status", "") or "")
+    if status == "stalled":
+        console.print(
+            "[red bold]Session stalled[/] — watchdog escalated after its nudge "
+            f"budget; see [{_DIM}]{zo_root / 'logs' / 'comms'}[/] and "
+            f"[{_DIM}]<memory_root>/heartbeats/_watchdog-ticks.jsonl[/]."
+        )
+        return
+    if status == "rate_limited":
+        resume_at = getattr(process, "resume_at", None)
+        if resume_at is None:
+            when = "reset time unknown"
+        elif hasattr(resume_at, "strftime"):
+            when = f"resets at {resume_at.strftime('%Y-%m-%d %H:%M %Z').strip()}"
+        else:
+            when = f"resets at {resume_at}"
+        console.print(
+            f"[red bold]Session ended rate-limited[/] — {when}; "
+            "rerun [bold]zo continue[/] after the limit resets."
+        )
+        return
+    if status == "completed":
+        console.print("[green bold]Session completed.[/]")
+    else:
+        console.print(f"[red bold]Session ended with status:[/] {status}")
+
+
 def _launch_and_monitor(
     *,
     wrapper,  # noqa: ANN001
@@ -728,6 +778,9 @@ def _launch_and_monitor(
     surrogate_id: str | None = None,
     surrogate_worktree: Path | None = None,
     consolidate_on_exit: bool = True,
+    watchdog: WatchdogConfig | None = None,
+    memory_root: Path | None = None,
+    zo_session_id: str = "",
 ) -> None:
     """Shared launch → monitor → end-session flow for build and draft.
 
@@ -743,6 +796,13 @@ def _launch_and_monitor(
         bypass_permissions: When True, Claude Code tool-call permission
             prompts are auto-approved. Set by ``--bypass-permissions``
             or implied by ``--gate-mode full-auto``.
+        watchdog: Resolved anti-stall policy (WS-C). ``None`` or
+            ``enabled=False`` → the wrapper runs its poll loop exactly as
+            before, with no watchdog tick.
+        memory_root: Per-project memory root; the watchdog persists its
+            state and reads hook heartbeats under ``<memory_root>/heartbeats/``.
+        zo_session_id: Comms session id, forwarded so watchdog state and
+            heartbeats correlate with the comms log.
     """
     # Surrogate liveness registry: detect concurrent sessions on this project so
     # we neither disturb a live peer's permission overlay nor consolidate
@@ -920,13 +980,11 @@ def _launch_and_monitor(
     process = wrapper.wait_for_completion(
         process, on_status=_print_status, gate_mode_file=gate_mode_file,
         project_name=project_name, delivery_repo=delivery_repo,
+        watchdog=watchdog, memory_root=memory_root, zo_session_id=zo_session_id,
     )
 
     console.print()
-    if process.status == "completed":
-        console.print("[green bold]Session completed.[/]")
-    else:
-        console.print(f"[red bold]Session ended with status:[/] {process.status}")
+    _print_session_outcome(process, zo_root)
 
     # Generate a Haiku-summarised 2-3 bullet wrap-up from buffered
     # events.  This is the only Haiku call ZO makes during a run
@@ -994,6 +1052,11 @@ def _launch_and_monitor(
     help="Auto-approve Claude Code tool-call permission prompts. Useful when "
     "you want to walk away from the terminal. Implied by --gate-mode full-auto.",
 )
+@click.option(
+    "--no-watchdog", is_flag=True,
+    help="Disable the anti-stall watchdog for this run (no stall detection, "
+    "nudges, or rate-limit pause). Equivalent to ZO_WATCHDOG=0.",
+)
 def build(
     plan_path: Path,
     gate_mode: str | None,
@@ -1003,6 +1066,7 @@ def build(
     max_iterations: int | None,
     no_headlines: bool,
     bypass_permissions: bool,
+    no_watchdog: bool = False,
 ) -> None:
     """Launch a project from a plan.md file.
 
@@ -1077,6 +1141,11 @@ def build(
     extra_env["ZO_DELIVERY_ROOT"] = str(target.target_repo)
     extra_env["ZO_CONTRACTS_PATH"] = str(memory.memory_root / "contracts.json")
 
+    # 2a. Watchdog policy (WS-C): project config block (None for legacy
+    #     layouts → defaults) + env overrides; --no-watchdog is a single-
+    #     concern kill switch for this run.
+    wd_cfg = _resolve_watchdog(ctx, no_watchdog=no_watchdog)
+
     # 3. Detect mode from state
     state_check = memory.read_state()
     detected_mode = "build" if state_check.phase == "init" else "continue"
@@ -1096,6 +1165,9 @@ def build(
         log_dir=zo_root / "logs" / "comms",
         project=project_name, session_id=session_id,
     )
+    # Heartbeat ↔ comms correlation: the hookkit heartbeat writer stamps
+    # this id into <memory_root>/heartbeats/*.json (WS-C).
+    extra_env["ZO_SESSION_ID"] = session_id
     db_path = memory.memory_root / "index.db"
     semantic = SemanticIndex(db_path=db_path)
 
@@ -1163,7 +1235,26 @@ def build(
         extra_env=extra_env,
         headlines_disabled=effective_headlines_disabled,
         bypass_permissions=effective_bypass_permissions,
+        watchdog=wd_cfg,
+        memory_root=memory.memory_root,
+        zo_session_id=session_id,
     )
+
+
+def _resolve_watchdog(ctx: ProjectContext, *, no_watchdog: bool) -> WatchdogConfig:
+    """Project ``watchdog:`` block (defaults for legacy) + env + ``--no-watchdog``.
+
+    Precedence: CLI kill switch > env (``ZO_WATCHDOG``, ``ZO_WATCHDOG_STALL_SEC``)
+    > ``.zo/config.yaml`` > ``WatchdogConfig`` defaults. (``make_target`` has
+    already validated the same file, so a malformed block fails loudly there.)
+    """
+    from zo.watchdog import resolve_watchdog_config
+
+    pcfg = ctx.make_project_config()
+    wd_cfg = resolve_watchdog_config(pcfg.watchdog if pcfg is not None else None)
+    if no_watchdog:
+        wd_cfg = wd_cfg.model_copy(update={"enabled": False})
+    return wd_cfg
 
 
 @cli.command("continue")
@@ -1203,6 +1294,10 @@ def build(
     help="Auto-approve Claude Code tool-call permission prompts. "
     "Implied by --gate-mode full-auto.",
 )
+@click.option(
+    "--no-watchdog", is_flag=True,
+    help="Disable the anti-stall watchdog for this run (see `zo build --help`).",
+)
 def continue_(
     project_name: str | None,
     repo: str | None,
@@ -1213,6 +1308,7 @@ def continue_(
     max_iterations: int | None,
     no_headlines: bool,
     bypass_permissions: bool,
+    no_watchdog: bool = False,
 ) -> None:
     """Resume a paused project or reconnect on a new machine.
 
@@ -1279,6 +1375,7 @@ def continue_(
         max_iterations=max_iterations,
         no_headlines=no_headlines,
         bypass_permissions=bypass_permissions,
+        no_watchdog=no_watchdog,
     )
 
 
@@ -2133,7 +2230,11 @@ def migrate(project_name: str, repo: str | None, clean: bool) -> None:
             "local.yaml\n\n"
             "# SQLite databases (regenerated from DECISION_LOG)\n"
             "memory/index.db\n"
-            "memory/draft_index.db\n",
+            "memory/draft_index.db\n\n"
+            "# Control-plane runtime files (regenerated per run; never delivery history)\n"
+            "memory/heartbeats/\n"
+            "memory/plan-ledger.json\n"
+            "memory/contracts.json\n",
             encoding="utf-8",
         )
 

@@ -336,6 +336,11 @@ local.yaml
 # SQLite databases (regenerated from DECISION_LOG)
 memory/index.db
 memory/draft_index.db
+
+# Control-plane runtime files (regenerated per run; never delivery history)
+memory/heartbeats/
+memory/plan-ledger.json
+memory/contracts.json
 """
 
 # Files that are platform-independent (always written verbatim).

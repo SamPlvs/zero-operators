@@ -31,6 +31,11 @@ class TestZoDirectory:
         assert "local.yaml" in content
         assert "memory/index.db" in content
         assert "memory/draft_index.db" in content
+        # Control-plane runtime files (watchdog heartbeats/state/trace, ledger,
+        # contracts) are regenerated per run and must never enter delivery history.
+        assert "memory/heartbeats/" in content.split()
+        assert "memory/plan-ledger.json" in content.split()
+        assert "memory/contracts.json" in content.split()
 
     def test_zo_directories_created_in_adaptive_mode(
         self, tmp_path: Path,

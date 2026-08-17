@@ -1548,3 +1548,320 @@ class TestWatchTrainingPathResolution:
         log_dir = mock_live.call_args[0][0]
         assert "logs/training" not in str(log_dir)
         assert ".zo/experiments" in str(log_dir).replace("\\", "/")
+
+
+# ---------------------------------------------------------------------------
+# Watchdog CLI threading (WS-C)
+# ---------------------------------------------------------------------------
+
+
+# ---- watchdog config → CLI → wrapper wiring (oracle checks 11-12) ----
+
+
+_FIXTURE_PLAN = Path(__file__).resolve().parents[1] / "fixtures" / "test-project" / "plan.md"
+
+
+def _make_zo_dir_project(tmp_path: Path, **config_kwargs: object) -> tuple[Path, Path]:
+    """A .zo/ delivery repo carrying the fixture plan; returns (repo, plan_path)."""
+    import shutil
+
+    from zo.project_config import (
+        LocalConfig,
+        ProjectConfig,
+        save_local_config,
+        save_project_config,
+    )
+
+    repo = tmp_path / "delivery"
+    repo.mkdir()
+    save_project_config(
+        repo, ProjectConfig(project_name="churn-prediction", **config_kwargs),
+    )
+    save_local_config(repo, LocalConfig())  # skip the new-machine prompt
+    plans = repo / ".zo" / "plans"
+    plans.mkdir(parents=True)
+    plan_path = plans / "churn-prediction.md"
+    shutil.copy(_FIXTURE_PLAN, plan_path)
+    return repo, plan_path
+
+
+def _invoke_build(runner: click.testing.CliRunner, tmp_path: Path, args: list[str]):  # noqa: ANN202
+    """Run ``zo build`` end-to-end up to the launch seam; returns (result, launch mock)."""
+    zo_root = tmp_path / "zo"
+    zo_root.mkdir(exist_ok=True)
+    with patch("zo.cli._zo_root", return_value=zo_root), \
+         patch("zo.cli._launch_and_monitor") as lam:
+        result = runner.invoke(cli, ["build", *args, "--gate-mode", "full-auto"])
+    return result, lam
+
+
+class _StubProcess:
+    """Minimal LeadProcess stand-in for ``_launch_and_monitor`` tests."""
+
+    tmux_pane_id = None
+    pid = 4242
+    team_name = "zo-churn-prediction"
+
+    def __init__(self, status: str = "completed", resume_at=None) -> None:  # noqa: ANN001
+        from datetime import UTC, datetime
+
+        self.status = status
+        self.resume_at = resume_at
+        self.started_at = datetime.now(UTC)
+
+
+class _StubWrapper:
+    """Records the kwargs the CLI passes to ``wait_for_completion``."""
+
+    def __init__(self, final: _StubProcess | None = None) -> None:
+        self.final = final
+        self.wait_kwargs: dict = {}
+
+    def launch_lead_session(self, prompt: str, **kw: object) -> _StubProcess:
+        return _StubProcess()
+
+    def wait_for_completion(self, process: _StubProcess, **kw: object) -> _StubProcess:
+        self.wait_kwargs = dict(kw)
+        return self.final or process
+
+    def read_task_list(self, team_name: str) -> list:
+        return []
+
+
+class TestWatchdogCliThreading:
+    """``--no-watchdog`` / config / env reach the wrapper; STALLED and
+    RATE_LIMITED outcomes are reported with actionable text.
+
+    Seeded half: a run started with the kill switch (flag, env, or file)
+    must hand the wrapper ``enabled=False``. Wiring half: the default path
+    hands the wrapper a config plus the project memory root, and
+    ``_launch_and_monitor`` forwards them as keyword arguments to
+    ``wait_for_completion``.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _no_ambient_watchdog_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """``_resolve_watchdog`` reads os.environ: a developer/CI shell that
+        exports ZO_WATCHDOG / ZO_WATCHDOG_STALL_SEC must not skew these asserts."""
+        monkeypatch.delenv("ZO_WATCHDOG", raising=False)
+        monkeypatch.delenv("ZO_WATCHDOG_STALL_SEC", raising=False)
+
+    def test_seeded_no_watchdog_flag_disables_watchdog(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Seeded: ``zo build --no-watchdog`` → launch receives ``enabled=False``."""
+        _, plan_path = _make_zo_dir_project(tmp_path)
+        result, lam = _invoke_build(runner, tmp_path, [str(plan_path), "--no-watchdog"])
+
+        assert result.exit_code == 0, result.output
+        kw = lam.call_args.kwargs
+        assert kw["watchdog"].enabled is False
+        # Single concern: the flag flips only ``enabled``; policy stays default.
+        assert kw["watchdog"].stall_threshold_sec == 1200
+
+    def test_default_build_passes_enabled_config_and_memory_root(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Wiring: no flag → enabled config, project memory root, comms session id."""
+        from zo.watchdog import WatchdogConfig
+
+        repo, plan_path = _make_zo_dir_project(tmp_path)
+        result, lam = _invoke_build(runner, tmp_path, [str(plan_path)])
+
+        assert result.exit_code == 0, result.output
+        kw = lam.call_args.kwargs
+        assert isinstance(kw["watchdog"], WatchdogConfig)
+        assert kw["watchdog"].enabled is True
+        assert kw["memory_root"] == repo / ".zo" / "memory"
+        assert kw["zo_session_id"].startswith("s-")
+        # Heartbeat ↔ comms correlation: the same id is exported to hooks.
+        assert kw["extra_env"]["ZO_SESSION_ID"] == kw["zo_session_id"]
+        # Heartbeat WRITER root (hooks, via env) == watchdog READER root: if these
+        # ever diverge the evidence channel silently goes dark (fail-open).
+        assert kw["extra_env"]["ZO_MEMORY_ROOT"] == str(kw["memory_root"])
+
+    def test_project_config_watchdog_block_threads_through(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """``.zo/config.yaml`` watchdog values (not defaults) reach the launch."""
+        from zo.watchdog import WatchdogConfig
+
+        _, plan_path = _make_zo_dir_project(
+            tmp_path, watchdog=WatchdogConfig(stall_threshold_sec=600, nudge_budget=1),
+        )
+        result, lam = _invoke_build(runner, tmp_path, [str(plan_path)])
+
+        assert result.exit_code == 0, result.output
+        wd = lam.call_args.kwargs["watchdog"]
+        assert wd.stall_threshold_sec == 600
+        assert wd.nudge_budget == 1
+        assert wd.enabled is True
+
+    def test_seeded_project_config_disabled_watchdog_threads_through(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """Seeded: ``watchdog: {enabled: false}`` in config.yaml disables it."""
+        from zo.watchdog import WatchdogConfig
+
+        _, plan_path = _make_zo_dir_project(tmp_path, watchdog=WatchdogConfig(enabled=False))
+        result, lam = _invoke_build(runner, tmp_path, [str(plan_path)])
+
+        assert result.exit_code == 0, result.output
+        assert lam.call_args.kwargs["watchdog"].enabled is False
+
+    def test_seeded_env_kill_switch_disables_watchdog(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Seeded: ``ZO_WATCHDOG=0`` in the environment disables it (ops override)."""
+        monkeypatch.setenv("ZO_WATCHDOG", "0")
+        _, plan_path = _make_zo_dir_project(tmp_path)
+        result, lam = _invoke_build(runner, tmp_path, [str(plan_path)])
+
+        assert result.exit_code == 0, result.output
+        assert lam.call_args.kwargs["watchdog"].enabled is False
+
+    def test_resolve_watchdog_legacy_layout_defaults(self, tmp_path: Path) -> None:
+        """Legacy (targets/*.target.md) projects have no config → defaults, ON."""
+        from zo.cli import ProjectContext, _resolve_watchdog
+
+        ctx = ProjectContext(
+            layout="legacy", delivery_repo=tmp_path, plan_path=tmp_path / "p.md",
+            project_name="legacy", zo_root=tmp_path,
+        )
+        assert ctx.make_project_config() is None
+        wd = _resolve_watchdog(ctx, no_watchdog=False)
+        assert wd.enabled is True
+        assert _resolve_watchdog(ctx, no_watchdog=True).enabled is False
+
+    def test_make_project_config_loads_zo_dir_layout(self, tmp_path: Path) -> None:
+        from zo.cli import ProjectContext
+        from zo.watchdog import WatchdogConfig
+
+        repo, plan_path = _make_zo_dir_project(
+            tmp_path, watchdog=WatchdogConfig(nudge_budget=2),
+        )
+        ctx = ProjectContext(
+            layout="zo-dir", delivery_repo=repo, plan_path=plan_path,
+            project_name="churn-prediction", zo_root=tmp_path,
+        )
+        pcfg = ctx.make_project_config()
+        assert pcfg is not None
+        assert pcfg.project_name == "churn-prediction"
+        assert pcfg.watchdog.nudge_budget == 2
+
+    def test_continue_forwards_no_watchdog_to_build(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        """``zo continue --no-watchdog`` delegates the flag to ``build``."""
+        repo, _ = _make_zo_dir_project(tmp_path)
+        with patch("zo.cli._zo_root", return_value=tmp_path / "zo"), \
+             patch("zo.cli.build") as build_cmd:
+            result = runner.invoke(
+                cli, ["continue", "--repo", str(repo), "--no-watchdog"],
+            )
+        assert result.exit_code == 0, result.output
+        assert build_cmd.call_args.kwargs["no_watchdog"] is True
+
+    def test_continue_default_forwards_watchdog_enabled(
+        self, runner: click.testing.CliRunner, tmp_path: Path,
+    ) -> None:
+        repo, _ = _make_zo_dir_project(tmp_path)
+        with patch("zo.cli._zo_root", return_value=tmp_path / "zo"), \
+             patch("zo.cli.build") as build_cmd:
+            result = runner.invoke(cli, ["continue", "--repo", str(repo)])
+        assert result.exit_code == 0, result.output
+        assert build_cmd.call_args.kwargs["no_watchdog"] is False
+
+    def test_launch_and_monitor_forwards_watchdog_kwargs_to_wait(
+        self, tmp_path: Path,
+    ) -> None:
+        """Wiring: ``_launch_and_monitor`` passes watchdog/memory_root/zo_session_id
+        to ``wait_for_completion`` as keyword arguments."""
+        from zo.cli import _launch_and_monitor
+        from zo.watchdog import WatchdogConfig
+
+        wrapper = _StubWrapper()
+        cfg = WatchdogConfig(enabled=False)
+        _launch_and_monitor(
+            wrapper=wrapper, prompt="P", team_name="zo-churn-prediction",
+            zo_root=tmp_path / "zo", no_tmux=True, model="opus",
+            project_name="churn-prediction",
+            watchdog=cfg, memory_root=tmp_path / "mem", zo_session_id="s-abc",
+        )
+        assert wrapper.wait_kwargs["watchdog"] is cfg
+        assert wrapper.wait_kwargs["watchdog"].enabled is False
+        assert wrapper.wait_kwargs["memory_root"] == tmp_path / "mem"
+        assert wrapper.wait_kwargs["zo_session_id"] == "s-abc"
+
+    def test_launch_and_monitor_defaults_watchdog_kwargs_to_none(
+        self, tmp_path: Path,
+    ) -> None:
+        """Callers that do not thread a watchdog (report/draft/init) pass None."""
+        from zo.cli import _launch_and_monitor
+
+        wrapper = _StubWrapper()
+        _launch_and_monitor(
+            wrapper=wrapper, prompt="P", team_name="draft-x",
+            zo_root=tmp_path / "zo", no_tmux=True, model="opus",
+        )
+        assert wrapper.wait_kwargs["watchdog"] is None
+        assert wrapper.wait_kwargs["memory_root"] is None
+        assert wrapper.wait_kwargs["zo_session_id"] == ""
+
+    def _run_with_final_status(self, tmp_path: Path, final: _StubProcess) -> str:
+        from io import StringIO
+
+        from rich.console import Console
+
+        import zo.cli as cli_module
+        from zo.cli import _launch_and_monitor
+
+        buf = StringIO()
+        original = cli_module.console
+        cli_module.console = Console(file=buf, force_terminal=False, width=200)
+        try:
+            _launch_and_monitor(
+                wrapper=_StubWrapper(final=final), prompt="P",
+                team_name="zo-churn-prediction", zo_root=tmp_path / "zo",
+                no_tmux=True, model="opus", project_name="churn-prediction",
+            )
+        finally:
+            cli_module.console = original
+        return buf.getvalue()
+
+    def test_seeded_stalled_status_prints_stalled_message(self, tmp_path: Path) -> None:
+        """Seeded: the wrapper returns STALLED → operator sees the escalation line."""
+        out = self._run_with_final_status(tmp_path, _StubProcess(status="stalled"))
+        assert "Session stalled" in out
+        assert "watchdog escalated" in out
+        assert "Session ended with status" not in out
+
+    def test_seeded_rate_limited_status_prints_resume_hint(self, tmp_path: Path) -> None:
+        """Seeded: RATE_LIMITED with a parsed ``resume_at`` → 'resets at … zo continue'."""
+        from datetime import UTC, datetime
+
+        final = _StubProcess(
+            status="rate_limited", resume_at=datetime(2026, 8, 17, 15, 0, tzinfo=UTC),
+        )
+        out = self._run_with_final_status(tmp_path, final)
+        assert "rate-limited" in out
+        assert "resets at 2026-08-17 15:00" in out
+        assert "zo continue" in out
+
+    def test_rate_limited_without_resume_at_still_actionable(self, tmp_path: Path) -> None:
+        out = self._run_with_final_status(tmp_path, _StubProcess(status="rate_limited"))
+        assert "reset time unknown" in out
+        assert "zo continue" in out
+
+    def test_completed_status_unchanged(self, tmp_path: Path) -> None:
+        out = self._run_with_final_status(tmp_path, _StubProcess(status="completed"))
+        assert "Session completed." in out
+
+    def test_agent_status_enum_members_match_string_branches(self) -> None:
+        """The wrapper's enum values hit the CLI branches by string value."""
+        from zo._wrapper_models import AgentStatus
+
+        assert str(AgentStatus.STALLED) == "stalled"
+        assert str(AgentStatus.RATE_LIMITED) == "rate_limited"
+        assert str(AgentStatus.PAUSED_RATE_LIMIT) == "paused_rate_limit"

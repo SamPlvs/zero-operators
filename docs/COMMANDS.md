@@ -22,7 +22,7 @@ Launch an agent team to execute a plan. Parses the plan, shows a phase review, a
 zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
                           [--bypass-permissions] [--low-token]
                           [--lead-model opus|sonnet|haiku] [--max-iterations N]
-                          [--no-headlines]
+                          [--no-headlines] [--no-watchdog]
 ```
 
 **Cost-saving options:**
@@ -34,6 +34,9 @@ zo build plans/project.md [--gate-mode supervised|auto|full-auto] [--no-tmux]
 **Permission prompts:**
 - `--bypass-permissions`: auto-approve **every** Claude Code tool-call prompt (Bash, Edit, Write, Read, ...) for the run. Independent of `--gate-mode` (which gates ZO's phases, not individual tool calls); implied by `--gate-mode full-auto`. Off by default. Works in tmux (temporary `.claude/settings.local.json` overlay, auto-restored on exit) and headless (`--dangerously-skip-permissions`) modes. See `docs/cli/build.mdx`.
 
+**Anti-stall watchdog:**
+- `--no-watchdog`: disable the anti-stall watchdog for this run (no stall detection, nudges, or rate-limit pause). Equivalent to `ZO_WATCHDOG=0`. On by default; policy comes from the `watchdog:` block in `.zo/config.yaml` (see `specs/watchdog.md`).
+
 ### zo continue
 
 Resume a paused project. Shorthand for `zo build` with an existing plan -- finds the plan by project name and picks up from the current phase.
@@ -42,13 +45,13 @@ Resume a paused project. Shorthand for `zo build` with an existing plan -- finds
 zo continue [project-name] [--repo PATH] [--gate-mode supervised|auto|full-auto]
                            [--bypass-permissions] [--low-token]
                            [--lead-model opus|sonnet|haiku] [--max-iterations N]
-                           [--no-headlines]
+                           [--no-headlines] [--no-watchdog]
 ```
 
 **Options:**
 - `project-name`: optional if cwd contains `.zo/config.yaml` (auto-detected)
 - `--repo PATH`: path to delivery repo (overrides target file lookup)
-- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines`, `--bypass-permissions`: same semantics as `zo build`
+- `--low-token`, `--lead-model`, `--max-iterations`, `--no-headlines`, `--bypass-permissions`, `--no-watchdog`: same semantics as `zo build`
 
 ### zo draft
 

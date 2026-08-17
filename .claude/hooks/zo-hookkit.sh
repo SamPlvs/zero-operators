@@ -27,5 +27,8 @@ PY="python3"
 
 # Pre-set ZO_REPO_ROOT wins (lets tests point the handlers at a sandbox).
 export ZO_REPO_ROOT="${ZO_REPO_ROOT:-$REPO_ROOT}"
+# Wall-clock stamp of the hook event (WS-C heartbeat; cheap, informational —
+# the heartbeat handler stamps its own UTC time and does not require this).
+export ZO_HOOK_EVENT_TS="$(date -u +%s)"
 PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" "$PY" -m zo.hookkit "$EVENT" || exit 0
 exit 0

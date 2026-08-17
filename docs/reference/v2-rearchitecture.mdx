@@ -65,6 +65,17 @@ architecture — features from different repos interlock into single mechanisms.
 | 2 | **Watchdog from proven parts** — heartbeat-file liveness, a taxonomy of stops that must never be fought (context-limit, rate-limit, auth, user abort), bounded nudge budgets, and rate-limit wait-and-resume for overnight runs | oh-my-claudecode + ruflo | P0 |
 | 6 | **Fresh-context-per-subtask execution loop** — a new agent per iteration re-derives state from the ledger, experiment lineage, and a curated priors digest; git commits are the checkpoints; context rot and compounding hallucination are eliminated structurally | ralph + oh-my-claudecode | P1 |
 
+**Status (Phase 3, in progress):** the watchdog has shipped — an external
+checker in the `LifecycleWrapper` poll loop (not an LLM monitor, not a cron)
+that reads hook-written heartbeats, classifies never-fight stops before any
+nudge, nudges the lead pane at most three times through a pane-ready guard,
+pauses on the usage-limit banner until the parsed reset time and verifies the
+resume by real progress, then escalates. It is on by default (`watchdog:` block
+in `.zo/config.yaml`, `zo build --no-watchdog` or `ZO_WATCHDOG=0` to disable);
+design and integration points live in `specs/watchdog.md`. The fresh-context
+loop (feature 6) is next and consumes the watchdog's `STALLED` /
+`RATE_LIMITED` outcomes.
+
 ### Workstream D — Self-learning & platform oracle
 
 *The self-evolution loop gets the same rigor ZO applies to ML work.*

@@ -12,6 +12,12 @@ Two launch modes:
 * **headless** (``--no-tmux`` or not inside tmux): runs Claude Code
   with ``--print --output-format json`` in a background subprocess
   with stdout/stderr piped to log files.
+
+Both poll loops tick the WS-C watchdog (``zo._wrapper_watchdog.WatchdogRunner``,
+plan oracle checks 11-12) once per iteration when ``wait_for_completion`` is
+given a ``WatchdogConfig`` and a memory root: stalls are nudged (tmux, bounded,
+pane-ready guarded) then escalated; rate limits pause the session and resume
+on verified progress; headless stalls are killed and returned as ``STALLED``.
 """
 
 from __future__ import annotations
@@ -20,8 +26,6 @@ import atexit
 import contextlib
 import json
 import os
-import random
-import re
 import shlex
 import signal
 import subprocess
@@ -36,8 +40,21 @@ from zo._wrapper_models import (
     TeamMember,
     TeamStatus,
 )
+from zo._wrapper_watchdog import WatchdogRunner, local_tz
+from zo.watchdog import (
+    StallAction,
+    StallVerdict,
+    WatchdogConfig,
+    pane_ready_for_nudge,
+    parse_rate_limit_reset,
+    process_start_identity,
+    rate_limit_match,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import tzinfo
+
     from zo.comms import CommsLogger
 
 __all__ = [
@@ -48,12 +65,34 @@ __all__ = [
     "TeamStatus",
 ]
 
-_RATE_LIMIT_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"429", re.IGNORECASE),
-    re.compile(r"rate.?limit", re.IGNORECASE),
-    re.compile(r"overloaded", re.IGNORECASE),
-    re.compile(r"too many requests", re.IGNORECASE),
-]
+# Rolling window of recent headless output fed to the watchdog each poll.
+_HEADLESS_TEXT_WINDOW_CHARS = 16 * 1024
+# tmux pane capture depth per poll (shared by the watchdog and on_status).
+_PANE_CAPTURE_LINES = 200
+# Named tmux buffer for wrapper pastes so the operator's buffer is untouched.
+_TMUX_BUFFER_NAME = "zo-nudge"
+# Watchdog runtime files must never land in a delivery repo's history.
+_HEARTBEATS_GITIGNORE_ENTRY = "memory/heartbeats/"
+
+
+def _ensure_heartbeats_gitignored(memory_root: Path) -> None:
+    """Idempotently ignore ``memory/heartbeats/`` in a zo-dir ``.zo/.gitignore``.
+
+    Only touches an EXISTING ``<memory_root>/../.gitignore`` (the ``.zo/``
+    scaffold writes one); legacy layouts keep memory outside the delivery
+    repo and need nothing. Same pattern as ``surrogate._ensure_surrogates_gitignored``.
+    """
+    gitignore = Path(memory_root).parent / ".gitignore"
+    if not gitignore.is_file():
+        return
+    existing = gitignore.read_text(encoding="utf-8")
+    if _HEARTBEATS_GITIGNORE_ENTRY in existing.split():
+        return
+    with open(gitignore, "a", encoding="utf-8") as fh:
+        if existing and not existing.endswith("\n"):
+            fh.write("\n")
+        fh.write(f"\n# Watchdog runtime files (heartbeats, state, tick trace)\n"
+                 f"{_HEARTBEATS_GITIGNORE_ENTRY}\n")
 
 
 class LifecycleWrapper:
@@ -63,8 +102,14 @@ class LifecycleWrapper:
         comms: CommsLogger instance for audit trail events.
         claude_bin: Path or name of the ``claude`` CLI binary.
         log_dir: Directory for stdout/stderr logs (default ``logs/wrapper``).
-        max_retries: Max retries on rate-limit errors.
-        base_backoff: Base backoff in seconds for rate-limit waits.
+        max_retries: Retained for API compatibility; the in-loop rate-limit
+            retry was replaced by the watchdog pause/resume (WS-C).
+        base_backoff: Retained for API compatibility (see ``max_retries``).
+        clock: Injectable wall clock (tz-aware ``datetime``) used by the
+            watchdog runner; defaults to ``datetime.now(UTC)``.
+        tz: Zone in which rate-limit banner clock times ("resets at 3pm")
+            are interpreted; defaults to the operator's local zone (Claude
+            Code renders the reset in local time).
     """
 
     # tmux liveness-detection guards (see ``_wait_tmux``).
@@ -88,6 +133,8 @@ class LifecycleWrapper:
         log_dir: Path | None = None,
         max_retries: int = 3,
         base_backoff: float = 30.0,
+        clock: Callable[[], datetime] | None = None,
+        tz: tzinfo | None = None,
     ) -> None:
         self._comms = comms
         self._claude_bin = claude_bin
@@ -95,8 +142,19 @@ class LifecycleWrapper:
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._max_retries = max_retries
         self._base_backoff = base_backoff
+        self._clock: Callable[[], datetime] = clock or (lambda: datetime.now(UTC))
+        self._tz: tzinfo = tz or local_tz()
         # Restore callable for the settings.local.json overlay (set in _launch_tmux).
         self._bypass_restore_fn: object | None = None
+        # Headless subprocess handle + log handles (set in _launch_headless).
+        self._proc: subprocess.Popen | None = None
+        self._stdout_fh: Any | None = None
+        self._stderr_fh: Any | None = None
+        # WS-C watchdog runner (built in wait_for_completion when configured).
+        self._wd: WatchdogRunner | None = None
+        self._wd_text_window: str = ""
+        self._wd_last_skip: tuple[str, datetime | None] | None = None
+        self._out_cursors: dict[str, int] = {}
 
     # --- Launch ---
 
@@ -217,6 +275,9 @@ class LifecycleWrapper:
             capture_output=True, text=True, timeout=10,
         )
         pane_id = result.stdout.strip()
+        # Best-effort: the pane's shell pid, so the claude child can be
+        # resolved after startup (WS-C process identity; unknown ≠ dead).
+        shell_pid = self._tmux_pane_pid(pane_id)
 
         # 2. Start claude interactively (NO -p, NO --dangerously-skip-permissions)
         #    --dangerously-skip-permissions exits immediately in interactive mode.
@@ -249,25 +310,11 @@ class LifecycleWrapper:
         #    that the pane has substantial content and has stabilised
         #    (same content for 2 consecutive polls).
         self._wait_for_tui_ready(pane_id, timeout_seconds=30)
+        lead_pid, lead_identity = self._resolve_tmux_lead_identity(shell_pid)
 
-        # 4. Load the prompt into tmux's paste buffer and paste it
-        #    into the Claude TUI input field.
-        subprocess.run(
-            ["tmux", "load-buffer", str(prompt_file)],
-            capture_output=True, text=True, timeout=10,
-        )
-        subprocess.run(
-            ["tmux", "paste-buffer", "-t", pane_id],
-            capture_output=True, text=True, timeout=10,
-        )
-
-        # 5. Send Enter to submit the prompt.  Wait briefly for the
-        #    paste to be ingested by the TUI before pressing Enter.
-        time.sleep(1)
-        subprocess.run(
-            ["tmux", "send-keys", "-t", pane_id, "Enter"],
-            capture_output=True, text=True, timeout=10,
-        )
+        # 4./5. Paste the prompt into the Claude TUI input field via a
+        #    named tmux buffer and submit it with Enter.
+        self._paste_and_submit(pane_id, prompt)
 
         # 6. Verify the prompt was submitted by checking that pane
         #    content changed after the paste (not still showing the
@@ -275,7 +322,8 @@ class LifecycleWrapper:
         self._verify_prompt_submitted(pane_id, prompt_file)
 
         lead = LeadProcess(
-            pid=None, status=AgentStatus.SPAWNING,
+            pid=lead_pid, pid_start_identity=lead_identity,
+            status=AgentStatus.SPAWNING,
             started_at=datetime.now(UTC), team_name=team_name,
             stdout_log=stdout_log, stderr_log=stderr_log,
             tmux_pane_id=pane_id,
@@ -300,6 +348,66 @@ class LifecycleWrapper:
             return result.stdout
         except Exception:  # noqa: BLE001
             return ""
+
+    @staticmethod
+    def _paste_and_submit(pane_id: str, text: str) -> None:
+        """Paste ``text`` into a tmux pane via a NAMED buffer, then press Enter.
+
+        Uses ``load-buffer -b zo-nudge -`` (stdin) + ``paste-buffer -b
+        zo-nudge -d`` so the operator's default paste buffer is never
+        clobbered and no temp file is needed. Shared by the launch path
+        (lead prompt) and the watchdog nudge path.
+        """
+        subprocess.run(
+            ["tmux", "load-buffer", "-b", _TMUX_BUFFER_NAME, "-"],
+            input=text, capture_output=True, text=True, timeout=10,
+        )
+        subprocess.run(
+            ["tmux", "paste-buffer", "-b", _TMUX_BUFFER_NAME, "-d", "-t", pane_id],
+            capture_output=True, text=True, timeout=10,
+        )
+        # Wait briefly for the paste to be ingested by the TUI before Enter.
+        time.sleep(1)
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, "Enter"],
+            capture_output=True, text=True, timeout=10,
+        )
+
+    @staticmethod
+    def _tmux_pane_pid(pane_id: str) -> int | None:
+        """``#{pane_pid}`` (the pane's shell pid) or ``None`` (best-effort)."""
+        if not pane_id:
+            return None
+        try:
+            result = subprocess.run(
+                ["tmux", "display-message", "-t", pane_id, "-p", "#{pane_pid}"],
+                capture_output=True, text=True, timeout=5,
+            )
+            return int(result.stdout.strip())
+        except Exception:  # noqa: BLE001 — identity is advisory
+            return None
+
+    @staticmethod
+    def _resolve_tmux_lead_identity(shell_pid: int | None) -> tuple[int | None, str | None]:
+        """Resolve the claude child of the pane shell (``pgrep``) + its start identity.
+
+        Only children whose command line mentions ``claude`` qualify (an
+        interactive shell also has prompt helpers, gitstatusd, …), newest
+        first (``-n``). Returns ``(None, None)`` when unresolvable — unknown
+        is never dead, and a wrong pid would be worse than none.
+        """
+        if shell_pid is None:
+            return None, None
+        try:
+            result = subprocess.run(
+                ["pgrep", "-n", "-P", str(shell_pid), "-f", "claude"],
+                capture_output=True, text=True, timeout=5,
+            )
+            first = result.stdout.strip().splitlines()[0].strip()
+            pid = int(first)
+        except Exception:  # noqa: BLE001 — identity is advisory
+            return None, None
+        return pid, process_start_identity(pid)
 
     def _wait_for_tui_ready(
         self, pane_id: str, *, timeout_seconds: int = 30,
@@ -383,19 +491,11 @@ class LifecycleWrapper:
                 subtask="paste-retry",
                 progress="Paste may have missed — retrying once.",
             )
-            subprocess.run(
-                ["tmux", "load-buffer", str(prompt_file)],
-                capture_output=True, text=True, timeout=10,
-            )
-            subprocess.run(
-                ["tmux", "paste-buffer", "-t", pane_id],
-                capture_output=True, text=True, timeout=10,
-            )
-            time.sleep(1)
-            subprocess.run(
-                ["tmux", "send-keys", "-t", pane_id, "Enter"],
-                capture_output=True, text=True, timeout=10,
-            )
+            try:
+                retry_text = prompt_file.read_text(encoding="utf-8")
+            except OSError:
+                retry_text = ""
+            self._paste_and_submit(pane_id, retry_text)
 
             # Final check
             time.sleep(2)
@@ -454,7 +554,6 @@ class LifecycleWrapper:
         stdout_fh = open(stdout_log, "w", encoding="utf-8")  # noqa: SIM115
         stderr_fh = open(stderr_log, "w", encoding="utf-8")  # noqa: SIM115
 
-        import os
         env = os.environ.copy()
         if extra_env:
             env.update(extra_env)
@@ -464,6 +563,7 @@ class LifecycleWrapper:
         )
         lead = LeadProcess(
             pid=proc.pid, status=AgentStatus.SPAWNING,
+            pid_start_identity=self._safe_start_identity(proc.pid),
             started_at=datetime.now(UTC), team_name=team_name,
             stdout_log=stdout_log, stderr_log=stderr_log,
         )
@@ -554,6 +654,9 @@ class LifecycleWrapper:
         gate_mode_file: Path | None = None,
         project_name: str = "",
         delivery_repo: Path | None = None,
+        watchdog: WatchdogConfig | None = None,
+        memory_root: Path | None = None,
+        zo_session_id: str = "",
     ) -> LeadProcess:
         """Poll until the lead session completes.
 
@@ -570,12 +673,20 @@ class LifecycleWrapper:
             delivery_repo: Delivery repo path. When provided (with
                 *project_name*), the wrapper auto-splits a training
                 dashboard pane when training metrics appear.
+            watchdog: WS-C watchdog policy. The external checker runs
+                once per poll when this is enabled AND *memory_root* is
+                given; otherwise the loops behave exactly as before.
+            memory_root: Per-project memory root holding
+                ``heartbeats/`` (heartbeat files, watchdog state, tick trace).
+            zo_session_id: Comms session id for heartbeat/state correlation.
         """
         self._gate_mode_file = gate_mode_file
         self._last_gate_mode: str | None = None
         self._training_pane_id: str | None = None
         self._project_name = project_name
         self._delivery_repo = delivery_repo
+        self._start_watchdog(watchdog, memory_root=memory_root,
+                             zo_session_id=zo_session_id, delivery_repo=delivery_repo)
         try:
             if process.tmux_pane_id:
                 return self._wait_tmux(process, poll_interval=poll_interval,
@@ -584,6 +695,200 @@ class LifecycleWrapper:
                                        timeout=timeout, on_status=on_status)
         finally:
             self._close_training_pane()
+            if self._wd is not None:
+                self._wd.stop()
+
+    # --- Watchdog (WS-C, oracle checks 11-12) ---
+
+    def _start_watchdog(
+        self, watchdog: WatchdogConfig | None, *, memory_root: Path | None,
+        zo_session_id: str, delivery_repo: Path | None,
+    ) -> None:
+        """Build the runner when configured; fail-open (no runner) on any error."""
+        self._wd = None
+        if watchdog is None or not watchdog.enabled or memory_root is None:
+            return
+        root = Path(memory_root)
+        paths: list[Path] = [root / "plan-ledger.json"]
+        comms_dir = getattr(self._comms, "_log_dir", None)
+        if comms_dir:
+            paths.append(Path(comms_dir))
+        if delivery_repo is not None:
+            experiments = Path(delivery_repo) / ".zo" / "experiments"
+            if experiments.exists():
+                paths.append(experiments)
+        paths.extend(Path(p) for p in watchdog.progress_paths)
+        try:
+            runner = WatchdogRunner(
+                config=watchdog, memory_root=root, zo_session_id=zo_session_id,
+                clock=self._clock, tz=self._tz, progress_paths=paths,
+            )
+            runner.start(runner.clock())
+        except Exception as exc:  # noqa: BLE001 — advisory: never break the session
+            self._wd_log_error("watchdog_init", "warning",
+                               f"Watchdog disabled for this run: {exc!r}")
+            return
+        self._wd = runner
+        with contextlib.suppress(Exception):  # advisory: never break the session
+            _ensure_heartbeats_gitignored(root)
+
+    def _wd_checkpoint(self, subtask: str, progress: str, *,
+                       blockers: list[str] | None = None) -> None:
+        """Advisory comms checkpoint from the watchdog (never raises)."""
+        with contextlib.suppress(Exception):
+            self._comms.log_checkpoint(agent="watchdog", phase="lifecycle",
+                                       subtask=subtask, progress=progress,
+                                       blockers=blockers)
+
+    def _wd_log_error(self, error_type: str, severity: str, description: str, *,
+                      escalated_to: str = "") -> None:
+        """Advisory comms error from the watchdog (never raises)."""
+        with contextlib.suppress(Exception):
+            self._comms.log_error(agent="watchdog", error_type=error_type,
+                                  severity=severity, description=description,
+                                  escalated_to=escalated_to)
+
+    def _watchdog_tick(
+        self, process: LeadProcess, *, text: str, can_nudge: bool,
+        process_dead: bool | None = None,
+    ) -> StallVerdict | None:
+        """One external-checker tick; applies side effects to ``process`` in place.
+
+        Returns the verdict, or ``None`` when no runner is configured or the
+        tick itself failed (fail-open: no decision fires on unknown evidence).
+        """
+        wd = self._wd
+        if wd is None:
+            return None
+        try:
+            verdict = wd.tick(process=process, text=text, can_nudge=can_nudge,
+                              now=wd.clock(), process_dead=process_dead)
+        except Exception as exc:  # noqa: BLE001 — evidence gathering is advisory
+            self._wd_log_error("watchdog_tick", "warning", f"Watchdog tick failed: {exc!r}")
+            return None
+        if wd.last_new_stall:
+            self._wd_log_error("stall", "warning", f"Stall detected: {verdict.reason}")
+        if verdict.action in (StallAction.NUDGE, StallAction.RESUME_NUDGE):
+            self._wd_nudge(process, verdict, text=text)
+        elif verdict.action == StallAction.PAUSE:
+            self._wd_pause(process, verdict)
+        elif verdict.action == StallAction.RESUME:
+            self._wd_resume(process, verdict)
+        elif verdict.action == StallAction.ESCALATE:
+            self._wd_escalate(process, verdict)
+        wd.settle()
+        return verdict
+
+    def _wd_nudge(self, process: LeadProcess, verdict: StallVerdict, *, text: str) -> None:
+        """Deliver a nudge into the tmux pane, guarded by ``pane_ready_for_nudge``."""
+        wd = self._wd
+        if wd is None:
+            return
+        resume = verdict.action == StallAction.RESUME_NUDGE
+        budget = wd.config.resume_nudge_budget if resume else wd.config.nudge_budget
+        used = wd.state.resume_nudges_used if resume else wd.state.nudges_used
+        label = "resume nudge" if resume else "nudge"
+        if not process.tmux_pane_id or not pane_ready_for_nudge(text):
+            # Log once per stall/pause episode, not every poll.
+            episode = (label, wd.state.stall_since or wd.state.paused_at)
+            if episode != self._wd_last_skip:
+                self._wd_last_skip = episode
+                self._wd_checkpoint(
+                    "nudge-skipped",
+                    f"{label} {used + 1}/{budget} skipped: pane busy or awaiting input",
+                    blockers=[verdict.reason])
+            return
+        try:
+            self._paste_and_submit(process.tmux_pane_id, wd.config.nudge_message)
+        except Exception as exc:  # noqa: BLE001 — tmux hiccup; do not consume budget
+            self._wd_log_error("nudge_failed", "warning", f"Nudge paste failed: {exc!r}")
+            return
+        wd.record_nudge(wd.clock(), resume=resume)
+        process.nudges_used = wd.state.nudges_used
+        self._wd_checkpoint("nudge", f"{label} {used + 1}/{budget}: {verdict.reason}")
+
+    def _wd_pause(self, process: LeadProcess, verdict: StallVerdict) -> None:
+        """Enter the paused state on FIRST detection only (extensions are silent)."""
+        wd = self._wd
+        if wd is None:
+            return
+        state = wd.state
+        process.paused_until = state.paused_until
+        if state.paused_at != verdict.evaluated_at:
+            return
+        process.status = AgentStatus.PAUSED_RATE_LIMIT
+        self._wd_checkpoint(
+            "rate-limit-pause",
+            f"Rate limit detected; paused until {state.paused_until}: {verdict.reason}",
+            blockers=["rate_limit"])
+
+    def _wd_resume(self, process: LeadProcess, verdict: StallVerdict) -> None:
+        """Verified resume: progress observed after a rate-limit pause."""
+        wd = self._wd
+        if wd is None:
+            return
+        process.status = AgentStatus.RUNNING
+        process.paused_until = None
+        process.pause_total_sec = wd.state.total_paused_sec
+        self._wd_checkpoint(
+            "rate-limit-resume",
+            f"Resumed after rate-limit pause (verified={verdict.progress}; "
+            f"paused {process.pause_total_sec:.0f}s total): {verdict.reason}")
+
+    def _wd_escalate(self, process: LeadProcess, verdict: StallVerdict) -> None:
+        """Escalate to the human; headless additionally kills the session."""
+        wd = self._wd
+        if wd is None:
+            return
+        self._wd_log_error("stall", "blocking", verdict.reason, escalated_to="human")
+        process.stalled = True
+        if process.tmux_pane_id or not wd.config.kill_headless_on_escalate:
+            return  # tmux: human-facing pane is never killed; keep waiting
+        killed = self.kill_session(process)
+        process.exit_code = killed.exit_code
+        process.completed_at = killed.completed_at
+        process.status = AgentStatus.STALLED
+
+    def _read_new_output(self, process: LeadProcess) -> str:
+        """Byte-cursor read of NEW stdout/stderr bytes; maintains the rolling window."""
+        new_chunks: list[str] = []
+        for path in (process.stdout_log, process.stderr_log):
+            if path is None:
+                continue
+            key = str(path)
+            try:
+                with open(path, "rb") as fh:
+                    fh.seek(self._out_cursors.get(key, 0))
+                    data = fh.read()
+                    self._out_cursors[key] = fh.tell()
+            except OSError:
+                continue
+            if data:
+                new_chunks.append(data.decode("utf-8", errors="replace"))
+        new_text = "".join(new_chunks)
+        if new_text:
+            window = self._wd_text_window + new_text
+            self._wd_text_window = window[-_HEADLESS_TEXT_WINDOW_CHARS:]
+        return new_text
+
+    def _elapsed(self, start_time: float) -> float:
+        """Wall-clock seconds since ``start_time`` minus any rate-limit pause."""
+        elapsed = time.monotonic() - start_time
+        if self._wd is not None:
+            elapsed -= self._wd.paused_seconds()
+        return elapsed
+
+    def _timed_out(self, process: LeadProcess, timeout: float | None,
+                   start_time: float) -> LeadProcess | None:
+        """Return the TIMED_OUT process if the (pause-adjusted) budget is spent."""
+        if not timeout or self._elapsed(start_time) <= timeout:
+            return None
+        process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
+        self._comms.log_error(
+            agent="wrapper", error_type="timeout", severity="blocking",
+            description=f"Lead session timed out after {timeout}s",
+        )
+        return process
 
     def _maybe_open_training_pane(self) -> None:
         """Open a training dashboard split-pane if metrics file appears.
@@ -709,6 +1014,14 @@ class LifecycleWrapper:
         while True:
             self._check_gate_mode_change()
             self._maybe_open_training_pane()
+            # ONE pane capture per poll, shared by the watchdog and on_status.
+            pane_text = self._capture_tmux_pane(pane_id, lines=_PANE_CAPTURE_LINES)
+            # Watchdog tick BEFORE the liveness reads so it also runs on the
+            # suspected-dead ``continue`` path below. A busy pane (spinner,
+            # "esc to interrupt", dialog) cannot be nudged, so the policy
+            # escalates a persistent stall there instead of nudging forever.
+            self._watchdog_tick(process, text=pane_text,
+                                can_nudge=pane_ready_for_nudge(pane_text))
 
             pane_exists = self._tmux_pane_alive(pane_id)
             claude_running = pane_exists and self._tmux_claude_running(pane_id)
@@ -726,16 +1039,7 @@ class LifecycleWrapper:
                         # Confirmed: Claude exited — clean up the shell window.
                         if pane_exists:
                             self._kill_tmux_window(pane_id)
-                        process = process.model_copy(update={
-                            "exit_code": 0, "completed_at": datetime.now(UTC),
-                            "status": AgentStatus.COMPLETED,
-                        })
-                        self._comms.log_checkpoint(
-                            agent="wrapper", phase="lifecycle",
-                            subtask="completion",
-                            progress="Lead session completed, agent window closed",
-                        )
-                        return process
+                        return self._tmux_final_status(process)
                     # Suspected exit but not yet confirmed — re-check soon
                     # rather than waiting a full poll interval.
                     if on_status:
@@ -748,17 +1052,38 @@ class LifecycleWrapper:
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
-                pane_snapshot = self._capture_tmux_pane(pane_id, lines=5)
+                pane_snapshot = "\n".join(pane_text.splitlines()[-5:])
                 on_status(team_status, pane_snapshot)
 
-            if timeout and (time.monotonic() - start_time) > timeout:
-                process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
-                self._comms.log_error(
-                    agent="wrapper", error_type="timeout", severity="blocking",
-                    description=f"Lead session timed out after {timeout}s",
-                )
-                return process
+            timed_out = self._timed_out(process, timeout, start_time)
+            if timed_out is not None:
+                return timed_out
             time.sleep(poll_interval)
+
+    def _tmux_final_status(self, process: LeadProcess) -> LeadProcess:
+        """Terminal status once the tmux pane/claude is confirmed gone.
+
+        ``STALLED`` if the watchdog escalated and nothing progressed since;
+        ``RATE_LIMITED`` (with ``resume_at``) if the session died while a
+        *corroborated* rate-limit pause was in effect (parsed reset time or
+        an unambiguous banner — prose in a final summary does not count);
+        else the normal ``COMPLETED``.
+        """
+        wd = self._wd
+        status = AgentStatus.COMPLETED
+        update: dict[str, Any] = {"exit_code": 0, "completed_at": datetime.now(UTC)}
+        if process.stalled and (wd is None or not wd.progress_since_escalation()):
+            status = AgentStatus.STALLED
+        elif wd is not None and wd.rate_limit_exit_evidence():
+            status = AgentStatus.RATE_LIMITED
+            update["resume_at"] = wd.parsed_resume_at()
+        update["status"] = status
+        process = process.model_copy(update=update)
+        self._comms.log_checkpoint(
+            agent="wrapper", phase="lifecycle", subtask="completion",
+            progress=f"Lead session completed, agent window closed (status={status.value})",
+        )
+        return process
 
     def _wait_headless(
         self,
@@ -768,58 +1093,82 @@ class LifecycleWrapper:
         timeout: float | None,
         on_status: Any | None,
     ) -> LeadProcess:
-        """Wait for the headless subprocess to exit."""
+        """Wait for the headless subprocess to exit.
+
+        Rate limits are handled by the watchdog pause/resume state (evaluated
+        every poll — never a blocking backoff sleep). When the process exits
+        while rate-limited the status is ``RATE_LIMITED`` with a parsed
+        ``resume_at``; the driver above the wrapper relaunches.
+        """
         start_time = time.monotonic()
-        retries = 0
         process = process.model_copy(update={"status": AgentStatus.RUNNING})
+        self._wd_text_window = ""
+        self._out_cursors = {}
 
         while True:
             self._check_gate_mode_change()
+            self._read_new_output(process)
 
             rc = self._proc.poll() if self._proc else -1
+            if rc is None:
+                # Alive: process_dead=False is authoritative here (Popen.poll).
+                verdict = self._watchdog_tick(process, text=self._wd_text_window,
+                                              can_nudge=False, process_dead=False)
+                if process.status == AgentStatus.STALLED:
+                    return process
+                if verdict is not None and verdict.action == StallAction.PAUSE:
+                    # The banner is consumed: unlike a live pane it never
+                    # disappears from a log window, so only NEW output is
+                    # classified from here on (new-lines-only cursor).
+                    self._wd_text_window = ""
             if rc is not None:
                 self._close_log_handles()
-                process = process.model_copy(update={
-                    "exit_code": rc, "completed_at": datetime.now(UTC),
-                    "status": AgentStatus.COMPLETED if rc == 0 else AgentStatus.ERRORED,
-                })
-                self._comms.log_checkpoint(
-                    agent="wrapper", phase="lifecycle", subtask="completion",
-                    progress=f"Lead session exited code={rc}",
-                )
-                return process
-
-            output = self._read_tail(process.stdout_log)
-            if self._detect_rate_limit(output):
-                if retries >= self._max_retries:
-                    process = process.model_copy(update={"status": AgentStatus.RATE_LIMITED})
-                    self._comms.log_error(
-                        agent="wrapper", error_type="rate_limit", severity="blocking",
-                        description=f"Rate limited after {retries} retries",
-                    )
-                    return process
-                wait_secs = self._backoff_wait(retries)
-                self._comms.log_checkpoint(
-                    agent="wrapper", phase="lifecycle", subtask="rate-limit-backoff",
-                    progress=f"Rate limited, retry {retries + 1}/{self._max_retries}, "
-                             f"waiting {wait_secs:.0f}s",
-                )
-                time.sleep(wait_secs)
-                retries += 1
-                continue
+                return self._headless_exit_status(process, rc)
 
             if on_status:
                 team_status = self.monitor_team(process.team_name)
                 on_status(team_status, "")
 
-            if timeout and (time.monotonic() - start_time) > timeout:
-                process = process.model_copy(update={"status": AgentStatus.TIMED_OUT})
-                self._comms.log_error(
-                    agent="wrapper", error_type="timeout", severity="blocking",
-                    description=f"Lead session timed out after {timeout}s",
-                )
-                return process
+            timed_out = self._timed_out(process, timeout, start_time)
+            if timed_out is not None:
+                return timed_out
             time.sleep(poll_interval)
+
+    def _headless_exit_status(self, process: LeadProcess, rc: int) -> LeadProcess:
+        """Classify a headless exit: RATE_LIMITED (+resume_at) / COMPLETED / ERRORED.
+
+        RATE_LIMITED needs corroboration: the watchdog's pause was backed by a
+        parsed reset time or an unambiguous banner, or the process exited
+        non-zero with rate-limit text in its final output. A successful run
+        whose JSON result merely *mentions* rate limits stays COMPLETED.
+        """
+        window = self._wd_text_window
+        wd = self._wd
+        rate_limited = (
+            (wd is not None and wd.rate_limit_exit_evidence(rc=rc))
+            or (rc != 0 and self._detect_rate_limit(window))
+        )
+        update: dict[str, Any] = {"exit_code": rc, "completed_at": datetime.now(UTC)}
+        if process.stalled and (wd is None or not wd.progress_since_escalation()):
+            update["status"] = AgentStatus.STALLED  # escalated, kill disabled, died stalled
+        elif rate_limited:
+            resume_at = wd.parsed_resume_at() if wd is not None else None
+            if resume_at is None:
+                resume_at = parse_rate_limit_reset(window, now=self._clock(), tz=self._tz)
+            update.update({"status": AgentStatus.RATE_LIMITED, "resume_at": resume_at})
+            self._comms.log_error(
+                agent="wrapper", error_type="rate_limit", severity="blocking",
+                description=(f"Lead session exited code={rc} while rate limited; "
+                             f"resume_at={resume_at}"),
+            )
+        else:
+            update["status"] = AgentStatus.COMPLETED if rc == 0 else AgentStatus.ERRORED
+        process = process.model_copy(update=update)
+        self._comms.log_checkpoint(
+            agent="wrapper", phase="lifecycle", subtask="completion",
+            progress=f"Lead session exited code={rc}",
+        )
+        return process
 
     def kill_session(self, process: LeadProcess) -> LeadProcess:
         """Terminate the lead session. SIGTERM, wait 5s, SIGKILL if needed."""
@@ -892,12 +1241,24 @@ class LifecycleWrapper:
 
     @staticmethod
     def _detect_rate_limit(output: str) -> bool:
-        """Return True if output contains rate-limit / overload patterns."""
-        return any(pat.search(output) for pat in _RATE_LIMIT_PATTERNS)
+        """Exit-classification only: does the final output carry a rate-limit banner?
 
-    def _backoff_wait(self, attempt: int) -> float:
-        """Exponential backoff: base * 2^attempt + random(0, 5)."""
-        return self._base_backoff * (2 ** attempt) + random.uniform(0, 5)
+        Uses the watchdog's tiered table (no bare ``429`` / ``overloaded``;
+        loose phrases need same-line rate/usage/quota vocabulary — ``val_loss
+        0.4291``, ``GPU overloaded`` and ``patience limit reached`` are not
+        rate limits).
+        """
+        return rate_limit_match(output) is not None
+
+    @staticmethod
+    def _safe_start_identity(pid: object) -> str | None:
+        """Best-effort process start identity for a freshly spawned pid."""
+        if not isinstance(pid, int) or isinstance(pid, bool):
+            return None
+        try:
+            return process_start_identity(pid)
+        except Exception:  # noqa: BLE001 — identity is advisory
+            return None
 
     # --- Private: resolve claude binary ---
 

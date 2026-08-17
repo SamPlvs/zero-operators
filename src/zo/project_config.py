@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 from pathlib import Path  # noqa: TC003 — used at runtime
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+from zo.watchdog import WatchdogConfig
 
 # ---------------------------------------------------------------------------
 # Models
@@ -38,7 +40,15 @@ class ProjectConfig(BaseModel):
         git_author_name: Name used in commits from ZO agents.
         git_author_email: Email used in commits from ZO agents.
         enforce_isolation: When True, writes to blocked paths halt execution.
+        watchdog: Anti-stall policy for the lead session (WS-C, specs/watchdog.md).
+            Nested block; absent in legacy configs → defaults (watchdog ON).
     """
+
+    # Documented choice (WS-C, PR-A): unknown top-level keys are IGNORED, not
+    # forbidden — legacy `.zo/config.yaml` files may carry keys from older or
+    # newer ZO versions and must still load. The nested ``watchdog`` block is
+    # strict (``WatchdogConfig`` forbids extras) so policy typos are caught.
+    model_config = ConfigDict(extra="ignore")
 
     project_name: str
     alias: str = ""
@@ -49,6 +59,7 @@ class ProjectConfig(BaseModel):
     git_author_name: str = "ZO Agent"
     git_author_email: str = "zo-agent@zero-operators.dev"
     enforce_isolation: bool = True
+    watchdog: WatchdogConfig = Field(default_factory=WatchdogConfig)
 
 
 class LocalConfig(BaseModel):
